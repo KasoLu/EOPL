@@ -35,10 +35,7 @@
     [expression (identifier) var-exp]
     [expression ("let" identifier "=" expression "in" expression) let-exp]
     [expression ("proc" "(" identifier ")" expression) proc-exp]
-    [expression ("(" expression expression ")") call-exp]
-    ;[expression ("letrec" (arbno identifier "(" identifier ")" "=" expression)
-    ;             "in" expression) letrec-exp]
-    ))
+    [expression ("(" expression expression ")") call-exp]))
 (define scanner
   (sllgen:make-string-scanner scanner-spec grammar-spec))
 (define scan&parse

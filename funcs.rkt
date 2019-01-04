@@ -45,28 +45,27 @@
     [else (report-expval-extractor-error 'ref val)]))
 
 (define the-store 'uninit)
+(define curr-ref 0)
 ; empty-store : () -> Store
-(define (empty-store) '())
+(define (empty-store) (make-vector 1024))
 ; get-store : () -> Store
 (define (get-store) the-store)
 ; init-store! : () -> Unspecified
 (define (init-store!)
-  (set! the-store (empty-store)))
+  (set! the-store (empty-store))
+  (set! curr-ref 0))
 ; reference? : SchemeVal -> Bool
 (define (reference? v)
   (integer? v))
 ; newref : ExpVal -> Ref
 (define (newref val)
-  (let ([next-ref (length the-store)])
-    (set! the-store (append the-store (list val)))
-    next-ref))
+  (let ([next-ref (+ curr-ref 1)])
+    (vector-set! the-store next-ref val)
+    (set! curr-ref next-ref)
+    curr-ref))
 ; deref : Ref -> ExpVal
 (define (deref ref)
-  (list-ref the-store ref))
+  (vector-ref the-store ref))
 ; setref! : Ref x ExpVal -> Unspecified
 (define (setref! ref val)
-  (define (setref-inner store1 ref1)
-    (cond [(null? store1) (report-invalid-reference ref the-store)]
-          [(zero? ref1) (cons val (cdr store1))]
-          [else (cons (car store1) (setref-inner (cdr store1) (- ref1 1)))]))
-  (set! the-store (setref-inner the-store ref)))
+  (vector-set! the-store ref val))

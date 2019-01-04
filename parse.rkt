@@ -24,6 +24,7 @@
     [expression ("deref" "(" expression ")") deref-exp]
     [expression ("setref" "(" expression "," expression ")") setref-exp]
     [expression ("begin" expression (arbno ";" expression) "end") begin-exp]
+    [expression ("list" "(" (separated-list expression ",") ")") list-exp]
     ))
 
 (define scan&parse

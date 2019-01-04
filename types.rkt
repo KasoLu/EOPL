@@ -25,6 +25,7 @@
   [bool-val [bool boolean?]]
   [proc-val [proc proc?]]
   [ref-val  [ref reference?]]
+  [list-val [vals (list-of expval?)]]
   )
 
 (define-datatype program program?
@@ -69,6 +70,8 @@
     [exp2 expression?]]
   [begin-exp
     [exp1 expression?]
+    [exps (list-of expression?)]]
+  [list-exp
     [exps (list-of expression?)]]
   )
 

@@ -62,6 +62,9 @@
     [begin-exp [exp1 exps]
       (let ([val1 (value-of exp1 env)])
         (foldl (lambda (e v) (value-of e env)) val1 exps))]
+    [list-exp [exps]
+      (let ([vals (map (lambda (e) (value-of e env)) exps)])
+        (list-val vals))]
     [else
       (report-invalid-expression expr)]
     ))
@@ -116,3 +119,10 @@
       in let b = (g)
          in -(a,b)")
 
+; res = (list-val '((num-val 1) (num-val 2) (num-val 3)))
+(define p5
+  (string-append
+    "let x = newref(0) "
+    "in list(begin setref(x, -(deref(x), -1)); deref(x) end, "
+    "        begin setref(x, -(deref(x), -1)); deref(x) end, "
+    "        begin setref(x, -(deref(x), -1)); deref(x) end) "))

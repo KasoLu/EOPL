@@ -8,11 +8,6 @@
     [vars (list-of identifier?)]
     [vals (list-of (lambda (x) #t))]
     [env  env?]]
-  [extend-env-rec
-    [names  (list-of identifier?)]
-    [varss  (list-of (list-of identifier?))]
-    [bodies (list-of expression?)]
-    [env    env?]]
   )
 
 (define-datatype proc proc?

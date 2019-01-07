@@ -19,16 +19,13 @@
               [(eqv? (car vars) var) (car vals)]
               [else (found (cdr vars) (cdr vals))]))
       (found saved-vars saved-vals)]
-    [extend-env-rec [names varss bodies saved-env]
-      (define (found names varss bodies)
-        (cond [(null? names) 
-               (apply-env saved-env var)]
-              [(eqv? (car names) var) 
-               (newref (proc-val (procedure (car varss) (car bodies) env1)))]
-              [else 
-               (found (cdr names) (cdr varss) (cdr bodies))]))
-      (found names varss bodies)]
     ))
+(define (extend-env-rec names varss bodies saved-env)
+  (let ([refs (map (lambda (vs) (newref 0)) varss)])
+    (let ([ext-env (extend-env names refs saved-env)])
+      (map (lambda (r vs b) (setref! r (proc-val (procedure vs b ext-env)))) 
+           refs varss bodies)
+      ext-env)))
 
 (define (expval->num val)
   (cases expval val

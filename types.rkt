@@ -8,6 +8,11 @@
     [vars (list-of identifier?)]
     [vals (list-of (lambda (x) #t))]
     [env  env?]]
+  [extend-env-rec
+    [names  (list-of identifier?)]
+    [varss  (list-of (list-of identifier?))]
+    [bodies (list-of expression?)]
+    [env    env?]]
   )
 
 (define-datatype proc proc?
@@ -21,6 +26,7 @@
   [num-val  [num number?]]
   [bool-val [bool boolean?]]
   [proc-val [proc proc?]]
+  [ref-val  [ref reference?]]
   )
 
 (define-datatype program program?
@@ -62,5 +68,9 @@
   [begin-exp
     [exp1 expression?]
     [exps (list-of expression?)]]
+  [ref-exp
+    [vars (list-of identifier?)]
+    [exps (list-of expression?)]
+    [body expression?]]
   )
 

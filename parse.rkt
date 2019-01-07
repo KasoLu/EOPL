@@ -1,6 +1,7 @@
 (load "types.rkt")
 
 ; Expression ::= set Identifier = Expression
+; Expression ::= var {Identifier = Expression}* in Expression
 
 (define scanner-spec
   '([whitespace (whitespace) skip]
@@ -20,6 +21,7 @@
                  "in" expression) letrec-exp]
     [expression ("begin" expression (arbno ";" expression) "end") begin-exp]
     [expression ("set" identifier "=" expression) assign-exp]
+    [expression ("var" (arbno identifier "=" expression) "in" expression) ref-exp]
     ))
 
 (define scan&parse

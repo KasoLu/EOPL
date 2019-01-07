@@ -1,6 +1,6 @@
 (define (identifier? x) (symbol? x))
-(define (store? x) (list? x))
 (define (reference? v) (integer? v))
+(define (store? s) (list? s))
 
 (define-datatype env env?
   [empty-env]
@@ -26,7 +26,6 @@
   [num-val  [num number?]]
   [bool-val [bool boolean?]]
   [proc-val [proc proc?]]
-  [ref-val  [ref reference?]]
   )
 
 (define-datatype program program?
@@ -62,19 +61,11 @@
     [varss  (list-of (list-of identifier?))]
     [bodies (list-of expression?)]
     [exp1   expression?]]
-  [newref-exp
+  [assign-exp
+    [var  identifier?]
     [exp1 expression?]]
-  [deref-exp
-    [exp1 expression?]]
-  [setref-exp
-    [exp1 expression?]
-    [exp2 expression?]]
   [begin-exp
     [exp1 expression?]
     [exps (list-of expression?)]]
   )
 
-(define-datatype answer answer?
-  [an-answer
-    [val   expval?]
-    [store store?]])

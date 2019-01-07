@@ -1,8 +1,6 @@
 (load "types.rkt")
 
-; Expression ::= newref(Expression)
-; Expression ::= deref(Expression)
-; Expression ::= setref(Expression, Expression)
+; Expression ::= set Identifier = Expression
 
 (define scanner-spec
   '([whitespace (whitespace) skip]
@@ -20,10 +18,8 @@
     [expression ("(" expression (arbno expression) ")") call-exp]
     [expression ("letrec" (arbno identifier "(" (arbno identifier) ")" "=" expression)
                  "in" expression) letrec-exp]
-    [expression ("newref" "(" expression ")") newref-exp]
-    [expression ("deref" "(" expression ")") deref-exp]
-    [expression ("setref" "(" expression "," expression ")") setref-exp]
     [expression ("begin" expression (arbno ";" expression) "end") begin-exp]
+    [expression ("set" identifier "=" expression) assign-exp]
     ))
 
 (define scan&parse

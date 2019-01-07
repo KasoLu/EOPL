@@ -1,4 +1,6 @@
 (define (identifier? x) (symbol? x))
+(define (store? x) (list? x))
+(define (reference? v) (integer? v))
 
 (define-datatype env env?
   [empty-env]
@@ -25,7 +27,6 @@
   [bool-val [bool boolean?]]
   [proc-val [proc proc?]]
   [ref-val  [ref reference?]]
-  [list-val [vals (list-of expval?)]]
   )
 
 (define-datatype program program?
@@ -71,7 +72,9 @@
   [begin-exp
     [exp1 expression?]
     [exps (list-of expression?)]]
-  [list-exp
-    [exps (list-of expression?)]]
   )
 
+(define-datatype answer answer?
+  [an-answer
+    [val   expval?]
+    [store store?]])

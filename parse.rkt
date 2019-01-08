@@ -7,7 +7,7 @@
 ;            ::= { {Statement}*(;) }
 ;            ::= if Expression Statement Statement
 ;            ::= while Expression Statement
-;            ::= var {Identifier}*(,) ; Statement
+;            ::= var {Identifier = Expression}*(,) ; Statement
 ;            ::= read Identifier
 ;            ::= do Statement while Expression
 
@@ -22,7 +22,7 @@
     [statement ("{" (separated-list statement ";") "}") multi-stmt]
     [statement ("if" expression statement statement) if-stmt]
     [statement ("while" expression statement) while-stmt]
-    [statement ("var" (separated-list identifier ",") ";" statement) var-stmt]
+    [statement ("var" (separated-list identifier "=" expression ",") ";" statement) var-stmt]
     [statement ("read" identifier) read-stmt]
     [statement ("do" statement "while" expression) do-while-stmt]
     [expression (number) const-exp]

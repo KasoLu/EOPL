@@ -97,8 +97,8 @@
                    (loop))
             #f)))
       (loop)]
-    [var-stmt [vars stmt1]
-      (let ([refs (map (lambda (v) (newref 'uninit)) vars)])
+    [var-stmt [vars exps stmt1]
+      (let ([refs (map (lambda (e) (newref (value-of e env))) exps)])
         (result-of stmt1 (extend-env vars refs env)))]
     [read-stmt [var1]
       (let ([ref (apply-env env var1)] [num (read)])
@@ -195,3 +195,10 @@
      print x
    }")
 
+(define p13
+  "var x = 10, y = 1, z = 5;
+   { do {
+       x = -(x,y); z = -(z,1)
+     } while zero?(z);
+     print x
+   }")

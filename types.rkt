@@ -49,6 +49,7 @@
     [stmt1 statement?]]
   [var-stmt
     [vars  (list-of identifier?)]
+    [exps  (list-of expression?)]
     [stmt1 statement?]]
   [read-stmt
     [var1 identifier?]]

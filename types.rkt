@@ -26,7 +26,6 @@
   [num-val  [num number?]]
   [bool-val [bool boolean?]]
   [proc-val [proc proc?]]
-  [ref-val  [ref reference?]]
   )
 
 (define-datatype program program?
@@ -68,9 +67,9 @@
   [begin-exp
     [exp1 expression?]
     [exps (list-of expression?)]]
-  [ref-exp
-    [vars (list-of identifier?)]
-    [exps (list-of expression?)]
+  [setdynamic-exp
+    [var  identifier?]
+    [exp1 expression?]
     [body expression?]]
   )
 

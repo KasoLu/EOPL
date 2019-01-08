@@ -24,7 +24,7 @@
         (cond [(null? names) 
                (apply-env saved-env var)]
               [(eqv? (car names) var) 
-               (proc-val (procedure (car varss) (car bodies) env1))]
+               (newref (proc-val (procedure (car varss) (car bodies) env1)))]
               [else 
                (found (cdr names) (cdr varss) (cdr bodies))]))
       (found names varss bodies)]
@@ -42,10 +42,6 @@
   (cases expval val
     [proc-val [proc] proc]
     [else (report-expval-extractor-error 'proc val)]))
-(define (expval->ref val)
-  (cases expval val
-    [ref-val [ref] ref]
-    [else (report-expval-extractor-error 'ref val)]))
 
 (define the-store 'uninit)
 ; empty-store : () -> Store

@@ -99,7 +99,13 @@
       (loop)]
     [var-stmt [vars stmt1]
       (let ([refs (map (lambda (v) (newref 'uninit)) vars)])
-        (result-of stmt1 (extend-env vars refs env)))]))
+        (result-of stmt1 (extend-env vars refs env)))]
+    [read-stmt [var1]
+      (let ([ref (apply-env env var1)] [num (read)])
+        (if (number? num)
+          (setref! ref (num-val num))
+          (report-invalid-number)))]
+    ))
 
 ;(trace value-of-program)
 ;(trace value-of)
@@ -165,4 +171,13 @@
    { f = proc(x y) -(x, y);
      x = 3;
      print (f 4 x)
+   }")
+
+; res = input
+(define p11
+  "var x;
+   { x = 0;
+     print x;
+     read x;
+     print x
    }")

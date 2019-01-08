@@ -8,6 +8,7 @@
 ;            ::= if Expression Statement Statement
 ;            ::= while Expression Statement
 ;            ::= var {Identifier}*(,) ; Statement
+;            ::= read Identifier
 
 (define scanner-spec
   '([whitespace (whitespace) skip]
@@ -21,6 +22,7 @@
     [statement ("if" expression statement statement) if-stmt]
     [statement ("while" expression statement) while-stmt]
     [statement ("var" (separated-list identifier ",") ";" statement) var-stmt]
+    [statement ("read" identifier) read-stmt]
     [expression (number) const-exp]
     [expression ("-" "(" expression "," expression ")") diff-exp]
     [expression ("not" "(" expression ")") not-exp]

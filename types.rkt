@@ -49,7 +49,10 @@
     [stmt1 statement?]]
   [var-stmt
     [vars  (list-of identifier?)]
-    [stmt1 statement?]])
+    [stmt1 statement?]]
+  [read-stmt
+    [var1 identifier?]]
+  )
 
 (define-datatype expression expression?
   [const-exp

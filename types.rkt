@@ -22,10 +22,18 @@
     [env  env?]]
   )
 
+(define-datatype subr subr?
+  [subroutine
+    [vars (list-of identifier?)]
+    [body statement?]
+    [env  env?]]
+  )
+
 (define-datatype expval expval?
   [num-val  [num number?]]
   [bool-val [bool boolean?]]
   [proc-val [proc proc?]]
+  [subr-val [subr subr?]]
   )
 
 (define-datatype program program?
@@ -56,6 +64,9 @@
   [do-while-stmt
     [stmt1 statement?]
     [exp1  expression?]]
+  [call-stmt
+    [rator expression?]
+    [rands (list-of expression?)]]
   )
 
 (define-datatype expression expression?
@@ -81,6 +92,9 @@
   [proc-exp
     [vars (list-of identifier?)]
     [body expression?]]
+  [subr-exp
+    [vars (list-of identifier?)]
+    [body statement?]]
   [call-exp
     [rator expression?]
     [rands (list-of expression?)]]

@@ -1,6 +1,7 @@
 (load "types.rkt")
 
 ; Expression ::= set Identifier = Expression
+;            ::= subr ( {Identifier}* ) Statement
 ; Program    ::= Statement
 ; Statement  ::= Identifier = Expression
 ;            ::= print Expression
@@ -10,6 +11,8 @@
 ;            ::= var {Identifier = Expression}*(,) ; Statement
 ;            ::= read Identifier
 ;            ::= do Statement while Expression
+;            ::= [ Expression {Expression}* ]
+
 
 (define scanner-spec
   '([whitespace (whitespace) skip]
@@ -25,6 +28,7 @@
     [statement ("var" (separated-list identifier "=" expression ",") ";" statement) var-stmt]
     [statement ("read" identifier) read-stmt]
     [statement ("do" statement "while" expression) do-while-stmt]
+    [statement ("[" expression (arbno expression) "]") call-stmt]
     [expression (number) const-exp]
     [expression ("-" "(" expression "," expression ")") diff-exp]
     [expression ("not" "(" expression ")") not-exp]
@@ -38,6 +42,7 @@
                  "in" expression) letrec-exp]
     [expression ("begin" expression (arbno ";" expression) "end") begin-exp]
     [expression ("set" identifier "=" expression) assign-exp]
+    [expression ("subr" "(" (arbno identifier) ")" statement) subr-exp]
     ))
 
 (define scan&parse

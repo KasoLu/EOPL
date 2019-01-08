@@ -43,6 +43,8 @@
           (value-of body (extend-env vars refs env))))]
     [proc-exp [vars body]
       (proc-val (procedure vars body env))]
+    [subr-exp [vars body]
+      (subr-val (subroutine vars body env))]
     [call-exp [rator rands]
       (let ([proc1 (expval->proc (value-of rator env))]
             [args (map (lambda (x) (value-of x env)) rands)])
@@ -81,7 +83,8 @@
         (cases expval val
           [num-val [num]   (printf "~a\n" num)]
           [bool-val [bool] (printf "~a\n" bool)]
-          [proc-val [proc] (printf "~a\n" proc)]))]
+          [proc-val [proc] (printf "~a\n" proc)]
+          [subr-val [subr] (printf "~a\n" subr)]))]
     [multi-stmt [stmts]
       (map (lambda (s) (result-of s env)) stmts)]
     [if-stmt [exp1 stmt1 stmt2]
@@ -111,6 +114,13 @@
     [do-while-stmt [stmt1 exp1]
       (begin (result-of stmt1 env)
              (result-of (while-stmt exp1 stmt1) env))]
+    [call-stmt [rator rands]
+      (let ([subr1 (expval->subr (value-of rator env))]
+            [args (map (lambda (e) (value-of e env)) rands)])
+        (cases subr subr1
+          [subroutine [vars body saved-env]
+            (let ([refs (map (lambda (a) (newref a)) args)])
+              (result-of body (extend-env vars refs saved-env)))]))]
     ))
 
 ;(trace value-of-program)
@@ -213,3 +223,8 @@
        even = proc() if zero?(x) then 1 else begin set x = -(x,1); (odd) end,
        odd  = proc() if zero?(x) then 0 else begin set x = -(x,1); (even) end;
    { print (odd) }")
+
+(define p15
+  "var f = 10,
+       g = subr(x) print x;
+   { [g f] }")

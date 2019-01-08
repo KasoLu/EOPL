@@ -23,6 +23,9 @@
       (let ([val1 (value-of exp1 env)] [val2 (value-of exp2 env)])
         (let ([num1 (expval->num val1)] [num2 (expval->num val2)])
           (num-val (- num1 num2))))]
+    [not-exp [exp1]
+      (let ([bool (expval->bool (value-of exp1 env))])
+        (bool-val (not bool)))]
     [zero?-exp [exp1]
       (let ([val1 (value-of exp1 env)])
         (let ([num1 (expval->num val1)])
@@ -55,21 +58,54 @@
     [begin-exp [exp1 exps]
       (let ([val1 (value-of exp1 env)])
         (foldl (lambda (e v) (value-of e env)) val1 exps))]
-    [setdynamic-exp [var exp1 body]
-      (let ([ref (apply-env env var)])
-        (let ([ori-val (deref ref)])
-          (setref! ref (value-of exp1 env))
-          (let ([val (value-of body env)])
-            (setref! ref ori-val)
-            val)))]
     [else
       (report-invalid-expression expr)]
     ))
+
+(define (result str)
+  (result-of-program
+    (scan&parse str)))
+
+(define (result-of-program pgm)
+  (init-store!)
+  (cases program pgm
+    [a-program [stmt]
+      (result-of stmt (init-env))]))
+
+(define (result-of stmt env)
+  (cases statement stmt
+    [assign-stmt [var1 exp1]
+      (setref! (apply-env env var1) (value-of exp1 env))]
+    [print-stmt [exp1]
+      (let ([val (value-of exp1 env)])
+        (cases expval val
+          [num-val [num]   (printf "~a\n" num)]
+          [bool-val [bool] (printf "~a\n" bool)]
+          [proc-val [proc] (printf "~a\n" proc)]))]
+    [multi-stmt [stmts]
+      (map (lambda (s) (result-of s env)) stmts)]
+    [if-stmt [exp1 stmt1 stmt2]
+      (let ([val (value-of exp1 env)])
+        (if (expval->bool val)
+          (result-of stmt1 env)
+          (result-of stmt2 env)))]
+    [while-stmt [exp1 stmt1]
+      (define (loop)
+        (let ([val (value-of exp1 env)])
+          (if (expval->bool val)
+            (begin (result-of stmt1 env)
+                   (loop))
+            #f)))
+      (loop)]
+    [var-stmt [vars stmt1]
+      (let ([refs (map (lambda (v) (newref 'uninit)) vars)])
+        (result-of stmt1 (extend-env vars refs env)))]))
 
 ;(trace value-of-program)
 ;(trace value-of)
 ;(trace apply-env)
 ;(trace apply-proc)
+;(trace result-of)
 
 ; res = (num-val 1)
 (define p
@@ -102,8 +138,31 @@
        (times4 3)
       end")
 
-; res = (num-val 3)
+; res = 7
 (define p7
-  "let x = 11
-   in let p = proc(y) -(y,x)
-      in -(setdynamic x = 17 during (p 22), (p 13))")
+  "var x, y;
+   { x = 3; y = 4; print -(x,y)}")
+
+; res = 5
+(define p8
+  "var x, y, z;
+   { x = 10; y = 1; z = 5;
+     while not(zero?(z))
+     { x = -(x,y); z = -(z,1) };
+     print x
+   }")
+
+; res = 3 4 3
+(define p9
+  "var x;
+   { x = 3; print x;
+     var x; { x = 4; print x}; 
+     print x}")
+ 
+; res = 1
+(define p10
+  "var f, x;
+   { f = proc(x y) -(x, y);
+     x = 3;
+     print (f 4 x)
+   }")

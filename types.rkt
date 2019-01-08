@@ -52,6 +52,9 @@
     [stmt1 statement?]]
   [read-stmt
     [var1 identifier?]]
+  [do-while-stmt
+    [stmt1 statement?]
+    [exp1  expression?]]
   )
 
 (define-datatype expression expression?

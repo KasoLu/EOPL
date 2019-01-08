@@ -105,6 +105,9 @@
         (if (number? num)
           (setref! ref (num-val num))
           (report-invalid-number)))]
+    [do-while-stmt [stmt1 exp1]
+      (begin (result-of stmt1 env)
+             (result-of (while-stmt exp1 stmt1) env))]
     ))
 
 ;(trace value-of-program)
@@ -181,3 +184,14 @@
      read x;
      print x
    }")
+
+; res = 4
+(define p12
+  "var x, y, z;
+   { x = 10; y = 1; z = 5;
+     do {
+       x = -(x,y); z = -(z,1)
+     } while zero?(z);
+     print x
+   }")
+

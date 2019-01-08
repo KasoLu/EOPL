@@ -66,3 +66,12 @@
           [(zero? ref1) (cons val (cdr store1))]
           [else (cons (car store1) (setref-inner (cdr store1) (- ref1 1)))]))
   (set! the-store (setref-inner the-store ref)))
+
+; Expval x Env -> Expval
+(define (expval-replace-new-env expv new-env)
+  (cases expval expv
+    [proc-val [p]
+      (cases proc p
+        [procedure [vars body saved-env]
+          (proc-val (procedure vars body new-env))])]
+    [else expv]))

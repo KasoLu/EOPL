@@ -98,8 +98,11 @@
             #f)))
       (loop)]
     [var-stmt [vars exps stmt1]
-      (let ([refs (map (lambda (e) (newref (value-of e env))) exps)])
-        (result-of stmt1 (extend-env vars refs env)))]
+      (let ([vals (map (lambda (e) (value-of e env)) exps)])
+        (let ([refs (map (lambda (v) (newref 'uninit)) vars)])
+          (let ([ext-env (extend-env vars refs env)])
+            (map (lambda (r v) (setref! r (expval-replace-new-env v ext-env))) refs vals)
+            (result-of stmt1 ext-env))))]
     [read-stmt [var1]
       (let ([ref (apply-env env var1)] [num (read)])
         (if (number? num)
@@ -195,6 +198,7 @@
      print x
    }")
 
+; res = 9
 (define p13
   "var x = 10, y = 1, z = 5;
    { do {
@@ -202,3 +206,10 @@
      } while zero?(z);
      print x
    }")
+
+; res = 1
+(define p14
+  "var x = 13, 
+       even = proc() if zero?(x) then 1 else begin set x = -(x,1); (odd) end,
+       odd  = proc() if zero?(x) then 0 else begin set x = -(x,1); (even) end;
+   { print (odd) }")

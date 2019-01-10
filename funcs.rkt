@@ -54,6 +54,18 @@
     [a-pair [left-loc right-loc]
       (setref! right-loc val)]))
 
+(define (make-array num val)
+  (define (loop idx)
+    (if (= idx num)
+      '()
+      (cons (newref val) (loop (+ 1 idx)))))
+  (loop 0))
+(define (array-ref arr idx)
+  (deref (list-ref arr idx)))
+(define (array-set! arr idx val)
+  (let ([ref (list-ref arr idx)])
+    (setref! ref val)))
+
 (define (expval->num val)
   (cases expval val
     [num-val [num] num]
@@ -70,6 +82,10 @@
   (cases expval val
     [mutpair-val [pair] pair]
     [else (report-expval-extractor-error 'mutpair val)]))
+(define (expval->arr val)
+  (cases expval val
+    [arr-val [arr] arr]
+    [else (report-expval-extractor-error 'arr val)]))
 
 (define the-store 'uninit)
 ; empty-store : () -> Store
@@ -79,6 +95,7 @@
 ; init-store! : () -> Unspecified
 (define (init-store!)
   (set! the-store (empty-store)))
+
 ; newref : ExpVal -> Ref
 (define (newref val)
   (let ([next-ref (length the-store)])

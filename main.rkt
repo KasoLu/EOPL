@@ -89,6 +89,9 @@
             [val (value-of exp3 env)])
         (begin (array-set! arr idx val)
                (num-val 85)))]
+    [arraylength-exp [exp1]
+      (let ([arr (expval->arr (value-of exp1 env))])
+        (num-val (array-len arr)))]
     [else
       (report-invalid-expression expr)]
     ))
@@ -139,10 +142,10 @@
                    in -(left(loc), right(loc))
       in (f glo)")
 
-; res = 
+; res = (num-val 3)
 (define p8
-  "let a = newarray(2, -99)
+  "let a = newarray(3, -99)
        p = proc(x)
              let v = arrayref(x, 1)
              in arrayset(x, 1, -(v, -1))
-   in begin arrayset(a, 1, 0); (p a); (p a); arrayref(a, 1) end")
+   in begin arrayset(a, 1, 0); (p a); (p a); arrayref(a, 1); arraylength(a) end")

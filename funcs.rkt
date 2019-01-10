@@ -57,14 +57,28 @@
 (define (make-array num val)
   (define (loop idx)
     (if (= idx num)
-      '()
+      (list)
       (cons (newref val) (loop (+ 1 idx)))))
-  (loop 0))
-(define (array-ref arr idx)
-  (deref (list-ref arr idx)))
-(define (array-set! arr idx val)
-  (let ([ref (list-ref arr idx)])
-    (setref! ref val)))
+  (let ([arr (loop 0)])
+    (an-array num arr)))
+(define (array-ref arr1 idx)
+  (cases array arr1
+    [an-array [len arr]
+      (if (< idx len)
+        (deref (list-ref arr idx))
+        (report-invalid-range 'array-ref arr1 idx))]
+    [else (report-invalid-array 'array-ref arr1)]))
+(define (array-set! arr1 idx val)
+  (cases array arr1
+    [an-array [len arr]
+      (if (< idx len)
+        (setref! (list-ref arr idx) val)
+        (report-invalid-range 'array-set! arr1 idx))]
+    [else (report-invalid-array 'array-set! arr1)]))
+(define (array-len arr1)
+  (cases array arr1
+    [an-array [len arr] len]
+    [else (report-invalid-array 'array-len arr1)]))
 
 (define (expval->num val)
   (cases expval val

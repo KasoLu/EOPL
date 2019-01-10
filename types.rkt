@@ -22,52 +22,21 @@
     [env  env?]]
   )
 
-(define-datatype subr subr?
-  [subroutine
-    [vars (list-of identifier?)]
-    [body statement?]
-    [env  env?]]
-  )
+(define-datatype mutpair mutpair?
+  [a-pair
+    [left-loc  reference?]
+    [right-loc reference?]])
 
 (define-datatype expval expval?
   [num-val  [num number?]]
   [bool-val [bool boolean?]]
   [proc-val [proc proc?]]
-  [subr-val [subr subr?]]
+  [mutpair-val [mutpair mutpair?]]
   )
 
 (define-datatype program program?
-  [a-program
-    [stmt1 statement?]])
-
-(define-datatype statement statement?
-  [assign-stmt
-    [var1 identifier?]
-    [exp1 expression?]]
-  [print-stmt
-    [exp1 expression?]]
-  [multi-stmt
-    [stmts (list-of statement?)]]
-  [if-stmt
-    [exp1  expression?]
-    [stmt1 statement?]
-    [stmt2 statement?]]
-  [while-stmt
-    [exp1  expression?]
-    [stmt1 statement?]]
-  [var-stmt
-    [vars  (list-of identifier?)]
-    [exps  (list-of expression?)]
-    [stmt1 statement?]]
-  [read-stmt
-    [var1 identifier?]]
-  [do-while-stmt
-    [stmt1 statement?]
-    [exp1  expression?]]
-  [call-stmt
-    [rator expression?]
-    [rands (list-of expression?)]]
-  )
+  [a-program 
+    [exp1 expression?]])
 
 (define-datatype expression expression?
   [const-exp
@@ -75,8 +44,6 @@
   [diff-exp
     [exp1 expression?]
     [exp2 expression?]]
-  [not-exp
-    [exp1 expression?]]
   [zero?-exp
     [exp1 expression?]]
   [if-exp
@@ -92,9 +59,6 @@
   [proc-exp
     [vars (list-of identifier?)]
     [body expression?]]
-  [subr-exp
-    [vars (list-of identifier?)]
-    [body statement?]]
   [call-exp
     [rator expression?]
     [rands (list-of expression?)]]
@@ -109,5 +73,18 @@
   [begin-exp
     [exp1 expression?]
     [exps (list-of expression?)]]
+  [newpair-exp
+    [exp1 expression?]
+    [exp2 expression?]]
+  [left-exp
+    [exp1 expression?]]
+  [right-exp
+    [exp1 expression?]]
+  [setleft-exp
+    [exp1 expression?]
+    [exp2 expression?]]
+  [setright-exp
+    [exp1 expression?]
+    [exp2 expression?]]
   )
 

@@ -1,37 +1,20 @@
 (load "types.rkt")
 
 ; Expression ::= set Identifier = Expression
-;            ::= subr ( {Identifier}* ) Statement
-; Program    ::= Statement
-; Statement  ::= Identifier = Expression
-;            ::= print Expression
-;            ::= { {Statement}*(;) }
-;            ::= if Expression Statement Statement
-;            ::= while Expression Statement
-;            ::= var {Identifier = Expression}*(,) ; Statement
-;            ::= read Identifier
-;            ::= do Statement while Expression
-;            ::= [ Expression {Expression}* ]
-
+; Expression ::= pair( Expression , Expression )
+; Expression ::= left( Expression )
+; Expression ::= right( Expression )
+; Expression ::= setleft( Expression , Expression )
+; Expression ::= setright( Expression , Expression )
 
 (define scanner-spec
   '([whitespace (whitespace) skip]
     [identifier (letter (arbno (or letter digit "_" "-" "?"))) symbol]
     [number ((or "-" "") digit (arbno digit)) number]))
 (define grammar-spec
-  '([program (statement) a-program]
-    [statement (identifier "=" expression) assign-stmt]
-    [statement ("print" expression) print-stmt]
-    [statement ("{" (separated-list statement ";") "}") multi-stmt]
-    [statement ("if" expression statement statement) if-stmt]
-    [statement ("while" expression statement) while-stmt]
-    [statement ("var" (separated-list identifier "=" expression ",") ";" statement) var-stmt]
-    [statement ("read" identifier) read-stmt]
-    [statement ("do" statement "while" expression) do-while-stmt]
-    [statement ("[" expression (arbno expression) "]") call-stmt]
+  '([program (expression) a-program]
     [expression (number) const-exp]
     [expression ("-" "(" expression "," expression ")") diff-exp]
-    [expression ("not" "(" expression ")") not-exp]
     [expression ("zero?" "(" expression ")") zero?-exp]
     [expression ("if" expression "then" expression "else" expression) if-exp]
     [expression (identifier) var-exp]
@@ -42,7 +25,11 @@
                  "in" expression) letrec-exp]
     [expression ("begin" expression (arbno ";" expression) "end") begin-exp]
     [expression ("set" identifier "=" expression) assign-exp]
-    [expression ("subr" "(" (arbno identifier) ")" statement) subr-exp]
+    [expression ("pair" "(" expression "," expression ")") newpair-exp]
+    [expression ("left" "(" expression ")") left-exp]
+    [expression ("right" "(" expression ")") right-exp]
+    [expression ("setleft" "(" expression "," expression ")") setleft-exp]
+    [expression ("setright" "(" expression "," expression ")") setright-exp]
     ))
 
 (define scan&parse

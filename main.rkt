@@ -23,9 +23,6 @@
       (let ([val1 (value-of exp1 env)] [val2 (value-of exp2 env)])
         (let ([num1 (expval->num val1)] [num2 (expval->num val2)])
           (num-val (- num1 num2))))]
-    [not-exp [exp1]
-      (let ([bool (expval->bool (value-of exp1 env))])
-        (bool-val (not bool)))]
     [zero?-exp [exp1]
       (let ([val1 (value-of exp1 env)])
         (let ([num1 (expval->num val1)])
@@ -43,8 +40,6 @@
           (value-of body (extend-env vars refs env))))]
     [proc-exp [vars body]
       (proc-val (procedure vars body env))]
-    [subr-exp [vars body]
-      (subr-val (subroutine vars body env))]
     [call-exp [rator rands]
       (let ([proc1 (expval->proc (value-of rator env))]
             [args (map (lambda (x) (value-of x env)) rands)])
@@ -60,74 +55,35 @@
     [begin-exp [exp1 exps]
       (let ([val1 (value-of exp1 env)])
         (foldl (lambda (e v) (value-of e env)) val1 exps))]
+    [newpair-exp [exp1 exp2]
+      (let ([val1 (value-of exp1 env)] [val2 (value-of exp2 env)])
+        (mutpair-val (make-pair val1 val2)))]
+    [left-exp [exp1]
+      (let ([val1 (value-of exp1 env)])
+        (let ([p1 (expval->mutpair val1)])
+          (left p1)))]
+    [right-exp [exp1]
+      (let ([val1 (value-of exp1 env)])
+        (let ([p1 (expval->mutpair val1)])
+          (right p1)))]
+    [setleft-exp [exp1 exp2]
+      (let ([val1 (value-of exp1 env)] [val2 (value-of exp2 env)])
+        (let ([p (expval->mutpair val1)])
+          (begin (setleft p val2)
+                 (num-val 82))))]
+    [setright-exp [exp1 exp2]
+      (let ([val1 (value-of exp1 env)] [val2 (value-of exp2 env)])
+        (let ([p (expval->mutpair val1)])
+          (begin (setright p val2)
+                 (num-val 83))))]
     [else
       (report-invalid-expression expr)]
-    ))
-
-(define (result str)
-  (result-of-program
-    (scan&parse str)))
-
-(define (result-of-program pgm)
-  (init-store!)
-  (cases program pgm
-    [a-program [stmt]
-      (result-of stmt (init-env))]))
-
-(define (result-of stmt env)
-  (cases statement stmt
-    [assign-stmt [var1 exp1]
-      (setref! (apply-env env var1) (value-of exp1 env))]
-    [print-stmt [exp1]
-      (let ([val (value-of exp1 env)])
-        (cases expval val
-          [num-val [num]   (printf "~a\n" num)]
-          [bool-val [bool] (printf "~a\n" bool)]
-          [proc-val [proc] (printf "~a\n" proc)]
-          [subr-val [subr] (printf "~a\n" subr)]))]
-    [multi-stmt [stmts]
-      (map (lambda (s) (result-of s env)) stmts)]
-    [if-stmt [exp1 stmt1 stmt2]
-      (let ([val (value-of exp1 env)])
-        (if (expval->bool val)
-          (result-of stmt1 env)
-          (result-of stmt2 env)))]
-    [while-stmt [exp1 stmt1]
-      (define (loop)
-        (let ([val (value-of exp1 env)])
-          (if (expval->bool val)
-            (begin (result-of stmt1 env)
-                   (loop))
-            #f)))
-      (loop)]
-    [var-stmt [vars exps stmt1]
-      (let ([vals (map (lambda (e) (value-of e env)) exps)])
-        (let ([refs (map (lambda (v) (newref 'uninit)) vars)])
-          (let ([ext-env (extend-env vars refs env)])
-            (map (lambda (r v) (setref! r (expval-replace-new-env v ext-env))) refs vals)
-            (result-of stmt1 ext-env))))]
-    [read-stmt [var1]
-      (let ([ref (apply-env env var1)] [num (read)])
-        (if (number? num)
-          (setref! ref (num-val num))
-          (report-invalid-number)))]
-    [do-while-stmt [stmt1 exp1]
-      (begin (result-of stmt1 env)
-             (result-of (while-stmt exp1 stmt1) env))]
-    [call-stmt [rator rands]
-      (let ([subr1 (expval->subr (value-of rator env))]
-            [args (map (lambda (e) (value-of e env)) rands)])
-        (cases subr subr1
-          [subroutine [vars body saved-env]
-            (let ([refs (map (lambda (a) (newref a)) args)])
-              (result-of body (extend-env vars refs saved-env)))]))]
     ))
 
 ;(trace value-of-program)
 ;(trace value-of)
 ;(trace apply-env)
 ;(trace apply-proc)
-;(trace result-of)
 
 ; res = (num-val 1)
 (define p
@@ -160,71 +116,11 @@
        (times4 3)
       end")
 
-; res = 7
+; res = (num-val 88)
 (define p7
-  "var x, y;
-   { x = 3; y = 4; print -(x,y)}")
-
-; res = 5
-(define p8
-  "var x, y, z;
-   { x = 10; y = 1; z = 5;
-     while not(zero?(z))
-     { x = -(x,y); z = -(z,1) };
-     print x
-   }")
-
-; res = 3 4 3
-(define p9
-  "var x;
-   { x = 3; print x;
-     var x; { x = 4; print x}; 
-     print x}")
- 
-; res = 1
-(define p10
-  "var f, x;
-   { f = proc(x y) -(x, y);
-     x = 3;
-     print (f 4 x)
-   }")
-
-; res = input
-(define p11
-  "var x;
-   { x = 0;
-     print x;
-     read x;
-     print x
-   }")
-
-; res = 4
-(define p12
-  "var x, y, z;
-   { x = 10; y = 1; z = 5;
-     do {
-       x = -(x,y); z = -(z,1)
-     } while zero?(z);
-     print x
-   }")
-
-; res = 9
-(define p13
-  "var x = 10, y = 1, z = 5;
-   { do {
-       x = -(x,y); z = -(z,1)
-     } while zero?(z);
-     print x
-   }")
-
-; res = 1
-(define p14
-  "var x = 13, 
-       even = proc() if zero?(x) then 1 else begin set x = -(x,1); (odd) end,
-       odd  = proc() if zero?(x) then 0 else begin set x = -(x,1); (even) end;
-   { print (odd) }")
-
-(define p15
-  "var f = 10,
-       g = subr(x) print x;
-   { [g f] }")
+  "let glo = pair(11,22)
+   in let f = proc(loc)
+                let d1 = setright(loc, left(loc))
+                in let d2 = setleft(glo, 99)
+                   in -(left(loc), right(loc))
+      in (f glo)")

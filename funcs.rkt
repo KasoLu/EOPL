@@ -30,6 +30,30 @@
       (found names varss bodies)]
     ))
 
+; make-pair : ExpVal x ExpVal -> MutPair
+(define (make-pair val1 val2)
+  (a-pair (newref val1) (newref val2)))
+; left : MutPair -> ExpVal
+(define (left p)
+  (cases mutpair p
+    [a-pair [left-loc right-loc]
+      (deref left-loc)]))
+; right : MutPair -> ExpVal
+(define (right p)
+  (cases mutpair p
+    [a-pair [left-loc right-loc]
+      (deref right-loc)]))
+; setleft : MutPair x ExpVal -> Unspecified
+(define (setleft p val)
+  (cases mutpair p
+    [a-pair [left-loc right-loc]
+      (setref! left-loc val)]))
+; setright : MutPair x ExpVal -> Unspecified
+(define (setright p val)
+  (cases mutpair p
+    [a-pair [left-loc right-loc]
+      (setref! right-loc val)]))
+
 (define (expval->num val)
   (cases expval val
     [num-val [num] num]
@@ -42,10 +66,10 @@
   (cases expval val
     [proc-val [proc] proc]
     [else (report-expval-extractor-error 'proc val)]))
-(define (expval->subr val)
+(define (expval->mutpair val)
   (cases expval val
-    [subr-val [subr] subr]
-    [else (report-expval-extractor-error 'subr val)]))
+    [mutpair-val [pair] pair]
+    [else (report-expval-extractor-error 'mutpair val)]))
 
 (define the-store 'uninit)
 ; empty-store : () -> Store
@@ -70,12 +94,3 @@
           [(zero? ref1) (cons val (cdr store1))]
           [else (cons (car store1) (setref-inner (cdr store1) (- ref1 1)))]))
   (set! the-store (setref-inner the-store ref)))
-
-; Expval x Env -> Expval
-(define (expval-replace-new-env expv new-env)
-  (cases expval expv
-    [proc-val [p]
-      (cases proc p
-        [procedure [vars body saved-env]
-          (proc-val (procedure vars body new-env))])]
-    [else expv]))

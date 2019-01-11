@@ -6,10 +6,7 @@
 ; Expression ::= right( Expression )
 ; Expression ::= setleft( Expression , Expression )
 ; Expression ::= setright( Expression , Expression )
-; Expression ::= newarray( Expression , Expression )
-; Expression ::= arrayref( Expression , Expression )
-; Expression ::= arrayset( Expression , Expression, Expression )
-; Expression ::= arraylength( Expression )
+; Expression ::= proc-value( {Identifier}* ) Expression
 
 (define scanner-spec
   '([whitespace (whitespace) skip]
@@ -34,10 +31,7 @@
     [expression ("right" "(" expression ")") right-exp]
     [expression ("setleft" "(" expression "," expression ")") setleft-exp]
     [expression ("setright" "(" expression "," expression ")") setright-exp]
-    [expression ("newarray" "(" expression "," expression ")") newarray-exp]
-    [expression ("arrayref" "(" expression "," expression ")") arrayref-exp]
-    [expression ("arrayset" "(" expression "," expression "," expression ")") arrayset-exp]
-    [expression ("arraylength" "(" expression ")") arraylength-exp]
+    [expression ("proc-value" "(" (arbno identifier) ")" expression) proc-value-exp]
     ))
 
 (define scan&parse

@@ -64,8 +64,14 @@
 
 (define (value-of-operand exp1 env)
   (cases expression exp1
-    [var-exp [var] (apply-env env var)]
-    [else (newref (a-thunk exp1 env))]))
+    [const-exp [num] 
+      (newref (num-val num))]
+    [var-exp [var] 
+      (apply-env env var)]
+    [proc-exp [vars body]
+      (newref (proc-val (procedure vars body env)))]
+    [else 
+      (newref (a-thunk exp1 env))]))
 (define (apply-proc proc1 refs)
   (cases proc proc1
     [procedure [vars body saved-env]
@@ -78,6 +84,7 @@
 
 ;(trace value-of-program)
 ;(trace value-of)
+;(trace value-of-operand)
 ;(trace apply-env)
 ;(trace apply-proc)
 ;(trace value-of-thunk)

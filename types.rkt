@@ -22,6 +22,11 @@
     [env  env?]]
   )
 
+(define-datatype thunk thunk?
+  [a-thunk
+    [exp1 expression?]
+    [env  env?]])
+
 (define-datatype expval expval?
   [num-val  [num number?]]
   [bool-val [bool boolean?]]

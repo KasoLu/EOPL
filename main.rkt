@@ -18,7 +18,13 @@
     [const-exp [num] 
       (num-val num)]
     [var-exp [var]
-      (deref (apply-env env var))]
+      (let ([ref1 (apply-env env var)])
+        (let ([what (deref ref1)])
+          (if (expval? what)
+            what
+            (let ([val1 (value-of-thunk what)])
+              (begin (setref! ref1 val1)
+                     val1)))))]
     [diff-exp [exp1 exp2]
       (let ([val1 (value-of exp1 env)] [val2 (value-of exp2 env)])
         (let ([num1 (expval->num val1)] [num2 (expval->num val2)])
@@ -42,8 +48,8 @@
       (proc-val (procedure vars body env))]
     [call-exp [rator rands]
       (let ([proc1 (expval->proc (value-of rator env))]
-            [args (map (lambda (x) (value-of-operand x env)) rands)])
-        (apply-proc proc1 args))]
+            [refs (map (lambda (x) (value-of-operand x env)) rands)])
+        (apply-proc proc1 refs))]
     [letrec-exp [names varss bodies letrec-body]
       (value-of letrec-body (extend-env-rec names varss bodies env))]
     [assign-exp [var exp1]
@@ -52,49 +58,29 @@
     [begin-exp [exp1 exps]
       (let ([val1 (value-of exp1 env)])
         (foldl (lambda (e v) (value-of e env)) val1 exps))]
-    [ref-exp [var1]
-      (ref-val (apply-env env var1))]
-    [deref-exp [var1]
-      (deref (apply-env env var1))]
-    [setref-exp [var1 exp1]
-      (setref! (apply-env env var1) (value-of exp1 env))]
-    [newarray-exp [exp1 exp2]
-      (let ([num1 (expval->num (value-of exp1 env))] [val2 (value-of exp2 env)])
-        (arr-val (make-array num1 val2)))]
-    [arrayref-exp [exp1 exp2]
-      (let ([arr (expval->arr (value-of exp1 env))] 
-            [idx (expval->num (value-of exp2 env))])
-        (array-ref arr idx))]
-    [arrayset-exp [exp1 exp2 exp3]
-      (let ([arr (expval->arr (value-of exp1 env))]
-            [idx (expval->num (value-of exp2 env))]
-            [val (value-of exp3 env)])
-        (begin (array-set! arr idx val)
-               (num-val 85)))]
     [else
       (report-invalid-expression expr)]
     ))
 
-(define (apply-proc proc1 vals)
-  (cases proc proc1
-    [procedure [vars body saved-env]
-      (value-of body (extend-env vars vals saved-env))]))
 (define (value-of-operand exp1 env)
   (cases expression exp1
-    [var-exp [var] 
-      (apply-env env var)]
-    [arrayref-exp [exp1 exp2]
-      (let ([arr (expval->arr (value-of exp1 env))]
-            [idx (expval->num (value-of exp2 env))])
-        (list-ref arr idx))]
-    [else
-      (newref (value-of exp1 env))]))
+    [var-exp [var] (apply-env env var)]
+    [else (newref (a-thunk exp1 env))]))
+(define (apply-proc proc1 refs)
+  (cases proc proc1
+    [procedure [vars body saved-env]
+      (value-of body (extend-env vars refs saved-env))]))
+
+(define (value-of-thunk th)
+  (cases thunk th
+    [a-thunk [exp1 saved-env]
+      (value-of exp1 saved-env)]))
 
 ;(trace value-of-program)
 ;(trace value-of)
 ;(trace apply-env)
 ;(trace apply-proc)
-;(trace value-of-operand)
+;(trace value-of-thunk)
 
 ; res = (num-val 1)
 (define p
@@ -127,38 +113,13 @@
        (times4 3)
       end")
 
-; res = (num-val 1)
 (define p7
-  "let a = 3
-   in let b = 4
-      in let swap = proc(x)
-                      proc(y)
-                        let temp = deref(x)
-                        in begin
-                             setref(x, deref(y));
-                             setref(y, temp)
-                           end
-         in begin ((swap ref a) ref b); -(a, b) end")
-
-; res = (num-val 4)
-(define p8
-  "let b = 3
-   in let p = proc(x a1)
-                proc(y a2)
-                  begin set x = 4; y end
-      in ((p b 0) b 1)")
-
-; res = (num-val 1)
-(define p9
-  "let a = newarray(2, 0)
-       swap = proc(x y)
-                let temp = deref(x)
-                in begin
-                     setref(x, deref(y));
-                     setref(y, temp)
-                   end
-   in begin 
-        arrayset(a, 1, 1);
-        (swap arrayref(a, arrayref(a, 0)) arrayref(a, 1));
-        -(arrayref(a, 0), arrayref(a, 1))
-      end")
+  "let makerec = proc(f)
+                   let d = proc(x) (f (x x))
+                   in (f (d d))
+   in let maketimes4 = proc(f) proc(x)
+                         if zero?(x)
+                         then 0
+                         else -((f -(x,1)), -4)
+      in let times4 = (makerec maketimes4)
+         in (times4 3)")

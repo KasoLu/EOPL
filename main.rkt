@@ -42,11 +42,8 @@
       (proc-val (procedure vars body env))]
     [call-exp [rator rands]
       (let ([proc1 (expval->proc (value-of rator env))]
-            [args (map (lambda (x) (value-of x env)) rands)])
-        (cases proc proc1
-          [procedure [vars body saved-env]
-            (let ([refs (map (lambda (a) (newref a)) args)])
-              (value-of body (extend-env vars refs saved-env)))]))]
+            [args (map (lambda (x) (value-of-operand x env)) rands)])
+        (apply-proc proc1 args))]
     [letrec-exp [names varss bodies letrec-body]
       (value-of letrec-body (extend-env-rec names varss bodies env))]
     [assign-exp [var exp1]
@@ -76,31 +73,25 @@
         (let ([p (expval->mutpair val1)])
           (begin (setright p val2)
                  (num-val 83))))]
-    [newarray-exp [exp1 exp2]
-      (let ([num1 (expval->num (value-of exp1 env))] [val2 (value-of exp2 env)])
-        (arr-val (make-array num1 val2)))]
-    [arrayref-exp [exp1 exp2]
-      (let ([arr (expval->arr (value-of exp1 env))] 
-            [idx (expval->num (value-of exp2 env))])
-        (array-ref arr idx))]
-    [arrayset-exp [exp1 exp2 exp3]
-      (let ([arr (expval->arr (value-of exp1 env))]
-            [idx (expval->num (value-of exp2 env))]
-            [val (value-of exp3 env)])
-        (begin (array-set! arr idx val)
-               (num-val 85)))]
-    [arraylength-exp [exp1]
-      (let ([arr (expval->arr (value-of exp1 env))])
-        (num-val (array-len arr)))]
     [else
       (report-invalid-expression expr)]
     ))
+
+(define (apply-proc proc1 vals)
+  (cases proc proc1
+    [procedure [vars body saved-env]
+      (value-of body (extend-env vars vals saved-env))]))
+(define (value-of-operand exp1 env)
+  (cases expression exp1
+    [var-exp [var] 
+      (apply-env env var)]
+    [else
+      (newref (value-of exp1 env))]))
 
 ;(trace value-of-program)
 ;(trace value-of)
 ;(trace apply-env)
 ;(trace apply-proc)
-;(trace array-set!)
 
 ; res = (num-val 1)
 (define p
@@ -142,10 +133,10 @@
                    in -(left(loc), right(loc))
       in (f glo)")
 
-; res = (num-val 3)
+; res = (num-val 4)
 (define p8
-  "let a = newarray(3, -99)
-       p = proc(x)
-             let v = arrayref(x, 1)
-             in arrayset(x, 1, -(v, -1))
-   in begin arrayset(a, 1, 0); (p a); (p a); arrayref(a, 1); arraylength(a) end")
+  "let b = 3
+   in let p = proc(x a1)
+                proc(y a2)
+                  begin set x = 4; y end
+      in ((p b 0) b 1)")

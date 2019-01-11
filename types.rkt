@@ -1,4 +1,6 @@
 (define (identifier? x) (symbol? x))
+(define (store? x) (list? x))
+(define (reference? v) (integer? v))
 
 (define-datatype env env?
   [empty-env]
@@ -72,3 +74,7 @@
     [exps (list-of expression?)]]
   )
 
+(define-datatype answer answer?
+  [an-answer
+    [val   expval?]
+    [store store?]])

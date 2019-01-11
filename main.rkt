@@ -76,6 +76,22 @@
         (let ([p (expval->mutpair val1)])
           (begin (setright p val2)
                  (num-val 83))))]
+    [newarray-exp [exp1 exp2]
+      (let ([num1 (expval->num (value-of exp1 env))] [val2 (value-of exp2 env)])
+        (arr-val (make-array num1 val2)))]
+    [arrayref-exp [exp1 exp2]
+      (let ([arr (expval->arr (value-of exp1 env))] 
+            [idx (expval->num (value-of exp2 env))])
+        (array-ref arr idx))]
+    [arrayset-exp [exp1 exp2 exp3]
+      (let ([arr (expval->arr (value-of exp1 env))]
+            [idx (expval->num (value-of exp2 env))]
+            [val (value-of exp3 env)])
+        (begin (array-set! arr idx val)
+               (num-val 85)))]
+    [arraylength-exp [exp1]
+      (let ([arr (expval->arr (value-of exp1 env))])
+        (num-val (array-len arr)))]
     [else
       (report-invalid-expression expr)]
     ))
@@ -84,6 +100,7 @@
 ;(trace value-of)
 ;(trace apply-env)
 ;(trace apply-proc)
+;(trace array-set!)
 
 ; res = (num-val 1)
 (define p
@@ -124,3 +141,11 @@
                 in let d2 = setleft(glo, 99)
                    in -(left(loc), right(loc))
       in (f glo)")
+
+; res = (num-val 3)
+(define p8
+  "let a = newarray(3, -99)
+       p = proc(x)
+             let v = arrayref(x, 1)
+             in arrayset(x, 1, -(v, -1))
+   in begin arrayset(a, 1, 0); (p a); (p a); arrayref(a, 1); arraylength(a) end")

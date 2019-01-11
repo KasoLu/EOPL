@@ -27,11 +27,17 @@
     [left-loc  reference?]
     [right-loc reference?]])
 
+(define-datatype array array?
+  [an-array
+    [len integer?]
+    [arr (list-of reference?)]])
+
 (define-datatype expval expval?
-  [num-val  [num number?]]
-  [bool-val [bool boolean?]]
-  [proc-val [proc proc?]]
-  [mutpair-val [mutpair mutpair?]]
+  [num-val      [num number?]]
+  [bool-val     [bool boolean?]]
+  [proc-val     [proc proc?]]
+  [mutpair-val  [mutpair mutpair?]]
+  [arr-val      [arr array?]]
   )
 
 (define-datatype program program?
@@ -86,5 +92,17 @@
   [setright-exp
     [exp1 expression?]
     [exp2 expression?]]
+  [newarray-exp 
+    [exp1 expression?]
+    [exp2 expression?]]
+  [arrayref-exp
+    [exp1 expression?]
+    [exp2 expression?]]
+  [arrayset-exp
+    [exp1 expression?]
+    [exp2 expression?]
+    [exp3 expression?]]
+  [arraylength-exp
+    [exp1 expression?]]
   )
 

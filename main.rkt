@@ -41,9 +41,8 @@
           (value-of exp2 env)
           (value-of exp3 env)))]
     [let-exp [vars exps body]
-      (let ([vals (map (lambda (e) (value-of e env)) exps)])
-        (let ([refs (map (lambda (v) (newref v)) vals)])
-          (value-of body (extend-env vars refs env))))]
+      (let ([refs (map (lambda (x) (value-of-operand x env)) exps)])
+        (value-of body (extend-env vars refs env)))]
     [proc-exp [vars body]
       (proc-val (procedure vars body env))]
     [call-exp [rator rands]
@@ -130,3 +129,9 @@
                          else -((f -(x,1)), -4)
       in let times4 = (makerec maketimes4)
          in (times4 3)")
+
+; res = (num-val 18)
+(define p8
+  "let a = -(1, -1)
+   in let b = -(10, -10)
+      in -(b, a)")

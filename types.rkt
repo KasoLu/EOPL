@@ -22,22 +22,12 @@
     [env  env?]]
   )
 
-(define-datatype mutpair mutpair?
-  [a-pair
-    [left-loc  reference?]
-    [right-loc reference?]])
-
-(define-datatype array array?
-  [an-array
-    [len integer?]
-    [arr (list-of reference?)]])
-
 (define-datatype expval expval?
-  [num-val      [num number?]]
-  [bool-val     [bool boolean?]]
-  [proc-val     [proc proc?]]
-  [mutpair-val  [mutpair mutpair?]]
-  [arr-val      [arr array?]]
+  [num-val  [num number?]]
+  [bool-val [bool boolean?]]
+  [proc-val [proc proc?]]
+  [ref-val  [ref reference?]]
+  [arr-val  [arr (list-of reference?)]]
   )
 
 (define-datatype program program?
@@ -79,19 +69,13 @@
   [begin-exp
     [exp1 expression?]
     [exps (list-of expression?)]]
-  [newpair-exp
-    [exp1 expression?]
-    [exp2 expression?]]
-  [left-exp
+  [ref-exp
+    [var1 identifier?]]
+  [deref-exp
+    [var1 identifier?]]
+  [setref-exp
+    [var1 identifier?]
     [exp1 expression?]]
-  [right-exp
-    [exp1 expression?]]
-  [setleft-exp
-    [exp1 expression?]
-    [exp2 expression?]]
-  [setright-exp
-    [exp1 expression?]
-    [exp2 expression?]]
   [newarray-exp 
     [exp1 expression?]
     [exp2 expression?]]
@@ -102,7 +86,5 @@
     [exp1 expression?]
     [exp2 expression?]
     [exp3 expression?]]
-  [arraylength-exp
-    [exp1 expression?]]
   )
 

@@ -52,27 +52,25 @@
     [begin-exp [exp1 exps]
       (let ([val1 (value-of exp1 env)])
         (foldl (lambda (e v) (value-of e env)) val1 exps))]
-    [newpair-exp [exp1 exp2]
-      (let ([val1 (value-of exp1 env)] [val2 (value-of exp2 env)])
-        (mutpair-val (make-pair val1 val2)))]
-    [left-exp [exp1]
-      (let ([val1 (value-of exp1 env)])
-        (let ([p1 (expval->mutpair val1)])
-          (left p1)))]
-    [right-exp [exp1]
-      (let ([val1 (value-of exp1 env)])
-        (let ([p1 (expval->mutpair val1)])
-          (right p1)))]
-    [setleft-exp [exp1 exp2]
-      (let ([val1 (value-of exp1 env)] [val2 (value-of exp2 env)])
-        (let ([p (expval->mutpair val1)])
-          (begin (setleft p val2)
-                 (num-val 82))))]
-    [setright-exp [exp1 exp2]
-      (let ([val1 (value-of exp1 env)] [val2 (value-of exp2 env)])
-        (let ([p (expval->mutpair val1)])
-          (begin (setright p val2)
-                 (num-val 83))))]
+    [ref-exp [var1]
+      (ref-val (apply-env env var1))]
+    [deref-exp [var1]
+      (deref (apply-env env var1))]
+    [setref-exp [var1 exp1]
+      (setref! (apply-env env var1) (value-of exp1 env))]
+    [newarray-exp [exp1 exp2]
+      (let ([num1 (expval->num (value-of exp1 env))] [val2 (value-of exp2 env)])
+        (arr-val (make-array num1 val2)))]
+    [arrayref-exp [exp1 exp2]
+      (let ([arr (expval->arr (value-of exp1 env))] 
+            [idx (expval->num (value-of exp2 env))])
+        (array-ref arr idx))]
+    [arrayset-exp [exp1 exp2 exp3]
+      (let ([arr (expval->arr (value-of exp1 env))]
+            [idx (expval->num (value-of exp2 env))]
+            [val (value-of exp3 env)])
+        (begin (array-set! arr idx val)
+               (num-val 85)))]
     [else
       (report-invalid-expression expr)]
     ))
@@ -85,6 +83,10 @@
   (cases expression exp1
     [var-exp [var] 
       (apply-env env var)]
+    [arrayref-exp [exp1 exp2]
+      (let ([arr (expval->arr (value-of exp1 env))]
+            [idx (expval->num (value-of exp2 env))])
+        (list-ref arr idx))]
     [else
       (newref (value-of exp1 env))]))
 
@@ -92,6 +94,7 @@
 ;(trace value-of)
 ;(trace apply-env)
 ;(trace apply-proc)
+;(trace value-of-operand)
 
 ; res = (num-val 1)
 (define p
@@ -124,14 +127,18 @@
        (times4 3)
       end")
 
-; res = (num-val 88)
+; res = (num-val 1)
 (define p7
-  "let glo = pair(11,22)
-   in let f = proc(loc)
-                let d1 = setright(loc, left(loc))
-                in let d2 = setleft(glo, 99)
-                   in -(left(loc), right(loc))
-      in (f glo)")
+  "let a = 3
+   in let b = 4
+      in let swap = proc(x)
+                      proc(y)
+                        let temp = deref(x)
+                        in begin
+                             setref(x, deref(y));
+                             setref(y, temp)
+                           end
+         in begin ((swap ref a) ref b); -(a, b) end")
 
 ; res = (num-val 4)
 (define p8
@@ -140,3 +147,18 @@
                 proc(y a2)
                   begin set x = 4; y end
       in ((p b 0) b 1)")
+
+; res = (num-val 1)
+(define p9
+  "let a = newarray(2, 0)
+       swap = proc(x y)
+                let temp = deref(x)
+                in begin
+                     setref(x, deref(y));
+                     setref(y, temp)
+                   end
+   in begin 
+        arrayset(a, 1, 1);
+        (swap arrayref(a, arrayref(a, 0)) arrayref(a, 1));
+        -(arrayref(a, 0), arrayref(a, 1))
+      end")

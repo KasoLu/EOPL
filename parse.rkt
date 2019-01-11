@@ -1,15 +1,12 @@
 (load "types.rkt")
 
 ; Expression ::= set Identifier = Expression
-; Expression ::= pair( Expression , Expression )
-; Expression ::= left( Expression )
-; Expression ::= right( Expression )
-; Expression ::= setleft( Expression , Expression )
-; Expression ::= setright( Expression , Expression )
+; Expression ::= ref Identifier
+; Expression ::= deref( Identifier )
+; Expression ::= setref( Identifier , Expression )
 ; Expression ::= newarray( Expression , Expression )
 ; Expression ::= arrayref( Expression , Expression )
 ; Expression ::= arrayset( Expression , Expression, Expression )
-; Expression ::= arraylength( Expression )
 
 (define scanner-spec
   '([whitespace (whitespace) skip]
@@ -29,15 +26,12 @@
                  "in" expression) letrec-exp]
     [expression ("begin" expression (arbno ";" expression) "end") begin-exp]
     [expression ("set" identifier "=" expression) assign-exp]
-    [expression ("pair" "(" expression "," expression ")") newpair-exp]
-    [expression ("left" "(" expression ")") left-exp]
-    [expression ("right" "(" expression ")") right-exp]
-    [expression ("setleft" "(" expression "," expression ")") setleft-exp]
-    [expression ("setright" "(" expression "," expression ")") setright-exp]
+    [expression ("ref" identifier) ref-exp]
+    [expression ("deref" "(" identifier ")") deref-exp]
+    [expression ("setref" "(" identifier "," expression ")") setref-exp]
     [expression ("newarray" "(" expression "," expression ")") newarray-exp]
     [expression ("arrayref" "(" expression "," expression ")") arrayref-exp]
     [expression ("arrayset" "(" expression "," expression "," expression ")") arrayset-exp]
-    [expression ("arraylength" "(" expression ")") arraylength-exp]
     ))
 
 (define scan&parse

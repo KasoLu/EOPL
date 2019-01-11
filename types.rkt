@@ -27,6 +27,7 @@
   [bool-val [bool boolean?]]
   [proc-val [proc proc?]]
   [ref-val  [ref reference?]]
+  [arr-val  [arr (list-of reference?)]]
   )
 
 (define-datatype program program?
@@ -75,5 +76,15 @@
   [setref-exp
     [var1 identifier?]
     [exp1 expression?]]
+  [newarray-exp 
+    [exp1 expression?]
+    [exp2 expression?]]
+  [arrayref-exp
+    [exp1 expression?]
+    [exp2 expression?]]
+  [arrayset-exp
+    [exp1 expression?]
+    [exp2 expression?]
+    [exp3 expression?]]
   )
 

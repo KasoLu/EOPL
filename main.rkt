@@ -42,19 +42,8 @@
       (proc-val (procedure vars body env))]
     [call-exp [rator rands]
       (let ([proc1 (expval->proc (value-of rator env))]
-            [args (map (lambda (x) (value-of x env)) rands)])
-        (cases proc proc1
-          [procedure [vars body saved-env]
-            (define (map-vals-to-refs vals)
-              (if (null? vals)
-                (list)
-                (cases expval (car vals)
-                  [ref-val [ref]
-                    (cons ref (map-vals-to-refs (cdr vals)))]
-                  [else
-                    (cons (newref (car vals)) (map-vals-to-refs (cdr vals)))])))
-            (let ([refs (map-vals-to-refs args)])
-              (value-of body (extend-env vars refs saved-env)))]))]
+            [args (map (lambda (x) (value-of-operand x env)) rands)])
+        (apply-proc proc1 args))]
     [letrec-exp [names varss bodies letrec-body]
       (value-of letrec-body (extend-env-rec names varss bodies env))]
     [assign-exp [var exp1]
@@ -69,14 +58,43 @@
       (deref (apply-env env var1))]
     [setref-exp [var1 exp1]
       (setref! (apply-env env var1) (value-of exp1 env))]
+    [newarray-exp [exp1 exp2]
+      (let ([num1 (expval->num (value-of exp1 env))] [val2 (value-of exp2 env)])
+        (arr-val (make-array num1 val2)))]
+    [arrayref-exp [exp1 exp2]
+      (let ([arr (expval->arr (value-of exp1 env))] 
+            [idx (expval->num (value-of exp2 env))])
+        (array-ref arr idx))]
+    [arrayset-exp [exp1 exp2 exp3]
+      (let ([arr (expval->arr (value-of exp1 env))]
+            [idx (expval->num (value-of exp2 env))]
+            [val (value-of exp3 env)])
+        (begin (array-set! arr idx val)
+               (num-val 85)))]
     [else
       (report-invalid-expression expr)]
     ))
+
+(define (apply-proc proc1 vals)
+  (cases proc proc1
+    [procedure [vars body saved-env]
+      (value-of body (extend-env vars vals saved-env))]))
+(define (value-of-operand exp1 env)
+  (cases expression exp1
+    [var-exp [var] 
+      (apply-env env var)]
+    [arrayref-exp [exp1 exp2]
+      (let ([arr (expval->arr (value-of exp1 env))]
+            [idx (expval->num (value-of exp2 env))])
+        (list-ref arr idx))]
+    [else
+      (newref (value-of exp1 env))]))
 
 ;(trace value-of-program)
 ;(trace value-of)
 ;(trace apply-env)
 ;(trace apply-proc)
+;(trace value-of-operand)
 
 ; res = (num-val 1)
 (define p
@@ -121,3 +139,26 @@
                              setref(y, temp)
                            end
          in begin ((swap ref a) ref b); -(a, b) end")
+
+; res = (num-val 4)
+(define p8
+  "let b = 3
+   in let p = proc(x a1)
+                proc(y a2)
+                  begin set x = 4; y end
+      in ((p b 0) b 1)")
+
+; res = (num-val 1)
+(define p9
+  "let a = newarray(2, 0)
+       swap = proc(x y)
+                let temp = deref(x)
+                in begin
+                     setref(x, deref(y));
+                     setref(y, temp)
+                   end
+   in begin 
+        arrayset(a, 1, 1);
+        (swap arrayref(a, arrayref(a, 0)) arrayref(a, 1));
+        -(arrayref(a, 0), arrayref(a, 1))
+      end")

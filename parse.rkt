@@ -4,6 +4,9 @@
 ; Expression ::= ref Identifier
 ; Expression ::= deref( Identifier )
 ; Expression ::= setref( Identifier , Expression )
+; Expression ::= newarray( Expression , Expression )
+; Expression ::= arrayref( Expression , Expression )
+; Expression ::= arrayset( Expression , Expression, Expression )
 
 (define scanner-spec
   '([whitespace (whitespace) skip]
@@ -26,6 +29,9 @@
     [expression ("ref" identifier) ref-exp]
     [expression ("deref" "(" identifier ")") deref-exp]
     [expression ("setref" "(" identifier "," expression ")") setref-exp]
+    [expression ("newarray" "(" expression "," expression ")") newarray-exp]
+    [expression ("arrayref" "(" expression "," expression ")") arrayref-exp]
+    [expression ("arrayset" "(" expression "," expression "," expression ")") arrayset-exp]
     ))
 
 (define scan&parse

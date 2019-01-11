@@ -42,8 +42,19 @@
       (proc-val (procedure vars body env))]
     [call-exp [rator rands]
       (let ([proc1 (expval->proc (value-of rator env))]
-            [args (map (lambda (x) (value-of-operand x env)) rands)])
-        (apply-proc proc1 args))]
+            [args (map (lambda (x) (value-of x env)) rands)])
+        (cases proc proc1
+          [procedure [vars body saved-env]
+            (define (map-vals-to-refs vals)
+              (if (null? vals)
+                (list)
+                (cases expval (car vals)
+                  [ref-val [ref]
+                    (cons ref (map-vals-to-refs (cdr vals)))]
+                  [else
+                    (cons (newref (car vals)) (map-vals-to-refs (cdr vals)))])))
+            (let ([refs (map-vals-to-refs args)])
+              (value-of body (extend-env vars refs saved-env)))]))]
     [letrec-exp [names varss bodies letrec-body]
       (value-of letrec-body (extend-env-rec names varss bodies env))]
     [assign-exp [var exp1]
@@ -52,44 +63,15 @@
     [begin-exp [exp1 exps]
       (let ([val1 (value-of exp1 env)])
         (foldl (lambda (e v) (value-of e env)) val1 exps))]
-    [newpair-exp [exp1 exp2]
-      (let ([val1 (value-of exp1 env)] [val2 (value-of exp2 env)])
-        (mutpair-val (make-pair val1 val2)))]
-    [left-exp [exp1]
-      (let ([val1 (value-of exp1 env)])
-        (let ([p1 (expval->mutpair val1)])
-          (left p1)))]
-    [right-exp [exp1]
-      (let ([val1 (value-of exp1 env)])
-        (let ([p1 (expval->mutpair val1)])
-          (right p1)))]
-    [setleft-exp [exp1 exp2]
-      (let ([val1 (value-of exp1 env)] [val2 (value-of exp2 env)])
-        (let ([p (expval->mutpair val1)])
-          (begin (setleft p val2)
-                 (num-val 82))))]
-    [setright-exp [exp1 exp2]
-      (let ([val1 (value-of exp1 env)] [val2 (value-of exp2 env)])
-        (let ([p (expval->mutpair val1)])
-          (begin (setright p val2)
-                 (num-val 83))))]
-    [letref-exp [vars exps body]
-      (let ([refs (map (lambda (x) (value-of-operand x env)) exps)])
-        (value-of body (extend-env vars refs env)))]
+    [ref-exp [var1]
+      (ref-val (apply-env env var1))]
+    [deref-exp [var1]
+      (deref (apply-env env var1))]
+    [setref-exp [var1 exp1]
+      (setref! (apply-env env var1) (value-of exp1 env))]
     [else
       (report-invalid-expression expr)]
     ))
-
-(define (apply-proc proc1 vals)
-  (cases proc proc1
-    [procedure [vars body saved-env]
-      (value-of body (extend-env vars vals saved-env))]))
-(define (value-of-operand exp1 env)
-  (cases expression exp1
-    [var-exp [var] 
-      (apply-env env var)]
-    [else
-      (newref (value-of exp1 env))]))
 
 ;(trace value-of-program)
 ;(trace value-of)
@@ -127,25 +109,15 @@
        (times4 3)
       end")
 
-; res = (num-val 88)
+; res = (num-val 1)
 (define p7
-  "let glo = pair(11,22)
-   in let f = proc(loc)
-                let d1 = setright(loc, left(loc))
-                in let d2 = setleft(glo, 99)
-                   in -(left(loc), right(loc))
-      in (f glo)")
-
-; res = (num-val 4)
-(define p8
-  "let b = 3
-   in let p = proc(x)
-                proc(y)
-                  begin set x = 4; y end
-      in ((p b) b)")
-
-; res = (num-val 4)
-(define p9
   "let a = 3
-   in letref b = a
-      in begin set b = 4; a end")
+   in let b = 4
+      in let swap = proc(x)
+                      proc(y)
+                        let temp = deref(x)
+                        in begin
+                             setref(x, deref(y));
+                             setref(y, temp)
+                           end
+         in begin ((swap ref a) ref b); -(a, b) end")

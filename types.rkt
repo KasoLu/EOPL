@@ -22,16 +22,11 @@
     [env  env?]]
   )
 
-(define-datatype mutpair mutpair?
-  [a-pair
-    [left-loc  reference?]
-    [right-loc reference?]])
-
 (define-datatype expval expval?
   [num-val  [num number?]]
   [bool-val [bool boolean?]]
   [proc-val [proc proc?]]
-  [mutpair-val [mutpair mutpair?]]
+  [ref-val  [ref reference?]]
   )
 
 (define-datatype program program?
@@ -73,22 +68,12 @@
   [begin-exp
     [exp1 expression?]
     [exps (list-of expression?)]]
-  [newpair-exp
-    [exp1 expression?]
-    [exp2 expression?]]
-  [left-exp
+  [ref-exp
+    [var1 identifier?]]
+  [deref-exp
+    [var1 identifier?]]
+  [setref-exp
+    [var1 identifier?]
     [exp1 expression?]]
-  [right-exp
-    [exp1 expression?]]
-  [setleft-exp
-    [exp1 expression?]
-    [exp2 expression?]]
-  [setright-exp
-    [exp1 expression?]
-    [exp2 expression?]]
-  [letref-exp
-    [vars (list-of identifier?)]
-    [exps (list-of expression?)]
-    [body expression?]]
   )
 

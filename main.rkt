@@ -41,14 +41,9 @@
     [proc-exp [vars body]
       (proc-val (procedure vars body env))]
     [call-exp [rator rands]
-      (let ([proc1 (expval->proc (value-of rator env))])
-        (cases proc proc1
-          [procedure [vars body saved-env]
-            (let ([args (map (lambda (x) (value-of-operand x env)) rands)])
-              (value-of body (extend-env vars args saved-env)))]
-          [proc-value [vars body saved-env]
-            (let ([refs (map (lambda (x) (newref (value-of x env))) rands)])
-              (value-of body (extend-env vars refs saved-env)))]))]
+      (let ([proc1 (expval->proc (value-of rator env))]
+            [args (map (lambda (x) (value-of-operand x env)) rands)])
+        (apply-proc proc1 args))]
     [letrec-exp [names varss bodies letrec-body]
       (value-of letrec-body (extend-env-rec names varss bodies env))]
     [assign-exp [var exp1]
@@ -78,8 +73,9 @@
         (let ([p (expval->mutpair val1)])
           (begin (setright p val2)
                  (num-val 83))))]
-    [proc-value-exp [vars body]
-      (proc-val (proc-value vars body env))]
+    [letref-exp [vars exps body]
+      (let ([refs (map (lambda (x) (value-of-operand x env)) exps)])
+        (value-of body (extend-env vars refs env)))]
     [else
       (report-invalid-expression expr)]
     ))
@@ -87,8 +83,6 @@
 (define (apply-proc proc1 vals)
   (cases proc proc1
     [procedure [vars body saved-env]
-      (value-of body (extend-env vars vals saved-env))]
-    [proc-value [vars body saved-env]
       (value-of body (extend-env vars vals saved-env))]))
 (define (value-of-operand exp1 env)
   (cases expression exp1
@@ -149,3 +143,9 @@
                 proc(y)
                   begin set x = 4; y end
       in ((p b) b)")
+
+; res = (num-val 4)
+(define p9
+  "let a = 3
+   in letref b = a
+      in begin set b = 4; a end")

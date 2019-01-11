@@ -20,10 +20,6 @@
     [vars (list-of identifier?)]
     [body expression?]
     [env  env?]]
-  [proc-value
-    [vars (list-of identifier?)]
-    [body expression?]
-    [env  env?]]
   )
 
 (define-datatype mutpair mutpair?
@@ -90,8 +86,9 @@
   [setright-exp
     [exp1 expression?]
     [exp2 expression?]]
-  [proc-value-exp
+  [letref-exp
     [vars (list-of identifier?)]
+    [exps (list-of expression?)]
     [body expression?]]
   )
 

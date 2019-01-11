@@ -6,7 +6,7 @@
 ; Expression ::= right( Expression )
 ; Expression ::= setleft( Expression , Expression )
 ; Expression ::= setright( Expression , Expression )
-; Expression ::= proc-value( {Identifier}* ) Expression
+; Expression ::= letref {Identifier = Expression}* in Expression
 
 (define scanner-spec
   '([whitespace (whitespace) skip]
@@ -31,7 +31,7 @@
     [expression ("right" "(" expression ")") right-exp]
     [expression ("setleft" "(" expression "," expression ")") setleft-exp]
     [expression ("setright" "(" expression "," expression ")") setright-exp]
-    [expression ("proc-value" "(" (arbno identifier) ")" expression) proc-value-exp]
+    [expression ("letref" (arbno identifier "=" expression) "in" expression) letref-exp]
     ))
 
 (define scan&parse

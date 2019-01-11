@@ -41,9 +41,8 @@
           (value-of exp2 env)
           (value-of exp3 env)))]
     [let-exp [vars exps body]
-      (let ([vals (map (lambda (e) (value-of e env)) exps)])
-        (let ([refs (map (lambda (v) (newref v)) vals)])
-          (value-of body (extend-env vars refs env))))]
+      (let ([refs (map (lambda (x) (value-of-operand x env)) exps)])
+        (value-of body (extend-env vars refs env)))]
     [proc-exp [vars body]
       (proc-val (procedure vars body env))]
     [call-exp [rator rands]
@@ -64,8 +63,14 @@
 
 (define (value-of-operand exp1 env)
   (cases expression exp1
-    [var-exp [var] (apply-env env var)]
-    [else (newref (a-thunk exp1 env))]))
+    [const-exp [num] 
+      (newref (num-val num))]
+    [var-exp [var] 
+      (apply-env env var)]
+    [proc-exp [vars body]
+      (newref (proc-val (procedure vars body env)))]
+    [else 
+      (newref (a-thunk exp1 env))]))
 (define (apply-proc proc1 refs)
   (cases proc proc1
     [procedure [vars body saved-env]
@@ -78,6 +83,7 @@
 
 ;(trace value-of-program)
 ;(trace value-of)
+;(trace value-of-operand)
 ;(trace apply-env)
 ;(trace apply-proc)
 ;(trace value-of-thunk)
@@ -123,3 +129,9 @@
                          else -((f -(x,1)), -4)
       in let times4 = (makerec maketimes4)
          in (times4 3)")
+
+; res = (num-val 18)
+(define p8
+  "let a = -(1, -1)
+   in let b = -(10, -10)
+      in -(b, a)")

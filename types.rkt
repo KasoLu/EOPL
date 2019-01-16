@@ -19,8 +19,20 @@
   [end-cont]
   [zero?-cont
     [cont cont?]]
-  [let-cont
+  ;[let-cont
+  ;  [vars (list-of identifier?)]
+  ;  [body expression?]
+  ;  [env  env?]
+  ;  [cont cont?]]
+  [let1-cont
     [vars (list-of identifier?)]
+    [exp2 expression?]
+    [body expression?]
+    [env  env?]
+    [cont cont?]]
+  [let2-cont
+    [vars (list-of identifier?)]
+    [val1 expval?]
     [body expression?]
     [env  env?]
     [cont cont?]]

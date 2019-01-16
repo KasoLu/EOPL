@@ -29,7 +29,7 @@
         (zero?-cont cont))]
     [let-exp [vars exps body]
       (value-of/k (car exps) env
-        (let-cont vars body env cont))]
+        (let1-cont vars (cadr exps) body env cont))]
     [if-exp [exp1 exp2 exp3]
       (value-of/k exp1 env
         (if-test-cont exp2 exp3 env cont))]
@@ -51,9 +51,11 @@
     [zero?-cont [saved-cont]
       (apply-cont saved-cont
         (bool-val (zero? (expval->num val))))]
-    [let-cont [vars body saved-env saved-cont]
-      (value-of/k body
-        (extend-env vars (list val) saved-env) saved-cont)]
+    [let1-cont [vars exp2 body saved-env saved-cont]
+      (value-of/k exp2 saved-env
+        (let2-cont vars val body saved-env saved-cont))]
+    [let2-cont [vars val1 body saved-env saved-cont]
+      (value-of/k body (extend-env vars (list val1 val) saved-env) saved-cont)]
     [if-test-cont [exp2 exp3 saved-env saved-cont]
       (if (expval->bool val)
         (value-of/k exp2 saved-env saved-cont)
@@ -88,3 +90,8 @@
      odd(x)  = if zero?(x) then 0 else (even -(x,1))
    in (odd 13)")
 
+; res = (num-val 2)
+(define p2
+  "let x = 1
+       y = 3
+   in -(y, x)")

@@ -11,7 +11,10 @@
   (init-store!)
   (cases program pgm
     [a-program [expr]
-      (value-of/k expr (init-env) (end-cont))]))
+      (value-of/k expr (init-env)
+        (lambda (val)
+          (begin (eopl:printf "End of computation.~%")
+                 val)))]))
 
 (define (value-of/k expr env cont)
   (cases expression expr
@@ -25,78 +28,64 @@
       (value-of/k letrec-body (extend-env-rec names varss bodies env) cont)]
     [zero?-exp [exp1]
       (value-of/k exp1 env
-        (zero?-cont cont))]
+        (lambda (val1)
+          (apply-cont cont (bool-val (zero? (expval->num val1))))))]
     [if-exp [exp1 exp2 exp3]
       (value-of/k exp1 env
-        (if-test-cont exp2 exp3 env cont))]
+        (lambda (val1)
+          (if (expval->bool val1)
+            (value-of/k exp2 env cont)
+            (value-of/k exp3 env cont))))]
     [let-exp [vars exps body]
       (if (null? vars)
         (value-of/k body env cont)
-        (value-of/k (car exps) env
-          (let-cont vars (cdr exps) '() body env cont)))]
+        (let loop([exps exps] [vals '()])
+          (if (null? exps)
+            (value-of/k body (extend-env vars (reverse vals) env) cont)
+            (value-of/k (car exps) env
+              (lambda (val)
+                (loop (cdr exps) (cons (newref val) vals)))))))]
     [diff-exp [exp1 exp2]
       (value-of/k exp1 env
-        (diff1-cont exp2 env cont))]
+        (lambda (val1)
+          (value-of/k exp2 env
+            (lambda (val2)
+              (let ([num1 (expval->num val1)] [num2 (expval->num val2)])
+                (apply-cont cont (num-val (- num1 num2))))))))]
     [call-exp [rator rands]
       (value-of/k rator env
-        (rator-cont rands env cont))]
+        (lambda (rator-val)
+          (let loop([rands rands] [vals '()])
+            (if (null? rands)
+              (apply-proc/k (expval->proc rator-val) (reverse vals) cont)
+              (value-of/k (car rands) env
+                (lambda (val)
+                  (loop (cdr rands) (cons (newref val) vals))))))))]
     [assign-exp [var exp1]
       (value-of/k exp1 env
-        (assign-cont (apply-env env var) cont))]
+        (lambda (val1)
+          (begin (setref! (apply-env env var) val1)
+                 (apply-cont cont (num-val 27)))))]
     [begin-exp [exp1 exps]
       (value-of/k exp1 env
-        (begin-cont exps env cont))]
+        (lambda (val1)
+          (let loop([exps exps] [val val1])
+            (if (null? exps)
+              (apply-cont cont val)
+              (value-of/k (car exps) env
+                (lambda (val)
+                  (loop (cdr exps) val)))))))]
     [else
       (report-invalid-expression expr)]
-    ))
-
-(define (apply-cont cont1 val)
-  (cases cont cont1
-    [end-cont []
-      (begin (eopl:printf "End of computation.~%")
-             val)]
-    [diff1-cont [exp2 env cont]
-      (value-of/k exp2 env
-        (diff2-cont val env cont))]
-    [diff2-cont [val1 env cont]
-      (let ([num1 (expval->num val1)] [num2 (expval->num val)])
-        (apply-cont cont (num-val (- num1 num2))))]
-    [rator-cont [rands env cont]
-      (if (null? rands)
-        (apply-proc/k (expval->proc val) '() cont)
-        (value-of/k (car rands) env
-          (rands-cont val (cdr rands) '() env cont)))]
-    [rands-cont [rator rands vals env cont]
-      (let ([vals (cons (newref val) vals)])
-        (if (null? rands)
-          (apply-proc/k (expval->proc rator) (reverse vals) cont)
-          (value-of/k rator (car rands) vals env cont)))]
-    [zero?-cont [cont]
-      (apply-cont cont (bool-val (zero? (expval->num val))))]
-    [if-test-cont [exp2 exp3 env cont]
-      (if (expval->bool val)
-        (value-of/k exp2 env cont)
-        (value-of/k exp3 env cont))]
-    [let-cont [vars exps vals body env cont]
-      (let ([vals (cons (newref val) vals)])
-        (if (null? exps)
-          (value-of/k body (extend-env vars (reverse vals) env) cont)
-          (value-of/k (car exps) env
-            (let-cont vars (cdr exps) vals body env cont))))]
-    [assign-cont [ref cont]
-      (begin (setref! ref val)
-             (apply-cont cont (num-val 27)))]
-    [begin-cont [exps env cont]
-      (if (null? exps)
-        (apply-cont cont val)
-        (value-of/k (car exps) env
-          (begin-cont (cdr exps) env cont)))]
     ))
 
 (define (apply-proc/k proc1 refs cont)
   (cases proc proc1
     [procedure [vars body saved-env]
       (value-of/k body (extend-env vars refs saved-env) cont)]))
+
+(define (apply-cont cont val)
+  (cont val))
 
 ;(trace value-of-program)
 ;(trace value-of/k)

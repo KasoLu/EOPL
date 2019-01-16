@@ -27,12 +27,21 @@
   [let1-cont
     [vars (list-of identifier?)]
     [exp2 expression?]
+    [exp3 expression?]
     [body expression?]
     [env  env?]
     [cont cont?]]
   [let2-cont
     [vars (list-of identifier?)]
     [val1 expval?]
+    [exp3 expression?]
+    [body expression?]
+    [env  env?]
+    [cont cont?]]
+  [let3-cont
+    [vars (list-of identifier?)]
+    [val1 expval?]
+    [val2 expval?]
     [body expression?]
     [env  env?]
     [cont cont?]]

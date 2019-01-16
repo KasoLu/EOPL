@@ -43,34 +43,8 @@
 
 ; FinalAnswer = ExpVal
 ; apply-cont : Cont x ExpVal -> FinalAnswer
-(define (apply-cont cont1 val)
-  (cases cont cont1
-    [end-cont []
-      (begin (eopl:printf "End of computation.~%")
-             val)]
-    [zero?-cont [saved-cont]
-      (apply-cont saved-cont
-        (bool-val (zero? (expval->num val))))]
-    [let-cont [vars body saved-env saved-cont]
-      (value-of/k body
-        (extend-env vars (list val) saved-env) saved-cont)]
-    [if-test-cont [exp2 exp3 saved-env saved-cont]
-      (if (expval->bool val)
-        (value-of/k exp2 saved-env saved-cont)
-        (value-of/k exp3 saved-env saved-cont))]
-    [diff1-cont [exp2 saved-env saved-cont]
-      (value-of/k exp2 saved-env
-        (diff2-cont val saved-cont))]
-    [diff2-cont [val1 saved-cont]
-      (let ([num1 (expval->num val1)] [num2 (expval->num val)])
-        (apply-cont saved-cont (num-val (- num1 num2))))]
-    [rator-cont [rands saved-env saved-cont]
-      (value-of/k (car rands) saved-env
-        (rands-cont val saved-cont))]
-    [rands-cont [val1 saved-cont]
-      (let ([proc1 (expval->proc val1)])
-        (apply-proc/k proc1 (list val) saved-cont))]
-    ))
+(define (apply-cont cont val)
+  (cont val))
 
 (define (apply-proc/k proc1 vals cont)
   (cases proc proc1

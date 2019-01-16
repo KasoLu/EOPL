@@ -15,36 +15,6 @@
     [env    env?]]
   )
 
-(define-datatype cont cont?
-  [end-cont]
-  [zero?-cont
-    [cont cont?]]
-  [let-cont
-    [vars (list-of identifier?)]
-    [body expression?]
-    [env  env?]
-    [cont cont?]]
-  [if-test-cont
-    [exp2 expression?]
-    [exp3 expression?]
-    [env  env?]
-    [cont cont?]]
-  [diff1-cont
-    [exp2 expression?]
-    [env  env?]
-    [cont cont?]]
-  [diff2-cont
-    [val1 expval?]
-    [cont cont?]]
-  [rator-cont
-    [exps (list-of expression?)]
-    [env  env?]
-    [cont cont?]]
-  [rands-cont
-    [val1 expval?]
-    [cont cont?]]
-  )
-
 (define-datatype proc proc?
   [procedure
     [vars (list-of identifier?)]

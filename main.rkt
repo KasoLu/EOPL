@@ -58,9 +58,9 @@
       (apply-cont saved-cont
         (bool-val (zero? (expval->num val))))]
     [let-cont [vars exps vals body saved-env saved-cont]
-      (let ([vals (append vals (list val))])
+      (let ([vals (cons val vals)])
         (if (null? exps)
-          (value-of/k body (extend-env vars vals saved-env) saved-cont)
+          (value-of/k body (extend-env vars (reverse vals) saved-env) saved-cont)
           (value-of/k (car exps) saved-env
             (let-cont vars (cdr exps) vals body saved-env saved-cont))))]
     [if-test-cont [exp2 exp3 saved-env saved-cont]
@@ -74,18 +74,23 @@
       (let ([num1 (expval->num val1)] [num2 (expval->num val)])
         (apply-cont saved-cont (num-val (- num1 num2))))]
     [rator-cont [rands saved-env saved-cont]
-      (value-of/k (car rands) saved-env
-        (rands-cont val saved-cont))]
-    [rands-cont [val1 saved-cont]
-      (let ([proc1 (expval->proc val1)])
-        (apply-proc/k proc1 (list val) saved-cont))]
+      (if (null? rands)
+        (apply-proc/k (expval->proc val) '() saved-cont)
+        (value-of/k (car rands) saved-env
+          (rands-cont val (cdr rands) '() saved-env saved-cont)))]
+    [rands-cont [rator rands vals saved-env saved-cont]
+      (let ([vals (cons val vals)])
+        (if (null? rands)
+          (apply-proc/k (expval->proc rator) (reverse vals) saved-cont)
+          (value-of/k (car rands) saved-env
+            (rands-cont rator (cdr rands) vals saved-env saved-cont))))]
     [list-first-cont [exps saved-env saved-cont]
       (value-of/k (car exps) saved-env
         (list-rests-cont val (cdr exps) saved-env saved-cont))]
     [list-rests-cont [vals exps saved-env saved-cont]
-      (let ([vals (append vals (list val))])
+      (let ([vals (cons val vals)])
         (if (null? exps)
-          (apply-cont saved-cont (list-val vals))
+          (apply-cont saved-cont (list-val (reverse vals)))
           (value-of/k (car exps) saved-env
             (list-rests-cont vals (cdr exps) saved-env saved-cont))))]
     [else
@@ -124,3 +129,10 @@
 ; res = (num-val 1)
 (define p5
   "let in 1")
+
+; res = (num-val 1)
+(define p6
+  "let x = 2
+       y = 1
+       f = proc(x y) -(x, y)
+   in (f x y)")

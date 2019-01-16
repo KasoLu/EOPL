@@ -69,3 +69,47 @@
     [exps (list-of expression?)]]
   )
 
+(define-datatype cont cont?
+  [end-cont]
+  [diff1-cont 
+    [exp2 expression?]
+    [env  env?]
+    [cont cont?]]
+  [diff2-cont
+    [val1 expval?]
+    [env  env?]
+    [cont cont?]]
+  [rator-cont
+    [rands (list-of expression?)]
+    [env   env?]
+    [cont  cont?]]
+  [rands-cont
+    [rator expval?]
+    [rands (list-of expression?)]
+    [vals  (list-of expval?)]
+    [env   env?]
+    [cont  cont?]]
+  [zero?-cont
+    [cont cont?]]
+  [if-test-cont
+    [exp2 expression?]
+    [exp3 expression?]
+    [env  env?]
+    [cont cont?]]
+  [let-cont
+    [vars (list-of identifier?)]
+    [exps (list-of expression?)]
+    [vals (list-of expval?)]
+    [body expression?]
+    [env  env?]
+    [cont cont?]]
+  [assign-cont
+    [ref  reference?]
+    [cont cont?]]
+  [begin-cont
+    [exps (list-of expression?)]
+    [env  env?]
+    [cont cont?]]
+  )
+
+

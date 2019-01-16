@@ -15,6 +15,36 @@
     [env    env?]]
   )
 
+(define-datatype cont cont?
+  [end-cont]
+  [zero?-cont
+    [cont cont?]]
+  [let-cont
+    [vars (list-of identifier?)]
+    [body expression?]
+    [env  env?]
+    [cont cont?]]
+  [if-test-cont
+    [exp2 expression?]
+    [exp3 expression?]
+    [env  env?]
+    [cont cont?]]
+  [diff1-cont
+    [exp2 expression?]
+    [env  env?]
+    [cont cont?]]
+  [diff2-cont
+    [val1 expval?]
+    [cont cont?]]
+  [rator-cont
+    [exps (list-of expression?)]
+    [env  env?]
+    [cont cont?]]
+  [rands-cont
+    [val1 expval?]
+    [cont cont?]]
+  )
+
 (define-datatype proc proc?
   [procedure
     [vars (list-of identifier?)]
@@ -22,17 +52,10 @@
     [env  env?]]
   )
 
-(define-datatype thunk thunk?
-  [a-thunk
-    [exp1 expression?]
-    [env  env?]])
-
 (define-datatype expval expval?
   [num-val  [num number?]]
   [bool-val [bool boolean?]]
   [proc-val [proc proc?]]
-  [ref-val  [ref reference?]]
-  [arr-val  [arr (list-of reference?)]]
   )
 
 (define-datatype program program?
@@ -68,28 +91,5 @@
     [varss  (list-of (list-of identifier?))]
     [bodies (list-of expression?)]
     [exp1   expression?]]
-  [assign-exp
-    [var  identifier?]
-    [exp1 expression?]]
-  [begin-exp
-    [exp1 expression?]
-    [exps (list-of expression?)]]
-  [ref-exp
-    [var1 identifier?]]
-  [deref-exp
-    [var1 identifier?]]
-  [setref-exp
-    [var1 identifier?]
-    [exp1 expression?]]
-  [newarray-exp 
-    [exp1 expression?]
-    [exp2 expression?]]
-  [arrayref-exp
-    [exp1 expression?]
-    [exp2 expression?]]
-  [arrayset-exp
-    [exp1 expression?]
-    [exp2 expression?]
-    [exp3 expression?]]
   )
 

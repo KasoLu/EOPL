@@ -7,131 +7,84 @@
   (value-of-program
     (scan&parse str)))
 
+; value-of-program : Program -> FinalAnswer
 (define (value-of-program pgm)
-  (init-store!)
   (cases program pgm
     [a-program [expr]
-      (value-of expr (init-env))]))
+      (value-of/k expr (init-env) (end-cont))]))
 
-(define (value-of expr env)
+; value-of/k : Exp x Env x Cont -> FinalAnswer
+(define (value-of/k expr env cont)
   (cases expression expr
-    [const-exp [num] 
-      (num-val num)]
+    [const-exp [num]
+      (apply-cont cont (num-val num))]
     [var-exp [var]
-      (let ([ref1 (apply-env env var)])
-        (let ([what (deref ref1)])
-          (if (expval? what)
-            what
-            (let ([val1 (value-of-thunk what)])
-              (begin (setref! ref1 val1)
-                     val1)))))]
-    [diff-exp [exp1 exp2]
-      (let ([val1 (value-of exp1 env)] [val2 (value-of exp2 env)])
-        (let ([num1 (expval->num val1)] [num2 (expval->num val2)])
-          (num-val (- num1 num2))))]
-    [zero?-exp [exp1]
-      (let ([val1 (value-of exp1 env)])
-        (let ([num1 (expval->num val1)])
-          (if (zero? num1)
-            (bool-val #t)
-            (bool-val #f))))]
-    [if-exp [exp1 exp2 exp3]
-      (let ([val1 (value-of exp1 env)])
-        (if (expval->bool val1)
-          (value-of exp2 env)
-          (value-of exp3 env)))]
-    [let-exp [vars exps body]
-      (let ([refs (map (lambda (x) (value-of-operand x env)) exps)])
-        (value-of body (extend-env vars refs env)))]
+      (apply-cont cont (apply-env env var))]
     [proc-exp [vars body]
-      (proc-val (procedure vars body env))]
-    [call-exp [rator rands]
-      (let ([proc1 (expval->proc (value-of rator env))]
-            [refs (map (lambda (x) (value-of-operand x env)) rands)])
-        (apply-proc proc1 refs))]
+      (apply-cont cont (proc-val (procedure vars body env)))]
     [letrec-exp [names varss bodies letrec-body]
-      (value-of letrec-body (extend-env-rec names varss bodies env))]
-    [assign-exp [var exp1]
-      (begin (setref! (apply-env env var) (value-of exp1 env))
-             (num-val 27))]
-    [begin-exp [exp1 exps]
-      (let ([val1 (value-of exp1 env)])
-        (foldl (lambda (e v) (value-of e env)) val1 exps))]
-    [else
-      (report-invalid-expression expr)]
+      (value-of/k letrec-body (extend-env-rec names varss bodies env) cont)]
+    [zero?-exp [exp1]
+      (value-of/k exp1 env
+        (zero?-cont cont))]
+    [let-exp [vars exps body]
+      (value-of/k (car exps) env
+        (let-cont vars body env cont))]
+    [if-exp [exp1 exp2 exp3]
+      (value-of/k exp1 env
+        (if-test-cont exp2 exp3 env cont))]
+    [diff-exp [exp1 exp2]
+      (value-of/k exp1 env
+        (diff1-cont exp2 env cont))]
+    [call-exp [rator rands]
+      (value-of/k rator env
+        (rator-cont rands env cont))]
     ))
 
-(define (value-of-operand exp1 env)
-  (cases expression exp1
-    [const-exp [num] 
-      (newref (num-val num))]
-    [var-exp [var] 
-      (apply-env env var)]
-    [proc-exp [vars body]
-      (newref (proc-val (procedure vars body env)))]
-    [else 
-      (newref (a-thunk exp1 env))]))
-(define (apply-proc proc1 refs)
+; FinalAnswer = ExpVal
+; apply-cont : Cont x ExpVal -> FinalAnswer
+(define (apply-cont cont1 val)
+  (cases cont cont1
+    [end-cont []
+      (begin (eopl:printf "End of computation.~%")
+             val)]
+    [zero?-cont [saved-cont]
+      (apply-cont saved-cont
+        (bool-val (zero? (expval->num val))))]
+    [let-cont [vars body saved-env saved-cont]
+      (value-of/k body
+        (extend-env vars (list val) saved-env) saved-cont)]
+    [if-test-cont [exp2 exp3 saved-env saved-cont]
+      (if (expval->bool val)
+        (value-of/k exp2 saved-env saved-cont)
+        (value-of/k exp3 saved-env saved-cont))]
+    [diff1-cont [exp2 saved-env saved-cont]
+      (value-of/k exp2 saved-env
+        (diff2-cont val saved-cont))]
+    [diff2-cont [val1 saved-cont]
+      (let ([num1 (expval->num val1)] [num2 (expval->num val)])
+        (apply-cont saved-cont (num-val (- num1 num2))))]
+    [rator-cont [rands saved-env saved-cont]
+      (value-of/k (car rands) saved-env
+        (rands-cont val saved-cont))]
+    [rands-cont [val1 saved-cont]
+      (let ([proc1 (expval->proc val1)])
+        (apply-proc/k proc1 (list val) saved-cont))]
+    ))
+
+(define (apply-proc/k proc1 vals cont)
   (cases proc proc1
     [procedure [vars body saved-env]
-      (value-of body (extend-env vars refs saved-env))]))
+      (value-of/k body (extend-env vars vals saved-env) cont)]))
 
-(define (value-of-thunk th)
-  (cases thunk th
-    [a-thunk [exp1 saved-env]
-      (value-of exp1 saved-env)]))
-
-;(trace value-of-program)
-;(trace value-of)
-;(trace value-of-operand)
 ;(trace apply-env)
-;(trace apply-proc)
-;(trace value-of-thunk)
+;(trace apply-proc/k)
+;(trace value-of/k)
 
 ; res = (num-val 1)
 (define p
-  "let x = 0
-   in letrec
-      even()
-        = if zero?(x) then 1 else begin set x = -(x,1); (odd) end
-      odd()
-        = if zero?(x) then 0 else begin set x = -(x,1); (even) end
-      in begin set x = 13; (odd) end")
+  "letrec
+     even(x) = if zero?(x) then 1 else (odd  -(x,1))
+     odd(x)  = if zero?(x) then 0 else (even -(x,1))
+   in (odd 13)")
 
-; res = (num-val 12)
-(define p5
-  "let f = proc(x)
-             proc(y)
-               begin
-                 set x = -(x, -1);
-                 -(x, y)
-               end
-   in ((f 44) 33)")
-
-; res = (num-val 12)
-(define p6
-  "let times4 = 0
-   in begin
-       set times4 = proc(x)
-                     if zero?(x)
-                     then 0
-                     else -((times4 -(x,1)), -4);
-       (times4 3)
-      end")
-
-(define p7
-  "let makerec = proc(f)
-                   let d = proc(x) (f (x x))
-                   in (f (d d))
-   in let maketimes4 = proc(f) proc(x)
-                         if zero?(x)
-                         then 0
-                         else -((f -(x,1)), -4)
-      in let times4 = (makerec maketimes4)
-         in (times4 3)")
-
-; res = (num-val 18)
-(define p8
-  "let a = -(1, -1)
-   in let b = -(10, -10)
-      in -(b, a)")

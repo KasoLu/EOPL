@@ -24,47 +24,11 @@
         (cond [(null? names) 
                (apply-env saved-env var)]
               [(eqv? (car names) var) 
-               (newref (proc-val (procedure (car varss) (car bodies) env1)))]
+               (proc-val (procedure (car varss) (car bodies) env1))]
               [else 
                (found (cdr names) (cdr varss) (cdr bodies))]))
       (found names varss bodies)]
     ))
-
-; make-pair : ExpVal x ExpVal -> MutPair
-(define (make-pair val1 val2)
-  (a-pair (newref val1) (newref val2)))
-; left : MutPair -> ExpVal
-(define (left p)
-  (cases mutpair p
-    [a-pair [left-loc right-loc]
-      (deref left-loc)]))
-; right : MutPair -> ExpVal
-(define (right p)
-  (cases mutpair p
-    [a-pair [left-loc right-loc]
-      (deref right-loc)]))
-; setleft : MutPair x ExpVal -> Unspecified
-(define (setleft p val)
-  (cases mutpair p
-    [a-pair [left-loc right-loc]
-      (setref! left-loc val)]))
-; setright : MutPair x ExpVal -> Unspecified
-(define (setright p val)
-  (cases mutpair p
-    [a-pair [left-loc right-loc]
-      (setref! right-loc val)]))
-
-(define (make-array num val)
-  (define (loop idx)
-    (if (= idx num)
-      (list)
-      (cons (newref val) (loop (+ 1 idx)))))
-  (loop 0))
-(define (array-ref arr idx)
-  (deref (list-ref arr idx)))
-(define (array-set! arr idx val)
-  (let ([ref (list-ref arr idx)])
-    (setref! ref val)))
 
 (define (expval->num val)
   (cases expval val
@@ -78,36 +42,4 @@
   (cases expval val
     [proc-val [proc] proc]
     [else (report-expval-extractor-error 'proc val)]))
-(define (expval->ref val)
-  (cases expval val
-    [ref-val [ref] ref]
-    [else (report-expval-extractor-error 'ref val)]))
-(define (expval->arr val)
-  (cases expval val
-    [arr-val [arr] arr]
-    [else (report-expval-extractor-error 'arr val)]))
 
-(define the-store 'uninit)
-; empty-store : () -> Store
-(define (empty-store) '())
-; get-store : () -> Store
-(define (get-store) the-store)
-; init-store! : () -> Unspecified
-(define (init-store!)
-  (set! the-store (empty-store)))
-
-; newref : ExpVal -> Ref
-(define (newref val)
-  (let ([next-ref (length the-store)])
-    (set! the-store (append the-store (list val)))
-    next-ref))
-; deref : Ref -> ExpVal
-(define (deref ref)
-  (list-ref the-store ref))
-; setref! : Ref x ExpVal -> Unspecified
-(define (setref! ref val)
-  (define (setref-inner store1 ref1)
-    (cond [(null? store1) (report-invalid-reference ref the-store)]
-          [(zero? ref1) (cons val (cdr store1))]
-          [else (cons (car store1) (setref-inner (cdr store1) (- ref1 1)))]))
-  (set! the-store (setref-inner the-store ref)))

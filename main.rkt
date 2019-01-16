@@ -28,8 +28,10 @@
       (value-of/k exp1 env
         (zero?-cont cont))]
     [let-exp [vars exps body]
-      (value-of/k (car exps) env
-        (let1-cont vars body env cont))]
+      (if (null? vars)
+        (value-of/k body env cont)
+        (value-of/k (car exps) env
+          (let-cont vars (cdr exps) '() body env cont)))]
     [if-exp [exp1 exp2 exp3]
       (value-of/k exp1 env
         (if-test-cont exp2 exp3 env cont))]
@@ -42,8 +44,7 @@
     [list-exp [exps]
       (if (null? exps)
         (apply-cont cont (list-val '()))
-        (value-of/k (car exps) env
-          (list-cont '() (cdr exps) env cont)))]
+        (apply-cont (list-first-cont exps env cont) '()))]
     ))
 
 ; FinalAnswer = ExpVal
@@ -56,8 +57,12 @@
     [zero?-cont [saved-cont]
       (apply-cont saved-cont
         (bool-val (zero? (expval->num val))))]
-    [let1-cont [vars body saved-env saved-cont]
-      (value-of/k body (extend-env vars (list val) saved-env) saved-cont)]
+    [let-cont [vars exps vals body saved-env saved-cont]
+      (let ([vals (append vals (list val))])
+        (if (null? exps)
+          (value-of/k body (extend-env vars vals saved-env) saved-cont)
+          (value-of/k (car exps) saved-env
+            (let-cont vars (cdr exps) vals body saved-env saved-cont))))]
     [if-test-cont [exp2 exp3 saved-env saved-cont]
       (if (expval->bool val)
         (value-of/k exp2 saved-env saved-cont)
@@ -74,12 +79,15 @@
     [rands-cont [val1 saved-cont]
       (let ([proc1 (expval->proc val1)])
         (apply-proc/k proc1 (list val) saved-cont))]
-    [list-cont [vals exps saved-env saved-cont]
+    [list-first-cont [exps saved-env saved-cont]
+      (value-of/k (car exps) saved-env
+        (list-rests-cont val (cdr exps) saved-env saved-cont))]
+    [list-rests-cont [vals exps saved-env saved-cont]
       (let ([vals (append vals (list val))])
         (if (null? exps)
           (apply-cont saved-cont (list-val vals))
           (value-of/k (car exps) saved-env
-            (list-cont vals (cdr exps) saved-env saved-cont))))]
+            (list-rests-cont vals (cdr exps) saved-env saved-cont))))]
     [else
       (report-invalid-cont 'apply-cont cont1 val1)]
     ))
@@ -92,6 +100,7 @@
 ;(trace apply-env)
 ;(trace apply-proc/k)
 ;(trace value-of/k)
+;(trace apply-cont)
 
 ; res = (num-val 1)
 (define p
@@ -110,6 +119,8 @@
 ; res = (list-val (list (num-val 1) (num-val 2) (num-val 3) (num-val 4)))
 (define p4
   "let x = list(1 2 3 4)
-       y = 0
-       z = 0
    in x")
+
+; res = (num-val 1)
+(define p5
+  "let in 1")

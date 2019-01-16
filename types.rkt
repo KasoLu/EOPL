@@ -19,8 +19,15 @@
   [end-cont]
   [zero?-cont
     [cont cont?]]
-  [let1-cont
+  ;[let1-cont
+  ;  [vars (list-of identifier?)]
+  ;  [body expression?]
+  ;  [env  env?]
+  ;  [cont cont?]]
+  [let-cont
     [vars (list-of identifier?)]
+    [exps (list-of expression?)]
+    [vals (list-of expval?)]
     [body expression?]
     [env  env?]
     [cont cont?]]
@@ -43,7 +50,11 @@
   [rands-cont
     [val1 expval?]
     [cont cont?]]
-  [list-cont
+  [list-first-cont
+    [exps (list-of expression?)]
+    [env  env?]
+    [cont cont?]]
+  [list-rests-cont
     [vals (list-of expval?)]
     [exps (list-of expression?)]
     [env  env?]

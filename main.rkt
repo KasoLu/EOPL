@@ -29,7 +29,7 @@
         (zero?-cont cont))]
     [let-exp [vars exps body]
       (value-of/k (car exps) env
-        (let1-cont vars (cadr exps) (caddr exps) body env cont))]
+        (let1-cont vars body env cont))]
     [if-exp [exp1 exp2 exp3]
       (value-of/k exp1 env
         (if-test-cont exp2 exp3 env cont))]
@@ -39,6 +39,11 @@
     [call-exp [rator rands]
       (value-of/k rator env
         (rator-cont rands env cont))]
+    [list-exp [exps]
+      (if (null? exps)
+        (apply-cont cont (list-val '()))
+        (value-of/k (car exps) env
+          (list-cont '() (cdr exps) env cont)))]
     ))
 
 ; FinalAnswer = ExpVal
@@ -51,14 +56,8 @@
     [zero?-cont [saved-cont]
       (apply-cont saved-cont
         (bool-val (zero? (expval->num val))))]
-    [let1-cont [vars exp2 exp3 body saved-env saved-cont]
-      (value-of/k exp2 saved-env
-        (let2-cont vars val exp3 body saved-env saved-cont))]
-    [let2-cont [vars val1 exp3 body saved-env saved-cont]
-      (value-of/k exp3 saved-env
-        (let3-cont vars val1 val body saved-env saved-cont))]
-    [let3-cont [vars val1 val2 body saved-env saved-cont]
-      (value-of/k body (extend-env vars (list val1 val2 val) saved-env) saved-cont)]
+    [let1-cont [vars body saved-env saved-cont]
+      (value-of/k body (extend-env vars (list val) saved-env) saved-cont)]
     [if-test-cont [exp2 exp3 saved-env saved-cont]
       (if (expval->bool val)
         (value-of/k exp2 saved-env saved-cont)
@@ -75,6 +74,14 @@
     [rands-cont [val1 saved-cont]
       (let ([proc1 (expval->proc val1)])
         (apply-proc/k proc1 (list val) saved-cont))]
+    [list-cont [vals exps saved-env saved-cont]
+      (let ([vals (append vals (list val))])
+        (if (null? exps)
+          (apply-cont saved-cont (list-val vals))
+          (value-of/k (car exps) saved-env
+            (list-cont vals (cdr exps) saved-env saved-cont))))]
+    [else
+      (report-invalid-cont 'apply-cont cont1 val1)]
     ))
 
 (define (apply-proc/k proc1 vals cont)
@@ -99,3 +106,10 @@
        y = 2
        z = 3
    in -(z, -(y, x))")
+
+; res = (list-val (list (num-val 1) (num-val 2) (num-val 3) (num-val 4)))
+(define p4
+  "let x = list(1 2 3 4)
+       y = 0
+       z = 0
+   in x")

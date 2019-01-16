@@ -19,29 +19,8 @@
   [end-cont]
   [zero?-cont
     [cont cont?]]
-  ;[let-cont
-  ;  [vars (list-of identifier?)]
-  ;  [body expression?]
-  ;  [env  env?]
-  ;  [cont cont?]]
   [let1-cont
     [vars (list-of identifier?)]
-    [exp2 expression?]
-    [exp3 expression?]
-    [body expression?]
-    [env  env?]
-    [cont cont?]]
-  [let2-cont
-    [vars (list-of identifier?)]
-    [val1 expval?]
-    [exp3 expression?]
-    [body expression?]
-    [env  env?]
-    [cont cont?]]
-  [let3-cont
-    [vars (list-of identifier?)]
-    [val1 expval?]
-    [val2 expval?]
     [body expression?]
     [env  env?]
     [cont cont?]]
@@ -64,6 +43,11 @@
   [rands-cont
     [val1 expval?]
     [cont cont?]]
+  [list-cont
+    [vals (list-of expval?)]
+    [exps (list-of expression?)]
+    [env  env?]
+    [cont cont?]]
   )
 
 (define-datatype proc proc?
@@ -74,9 +58,10 @@
   )
 
 (define-datatype expval expval?
-  [num-val  [num number?]]
+  [num-val  [num  number?]]
   [bool-val [bool boolean?]]
   [proc-val [proc proc?]]
+  [list-val [lst  list?]]
   )
 
 (define-datatype program program?
@@ -112,5 +97,7 @@
     [varss  (list-of (list-of identifier?))]
     [bodies (list-of expression?)]
     [exp1   expression?]]
+  [list-exp
+    [exps (list-of expression?)]]
   )
 

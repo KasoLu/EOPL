@@ -15,6 +15,57 @@
     [env    env?]]
   )
 
+(define-datatype cont cont?
+  [end-cont]
+  [zero?-cont
+    [cont cont?]]
+  [let-cont
+    [vars (list-of identifier?)]
+    [exps (list-of expression?)]
+    [vals (list-of expval?)]
+    [body expression?]
+    [env  env?]
+    [cont cont?]]
+  [if-test-cont
+    [exp2 expression?]
+    [exp3 expression?]
+    [env  env?]
+    [cont cont?]]
+  [diff1-cont
+    [exp2 expression?]
+    [env  env?]
+    [cont cont?]]
+  [diff2-cont
+    [val1 expval?]
+    [cont cont?]]
+  [rator-cont
+    [rands (list-of expression?)]
+    [env   env?]
+    [cont  cont?]]
+  [rands-cont
+    [rator expval?]
+    [rands (list-of expression?)]
+    [vals  (list-of expval?)]
+    [env   env?]
+    [cont  cont?]]
+  [list-first-cont
+    [exps (list-of expression?)]
+    [env  env?]
+    [cont cont?]]
+  [list-rests-cont
+    [vals (list-of expval?)]
+    [exps (list-of expression?)]
+    [env  env?]
+    [cont cont?]]
+  [mul1-cont
+    [exp2 expression?]
+    [env  env?]
+    [cont cont?]]
+  [mul2-cont
+    [val1 expval?]
+    [cont cont?]]
+  )
+
 (define-datatype proc proc?
   [procedure
     [vars (list-of identifier?)]
@@ -23,9 +74,10 @@
   )
 
 (define-datatype expval expval?
-  [num-val  [num number?]]
+  [num-val  [num  number?]]
   [bool-val [bool boolean?]]
   [proc-val [proc proc?]]
+  [list-val [lst  list?]]
   )
 
 (define-datatype program program?
@@ -61,55 +113,11 @@
     [varss  (list-of (list-of identifier?))]
     [bodies (list-of expression?)]
     [exp1   expression?]]
-  [assign-exp
-    [var  identifier?]
-    [exp1 expression?]]
-  [begin-exp
-    [exp1 expression?]
+  [list-exp
     [exps (list-of expression?)]]
-  )
-
-(define-datatype cont cont?
-  [end-cont]
-  [diff1-cont 
-    [exp2 expression?]
-    [env  env?]
-    [cont cont?]]
-  [diff2-cont
-    [val1 expval?]
-    [env  env?]
-    [cont cont?]]
-  [rator-cont
-    [rands (list-of expression?)]
-    [env   env?]
-    [cont  cont?]]
-  [rands-cont
-    [rator expval?]
-    [rands (list-of expression?)]
-    [vals  (list-of expval?)]
-    [env   env?]
-    [cont  cont?]]
-  [zero?-cont
-    [cont cont?]]
-  [if-test-cont
-    [exp2 expression?]
-    [exp3 expression?]
-    [env  env?]
-    [cont cont?]]
-  [let-cont
-    [vars (list-of identifier?)]
-    [exps (list-of expression?)]
-    [vals (list-of expval?)]
-    [body expression?]
-    [env  env?]
-    [cont cont?]]
-  [assign-cont
-    [ref  reference?]
-    [cont cont?]]
-  [begin-cont
-    [exps (list-of expression?)]
-    [env  env?]
-    [cont cont?]]
+  [mul-exp
+    [exp1 expression?]
+    [exp2 expression?]]
   )
 
 

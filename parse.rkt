@@ -1,8 +1,5 @@
 (load "types.rkt")
 
-; Expression ::= list( {Expression}* )
-; Expression ::= *( Expression , Expression)
-
 (define scanner-spec
   '([whitespace (whitespace) skip]
     [identifier (letter (arbno (or letter digit "_" "-" "?"))) symbol]
@@ -19,10 +16,7 @@
     [expression ("(" expression (arbno expression) ")") call-exp]
     [expression ("letrec" (arbno identifier "(" (arbno identifier) ")" "=" expression)
                  "in" expression) letrec-exp]
-    [expression ("list" "(" (arbno expression) ")") list-exp]
-    [expression ("*" "(" expression "," expression ")") mul-exp]
     ))
 
 (define scan&parse
   (sllgen:make-string-parser scanner-spec grammar-spec))
-

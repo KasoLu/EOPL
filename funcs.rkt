@@ -42,8 +42,3 @@
   (cases expval val
     [proc-val [proc] proc]
     [else (report-expval-extractor-error 'proc val)]))
-(define (expval->list val)
-  (cases expval val
-    [list-val [lst] lst]
-    [else (report-expval-extractor-error 'list val)]))
-

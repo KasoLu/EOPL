@@ -3,20 +3,6 @@
 (load "funcs.rkt")
 (require racket/trace)
 
-(define max-size 0)
-(define cont-size 0)
-(define get-cont-size
-  (lambda () cont-size))
-(define inc-cont-size!
-  (lambda () 
-    (set! cont-size (+ cont-size 1))
-    (if (> cont-size max-size)
-      (set! max-size cont-size)
-      #f)))
-(define dec-cont-size!
-  (lambda () 
-    (set! cont-size (- cont-size 1))))
-
 (define (run str)
   (value-of-program
     (scan&parse str)))
@@ -25,9 +11,7 @@
 (define (value-of-program pgm)
   (cases program pgm
     [a-program [expr]
-      (value-of/k expr (init-env) 
-        (begin (inc-cont-size!)
-               (end-cont)))]))
+      (value-of/k expr (init-env) (end-cont))]))
 
 ; value-of/k : Exp x Env x Cont -> FinalAnswer
 (define (value-of/k expr env cont)
@@ -42,100 +26,74 @@
       (value-of/k letrec-body (extend-env-rec names varss bodies env) cont)]
     [zero?-exp [exp1]
       (value-of/k exp1 env
-        (begin (inc-cont-size!) 
-               (zero?-cont cont)))]
+        (zero?-cont cont))]
     [let-exp [vars exps body]
       (if (null? vars)
         (value-of/k body env cont)
         (value-of/k (car exps) env
-          (begin (inc-cont-size!) 
-                 (let-cont vars (cdr exps) '() body env cont))))]
+          (let-cont vars (cdr exps) '() body env cont)))]
     [if-exp [exp1 exp2 exp3]
       (value-of/k exp1 env
-        (begin (inc-cont-size!)
-               (if-test-cont exp2 exp3 env cont)))]
+        (if-test-cont exp2 exp3 env cont))]
     [diff-exp [exp1 exp2]
       (value-of/k exp1 env
-        (begin (inc-cont-size!)
-               (diff1-cont exp2 env cont)))]
+        (diff1-cont exp2 env cont))]
     [call-exp [rator rands]
       (value-of/k rator env
-        (begin (inc-cont-size!)
-               (rator-cont rands env cont)))]
-    [list-exp [exps]
-      (if (null? exps)
-        (apply-cont cont (list-val '()))
-        (apply-cont (list-first-cont exps env cont) '()))]
-    [mul-exp [exp1 exp2]
-      (value-of/k exp1 env
-        (begin (inc-cont-size!)
-               (mul1-cont exp2 env cont)))]
+        (rator-cont rands env cont))]
     ))
+
+(define (end-cont) '())
+(define (zero?-cont saved-cont)
+  (cons (lambda (val cont)
+          (apply-cont cont (bool-val (zero? (expval->num val)))))
+        saved-cont))
+(define (let-cont vars exps vals body env saved-cont)
+  (cons (lambda (val cont)
+          (let ([vals (cons val vals)])
+            (if (null? exps)
+              (value-of/k body (extend-env vars (reverse vals) env) cont)
+              (value-of/k (car exps) env
+                (let-cont vars (cdr exps) vals body env cont)))))
+        saved-cont))
+(define (if-test-cont exp2 exp3 env saved-cont)
+  (cons (lambda (val1 cont)
+          (if (expval->bool val1)
+            (value-of/k exp2 env cont)
+            (value-of/k exp3 env cont)))
+        saved-cont))
+(define (diff1-cont exp2 env saved-cont)
+  (cons (lambda (val1 cont)
+          (value-of/k exp2 env
+            (diff2-cont val1 cont)))
+        saved-cont))
+(define (diff2-cont val1 saved-cont)
+  (cons (lambda (val2 cont)
+          (let ([num1 (expval->num val1)] [num2 (expval->num val2)])
+            (apply-cont cont (num-val (- num1 num2)))))
+        saved-cont))
+(define (rator-cont rands env saved-cont)
+  (cons (lambda (rator cont)
+          (if (null? rands)
+            (apply-proc/k (expval->proc rator) '() cont)
+            (value-of/k (car rands) env
+              (rands-cont rator (cdr rands) '() env cont))))
+        saved-cont))
+(define (rands-cont rator rands vals env saved-cont)
+  (cons (lambda (val cont)
+          (let ([vals (cons val vals)])
+            (if (null? rands)
+              (apply-proc/k (expval->proc rator) (reverse vals) cont)
+              (value-of/k (car rands) env
+                (rands-cont rator (cdr rands) vals env cont)))))
+        saved-cont))
 
 ; FinalAnswer = ExpVal
 ; apply-cont : Cont x ExpVal -> FinalAnswer
-(define (apply-cont cont1 val)
-  (dec-cont-size!)
-  (cases cont cont1
-    [end-cont []
-      (begin (eopl:printf "End of computation.~%")
-             (eopl:printf "Max of cont: ~a~%" max-size)
-             val)]
-    [zero?-cont [saved-cont]
-      (apply-cont saved-cont
-        (bool-val (zero? (expval->num val))))]
-    [let-cont [vars exps vals body saved-env saved-cont]
-      (let ([vals (cons val vals)])
-        (if (null? exps)
-          (value-of/k body (extend-env vars (reverse vals) saved-env) saved-cont)
-          (value-of/k (car exps) saved-env
-            (begin (inc-cont-size!)
-                   (let-cont vars (cdr exps) vals body saved-env saved-cont)))))]
-    [if-test-cont [exp2 exp3 saved-env saved-cont]
-      (if (expval->bool val)
-        (value-of/k exp2 saved-env saved-cont)
-        (value-of/k exp3 saved-env saved-cont))]
-    [diff1-cont [exp2 saved-env saved-cont]
-      (value-of/k exp2 saved-env
-        (begin (inc-cont-size!)
-               (diff2-cont val saved-cont)))]
-    [diff2-cont [val1 saved-cont]
-      (let ([num1 (expval->num val1)] [num2 (expval->num val)])
-        (apply-cont saved-cont (num-val (- num1 num2))))]
-    [rator-cont [rands saved-env saved-cont]
-      (if (null? rands)
-        (apply-proc/k (expval->proc val) '() saved-cont)
-        (value-of/k (car rands) saved-env
-          (begin (inc-cont-size!)
-                 (rands-cont val (cdr rands) '() saved-env saved-cont))))]
-    [rands-cont [rator rands vals saved-env saved-cont]
-      (let ([vals (cons val vals)])
-        (if (null? rands)
-          (apply-proc/k (expval->proc rator) (reverse vals) saved-cont)
-          (value-of/k (car rands) saved-env
-            (begin (inc-cont-size!)
-                   (rands-cont rator (cdr rands) vals saved-env saved-cont)))))]
-    [list-first-cont [exps saved-env saved-cont]
-      (value-of/k (car exps) saved-env
-        (begin (inc-cont-size!)
-               (list-rests-cont val (cdr exps) saved-env saved-cont)))]
-    [list-rests-cont [vals exps saved-env saved-cont]
-      (let ([vals (append vals (list val))])
-        (if (null? exps)
-          (apply-cont saved-cont (list-val vals))
-          (value-of/k (car exps) saved-env
-            (begin (inc-cont-size!)
-                   (list-rests-cont vals (cdr exps) saved-env saved-cont)))))]
-    [mul1-cont [exp2 saved-env saved-cont]
-      (value-of/k exp2 saved-env
-        (begin (inc-cont-size!)
-               (mul2-cont val saved-cont)))]
-    [mul2-cont [val1 saved-cont]
-      (let ([num1 (expval->num val1)] [num2 (expval->num val)])
-        (apply-cont saved-cont (num-val (* num1 num2))))]
-    [else
-      (report-invalid-cont 'apply-cont cont1 val1)]
-    ))
+(define (apply-cont cont val)
+  (if (null? cont)
+    (begin (eopl:printf "End of computation ~%") val)
+    ((car cont) val (cdr cont))))
 
 (define (apply-proc/k proc1 vals cont)
   (cases proc proc1
@@ -148,24 +106,27 @@
 ;(trace apply-cont)
 
 ; res = (num-val 1)
-(define p
+(define p1
   "letrec
      even(x) = if zero?(x) then 1 else (odd  -(x,1))
      odd(x)  = if zero?(x) then 0 else (even -(x,1))
    in (odd 13)")
 
-; res = (num-val 6)
+; res = (num-val 15)
 (define p2
-  "let x = 2
-       y = 3
-   in *(x, y)")
+  "letrec add(x r) = if zero?(x) then r else (add -(x, 1) -(r, -(0, x)))
+   in (add 5 0)")
 
-; res = (num-val 24)
+; res = (num-val 2)
 (define p3
-  "letrec fact(x) = if zero?(x) then 1 else *(x, (fact -(x, 1)))
-   in (fact 4)")
+  "let x = 1
+       y = 2
+       z = 3
+   in -(z, -(y, x))")
 
-(define p4
-  "letrec fact-iter(x r) = if zero?(x) then r else (fact-iter -(x, 1) *(x, r))
-   in (fact-iter 4 1)")
-
+; res = (num-val 1)
+(define p6
+  "let x = 2
+       y = 1
+       f = proc(x y) -(x, y)
+   in (f x y)")

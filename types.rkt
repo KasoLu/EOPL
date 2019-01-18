@@ -15,36 +15,6 @@
     [env    env?]]
   )
 
-(define-datatype cont cont?
-  [end-cont]
-  [zero?-cont
-    [cont cont?]]
-  [let-cont
-    [vars (list-of identifier?)]
-    [body expression?]
-    [env  env?]
-    [cont cont?]]
-  [if-test-cont
-    [exp2 expression?]
-    [exp3 expression?]
-    [env  env?]
-    [cont cont?]]
-  [diff1-cont
-    [exp2 expression?]
-    [env  env?]
-    [cont cont?]]
-  [diff2-cont
-    [val1 expval?]
-    [cont cont?]]
-  [rator-cont
-    [exps (list-of expression?)]
-    [env  env?]
-    [cont cont?]]
-  [rands-cont
-    [val1 expval?]
-    [cont cont?]]
-  )
-
 (define-datatype proc proc?
   [procedure
     [vars (list-of identifier?)]
@@ -53,14 +23,33 @@
   )
 
 (define-datatype expval expval?
-  [num-val  [num number?]]
+  [num-val  [num  number?]]
   [bool-val [bool boolean?]]
   [proc-val [proc proc?]]
   )
 
 (define-datatype program program?
-  [a-program 
-    [exp1 expression?]])
+  [a-program
+    [stmt1 statement?]])
+
+(define-datatype statement statement?
+  [assign-stmt
+    [var1 identifier?]
+    [exp1 expression?]]
+  [print-stmt
+    [exp1 expression?]]
+  [multi-stmt
+    [stmts (list-of statement?)]]
+  [if-stmt
+    [exp1  expression?]
+    [stmt1 statement?]
+    [stmt2 statement?]]
+  [while-stmt
+    [exp1  expression?]
+    [stmt1 statement?]]
+  [var-stmt
+    [vars  (list-of identifier?)]
+    [stmt1 statement?]])
 
 (define-datatype expression expression?
   [const-exp
@@ -68,6 +57,8 @@
   [diff-exp
     [exp1 expression?]
     [exp2 expression?]]
+  [not-exp
+    [exp1 expression?]]
   [zero?-exp
     [exp1 expression?]]
   [if-exp
@@ -91,5 +82,11 @@
     [varss  (list-of (list-of identifier?))]
     [bodies (list-of expression?)]
     [exp1   expression?]]
+  [assign-exp
+    [var  identifier?]
+    [exp1 expression?]]
+  [begin-exp
+    [exp1 expression?]
+    [exps (list-of expression?)]]
   )
 

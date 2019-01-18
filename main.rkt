@@ -71,13 +71,13 @@
         (apply-cont saved-cont (num-val (- num1 num2))))]
     [rator-cont [rands saved-env saved-cont]
       (if (null? rands)
-        (lambda () (apply-proc/k (expval->proc val) '() saved-cont))
+        (apply-proc/k (expval->proc val) '() saved-cont)
         (value-of/k (car rands) saved-env
           (rands-cont val (cdr rands) '() saved-env saved-cont)))]
     [rands-cont [rator rands vals saved-env saved-cont]
       (let ([vals (cons val vals)])
         (if (null? rands)
-          (lambda () (apply-proc/k (expval->proc rator) (reverse vals) saved-cont))
+          (apply-proc/k (expval->proc rator) (reverse vals) saved-cont)
           (value-of/k (car rands) saved-env
             (rands-cont rator (cdr rands) vals saved-env saved-cont))))]
     [else
@@ -86,20 +86,23 @@
 
 ; apply-proc/k : Proc x ExpVal x Cont -> Bounce
 (define (apply-proc/k proc1 vals cont)
-  (cases proc proc1
-    [procedure [vars body saved-env]
-      (value-of/k body (extend-env vars vals saved-env) cont)]))
+  (a-bounce proc1 vals cont))
 
 ; trampoline : Bounce -> FinalAnswer
-(define (trampoline bounce)
-  (if (expval? bounce)
-    bounce
-    (trampoline (bounce))))
+(define (trampoline bounce1)
+  (if (expval? bounce1)
+    bounce1
+    (cases bounce bounce1
+      [a-bounce [proc1 vals cont]
+        (cases proc proc1
+          [procedure [vars body env]
+            (trampoline (value-of/k body (extend-env vars vals env) cont))])])))
 
 ;(trace apply-env)
 ;(trace apply-proc/k)
 ;(trace value-of/k)
 ;(trace apply-cont)
+;(trace trampoline)
 
 ; res = (num-val 1)
 (define p1

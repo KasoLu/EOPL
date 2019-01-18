@@ -99,3 +99,9 @@
     [exp1   expression?]]
   )
 
+(define-datatype bounce bounce?
+  [a-bounce
+    [proc proc?]
+    [vals (list-of expval?)]
+    [cont cont?]])
+

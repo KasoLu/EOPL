@@ -3,165 +3,122 @@
 (load "funcs.rkt")
 (require racket/trace)
 
-(define (result str)
-  (result-of-program
+; run : String -> FinalAnswer
+(define (run str)
+  (value-of-program
     (scan&parse str)))
 
-(define (result-of-program pgm)
-  (init-store!)
+; value-of-program : Program -> FinalAnswer
+(define (value-of-program pgm)
   (cases program pgm
-    [a-program [stmt]
-      (result-of/k stmt (init-env)
-        (lambda () (eopl:printf "End of statement\n")))]))
+    [a-program [expr]
+      (trampoline
+        (value-of/k expr (init-env) (end-cont)))]))
 
+; value-of/k : Exp x Env x Cont -> Bounce
 (define (value-of/k expr env cont)
   (cases expression expr
-    [const-exp [num] 
+    [const-exp [num]
       (apply-cont cont (num-val num))]
     [var-exp [var]
-      (apply-cont cont (deref (apply-env env var)))]
-    [diff-exp [exp1 exp2]
-      (value-of/k exp1 env
-        (lambda (val1)
-          (value-of/k exp2 env
-            (lambda (val2)
-              (let ([num1 (expval->num val1)] [num2 (expval->num val2)])
-                (apply-cont cont (num-val (- num1 num2))))))))]
-    [not-exp [exp1]
-      (value-of/k exp1 env
-        (lambda (val1)
-          (let ([bool (expval->bool val1)])
-            (apply-cont cont (bool-val (not bool))))))]
+      (apply-cont cont (apply-env env var))]
+    [proc-exp [vars body]
+      (apply-cont cont (proc-val (procedure vars body env)))]
+    [letrec-exp [names varss bodies letrec-body]
+      (value-of/k letrec-body (extend-env-rec names varss bodies env) cont)]
     [zero?-exp [exp1]
       (value-of/k exp1 env
-        (lambda (val1)
-          (apply-cont cont (bool-val (zero? (expval->num val1))))))]
-    [if-exp [exp1 exp2 exp3]
-      (value-of/k exp1 env
-        (lambda (val1)
-          (if (expval->bool val1)
-            (value-of/k exp2 env cont)
-            (value-of/k exp3 env cont))))]
+        (zero?-cont cont))]
     [let-exp [vars exps body]
       (if (null? vars)
         (value-of/k body env cont)
-        (let loop([exps exps] [vals '()])
-          (if (null? exps)
-            (value-of/k body (extend vars (reverse vals) env) cont)
-            (value-of/k (car exps) env
-              (lambda (val)
-                (loop (cdr exps) (cons (newref val) vals)))))))]
-    [proc-exp [vars body]
-      (apply-cont cont (proc-val (procedure vars body env)))]
+        (value-of/k (car exps) env
+          (let-cont vars (cdr exps) '() body env cont)))]
+    [if-exp [exp1 exp2 exp3]
+      (value-of/k exp1 env
+        (if-test-cont exp2 exp3 env cont))]
+    [diff-exp [exp1 exp2]
+      (value-of/k exp1 env
+        (diff1-cont exp2 env cont))]
     [call-exp [rator rands]
       (value-of/k rator env
-        (lambda (rator)
-          (let loop([rands rands] [vals '()])
-            (if (null? rands)
-              (apply-proc/k (expval->proc rator) (reverse vals) cont)
-              (value-of/k (car rands) env
-                (lambda (val)
-                  (loop (cdr rands) (cons (newref val) vals))))))))]
-    [letrec-exp [names varss bodies letrec-body]
-      (value-of/k letrec-body (extend-env-rec names varss bodies env) cont)]
-    [assign-exp [var exp1]
-      (value-of/k exp1 env
-        (lambda (val1)
-          (begin (setref! (apply-env env var) val1)
-                 (apply-cont cont (num-val 27)))))]
-    [begin-exp [exp1 exps]
-      (value-of/k exp1 env
-        (lambda (val1)
-          (let loop([exps exps] [val val1])
-            (if (null? exps)
-              (apply-cont cont val)
-              (value-of/k (car exps) env
-                (lambda (val)
-                  (loop (cdr exps) val)))))))]
-    [else
-      (report-invalid-expression expr)]
+        (rator-cont rands env cont))]
     ))
 
-(define (apply-proc/k proc1 refs cont)
-  (cases proc proc1
-    [procedure [vars body saved-env]
-      (value-of/k body (extend-env vars refs) cont)]))
+; apply-cont : Cont x ExpVal -> Bounce
+(define (apply-cont cont1 val)
+  (cases cont cont1
+    [end-cont []
+      (begin (eopl:printf "End of computation.~%") val)]
+    [zero?-cont [saved-cont]
+      (apply-cont saved-cont
+        (bool-val (zero? (expval->num val))))]
+    [let-cont [vars exps vals body saved-env saved-cont]
+      (let ([vals (cons val vals)])
+        (if (null? exps)
+          (value-of/k body (extend-env vars (reverse vals) saved-env) saved-cont)
+          (value-of/k (car exps) saved-env
+            (let-cont vars (cdr exps) vals body saved-env saved-cont))))]
+    [if-test-cont [exp2 exp3 saved-env saved-cont]
+      (if (expval->bool val)
+        (value-of/k exp2 saved-env saved-cont)
+        (value-of/k exp3 saved-env saved-cont))]
+    [diff1-cont [exp2 saved-env saved-cont]
+      (value-of/k exp2 saved-env
+        (diff2-cont val saved-cont))]
+    [diff2-cont [val1 saved-cont]
+      (let ([num1 (expval->num val1)] [num2 (expval->num val)])
+        (apply-cont saved-cont (num-val (- num1 num2))))]
+    [rator-cont [rands saved-env saved-cont]
+      (if (null? rands)
+        (apply-proc/k (expval->proc val) '() saved-cont)
+        (value-of/k (car rands) saved-env
+          (rands-cont val (cdr rands) '() saved-env saved-cont)))]
+    [rands-cont [rator rands vals saved-env saved-cont]
+      (let ([vals (cons val vals)])
+        (if (null? rands)
+          (apply-proc/k (expval->proc rator) (reverse vals) saved-cont)
+          (value-of/k (car rands) saved-env
+            (rands-cont rator (cdr rands) vals saved-env saved-cont))))]
+    [else
+      (report-invalid-cont 'apply-cont cont1 val1)]
+    ))
 
-(define (apply-cont cont val)
-  (cont val))
+; apply-proc/k : Proc x ExpVal x Cont -> Bounce
+(define (apply-proc/k proc1 vals cont)
+  (lambda ()
+    (cases proc proc1
+      [procedure [vars body saved-env]
+        (value-of/k body (extend-env vars vals saved-env) cont)])))
 
-(define (result-of/k stmt env cmd-cont)
-  (cases statement stmt
-    [assign-stmt [var1 exp1]
-      (value-of/k exp1 env
-        (lambda (val1)
-          (setref! (apply-env env var1) val1)
-          (apply-cmd-cont cmd-cont)))]
-    [print-stmt [exp1]
-      (value-of/k exp1 env
-        (lambda (val1)
-          (cases expval val1
-            [num-val [num]   (printf "~a\n" num)]
-            [bool-val [bool] (printf "~a\n" bool)]
-            [proc-val [proc] (printf "~a\n" proc)])
-          (apply-cmd-cont cmd-cont)))]
-    [multi-stmt [stmts]
-      (let loop([stmts stmts])
-        (if (null? stmts)
-          (apply-cmd-cont cmd-cont)
-          (result-of/k (car stmts) env
-            (lambda ()
-              (loop (cdr stmts))))))]
-    [if-stmt [exp1 stmt1 stmt2]
-      (value-of/k exp1 env
-        (lambda (val1)
-          (if (expval->bool val)
-            (result-of/k stmt1 env cmd-cont)
-            (result-of/k stmt2 env cmd-cont))))]
-    [while-stmt [exp1 stmt1]
-      (let loop()
-        (value-of/k exp1 env
-          (lambda (val1)
-            (if (expval->bool val1)
-              (result-of/k stmt1 env
-                (lambda () (loop)))
-              (apply-cmd-cont cmd-cont)))))]
-    [var-stmt [vars stmt1]
-      (let ([refs (map (lambda (v) (newref 'uninit)) vars)])
-        (result-of/k stmt1 (extend-env vars refs env) cmd-cont))]))
+; trampoline : Bounce -> FinalAnswer
+(define (trampoline bounce)
+  (if (expval? bounce)
+    bounce
+    (trampoline (bounce))))
 
-(define (apply-cmd-cont cmd-cont)
-  (cmd-cont))
-
-;(trace value-of-program)
-;(trace value-of)
 ;(trace apply-env)
-;(trace apply-proc)
-;(trace result-of)
+;(trace apply-proc/k)
+;(trace value-of/k)
+;(trace apply-cont)
 
-; res = -1
-(define p7
-  "var x, y;
-   { x = 3; y = 4; print -(x,y) }")
+; res = (num-val 1)
+(define p1
+  "letrec
+     even(x) = if zero?(x) then 1 else (odd  -(x,1))
+     odd(x)  = if zero?(x) then 0 else (even -(x,1))
+   in (odd 13)")
 
-; res = 5
-(define p8
-  "var x, y, z;
-   { x = 10; y = 1; z = 5;
-     while not(zero?(z))
-     { x = -(x,y); z = -(z,1) };
-     print x }")
+; res = (num-val 2)
+(define p3
+  "let x = 1
+       y = 2
+       z = 3
+   in -(z, -(y, x))")
 
-; res = 3 4 3
-(define p9
-  "var x;
-   { x = 3; print x;
-     var x; { x = 4; print x}; 
-     print x }")
- 
-; res = 1
-(define p10
-  "var f, x;
-   { f = proc(x y) -(x, y);
-     x = 3;
-     print (f 4 x) }")
+; res = (num-val 1)
+(define p6
+  "let x = 2
+       y = 1
+       f = proc(x y) -(x, y)
+   in (f x y)")

@@ -71,13 +71,13 @@
         (apply-cont saved-cont (num-val (- num1 num2))))]
     [rator-cont [rands saved-env saved-cont]
       (if (null? rands)
-        (apply-proc/k (expval->proc val) '() saved-cont)
+        (lambda () (apply-proc/k (expval->proc val) '() saved-cont))
         (value-of/k (car rands) saved-env
           (rands-cont val (cdr rands) '() saved-env saved-cont)))]
     [rands-cont [rator rands vals saved-env saved-cont]
       (let ([vals (cons val vals)])
         (if (null? rands)
-          (apply-proc/k (expval->proc rator) (reverse vals) saved-cont)
+          (lambda () (apply-proc/k (expval->proc rator) (reverse vals) saved-cont))
           (value-of/k (car rands) saved-env
             (rands-cont rator (cdr rands) vals saved-env saved-cont))))]
     [else
@@ -86,10 +86,9 @@
 
 ; apply-proc/k : Proc x ExpVal x Cont -> Bounce
 (define (apply-proc/k proc1 vals cont)
-  (lambda ()
-    (cases proc proc1
-      [procedure [vars body saved-env]
-        (value-of/k body (extend-env vars vals saved-env) cont)])))
+  (cases proc proc1
+    [procedure [vars body saved-env]
+      (value-of/k body (extend-env vars vals saved-env) cont)]))
 
 ; trampoline : Bounce -> FinalAnswer
 (define (trampoline bounce)

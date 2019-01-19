@@ -47,7 +47,11 @@
 
 ; apply-cont : Cont x ExpVal -> Bounce
 (define (apply-cont cont1 val)
-  (a-bounce cont1 val))
+  (cases cont cont1
+    [end-cont []
+      (begin (eopl:printf "End of computation.~%") val)]
+    [else
+      (a-bounce cont1 val)]))
 
 ; apply-proc/k : Proc x ExpVal x Cont -> Bounce
 (define (apply-proc/k proc1 vals cont)

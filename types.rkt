@@ -101,7 +101,5 @@
 
 (define-datatype bounce bounce?
   [a-bounce
-    [proc proc?]
-    [vals (list-of expval?)]
-    [cont cont?]])
-
+    [cont cont?]
+    [val  expval?]])

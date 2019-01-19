@@ -99,3 +99,7 @@
     [exp1   expression?]]
   )
 
+(define-datatype bounce bounce?
+  [a-bounce
+    [cont cont?]
+    [val  expval?]])

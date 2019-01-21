@@ -26,7 +26,7 @@
 
 ; value-of/k : Exp x Env x Cont -> FinalAnswer
 (define (value-of/k)
-  ;(eopl:printf "expr: ~a\nenv: ~a\ncont: ~a\n" r-expr r-env r-cont)
+  (eopl:printf "expr: ~a\nenv: ~a\ncont: ~a\n" r-expr r-env r-cont)
   (cases expression r-expr
     [const-exp [num]
       (set! r-val (num-val num))
@@ -73,7 +73,7 @@
 
 ; apply-cont : Cont x ExpVal -> FinalAnswer
 (define (apply-cont)
-  ;(eopl:printf "cont: ~a\nval: ~a\n" r-cont r-val)
+  (eopl:printf "cont: ~a\nval: ~a\n" r-cont r-val)
   (cases cont r-cont
     [end-cont []
       (begin (eopl:printf "End of computation.~%") r-val)]
@@ -149,7 +149,7 @@
 
 ; apply-proc/k : Proc x ExpVal x Cont -> FinalAnswer
 (define (apply-proc/k)
-  ;(eopl:printf "proc: ~a\nvals: ~a\ncont: ~a\n" r-proc r-vals r-cont)
+  (eopl:printf "proc: ~a\nvals: ~a\ncont: ~a\n" r-proc r-vals r-cont)
   (cases proc r-proc
     [procedure [vars body saved-env]
       (if (pair? vars) (set! r-env (extend-env vars r-vals saved-env)) #f)
@@ -157,9 +157,9 @@
       (value-of/k)]))
 
 ;(trace apply-env)
-;(trace apply-proc/k)
-;(trace value-of/k)
-;(trace apply-cont)
+(trace apply-proc/k)
+(trace value-of/k)
+(trace apply-cont)
 
 ; res = (num-val 1)
 (define p1

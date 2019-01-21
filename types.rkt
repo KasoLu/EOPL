@@ -1,6 +1,4 @@
 (define (identifier? x) (symbol? x))
-(define (reference? v) (integer? v))
-(define (store? s) (list? s))
 
 (define-datatype env env?
   [empty-env]
@@ -38,6 +36,13 @@
   [diff2-cont
     [val1 expval?]
     [cont cont?]]
+  [multi1-cont
+    [exp2 expression?]
+    [env  env?]
+    [cont cont?]]
+  [multi2-cont
+    [val1 expval?]
+    [cont cont?]]
   [rator-cont
     [exps (list-of expression?)]
     [env  env?]
@@ -61,7 +66,6 @@
   [num-val  [num  number?]]
   [bool-val [bool boolean?]]
   [proc-val [proc proc?]]
-  [list-val [lst  list?]]
   )
 
 (define-datatype program program?
@@ -72,6 +76,9 @@
   [const-exp
     [num number?]]
   [diff-exp
+    [exp1 expression?]
+    [exp2 expression?]]
+  [multi-exp
     [exp1 expression?]
     [exp2 expression?]]
   [zero?-exp
@@ -99,7 +106,3 @@
     [exp1   expression?]]
   )
 
-(define-datatype bounce bounce?
-  [a-bounce
-    [cont cont?]
-    [val  expval?]])

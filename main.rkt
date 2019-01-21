@@ -3,7 +3,14 @@
 (load "funcs.rkt")
 (require racket/trace)
 
-; run : String -> FinalAnswer
+(define r-expr 'uninit)
+(define r-env  'uninit)
+(define r-cont 'uninit)
+(define r-val  'uninit)
+(define r-proc 'uninit)
+(define r-vals 'uninit)
+
+; FinalAnswer = ExpVal
 (define (run str)
   (value-of-program
     (scan&parse str)))
@@ -11,97 +18,143 @@
 ; value-of-program : Program -> FinalAnswer
 (define (value-of-program pgm)
   (cases program pgm
-    [a-program [expr]
-      (trampoline
-        (value-of/k expr (init-env) (end-cont)))]))
+    [a-program [exp1]
+      (set! r-cont (end-cont))
+      (set! r-env (init-env))
+      (set! r-expr exp1)
+      (value-of/k)]))
 
-; value-of/k : Exp x Env x Cont -> Bounce
-(define (value-of/k expr env cont)
-  (cases expression expr
+; value-of/k : Exp x Env x Cont -> FinalAnswer
+(define (value-of/k)
+  ;(eopl:printf "expr: ~a\nenv: ~a\ncont: ~a\n" r-expr r-env r-cont)
+  (cases expression r-expr
     [const-exp [num]
-      (apply-cont cont (num-val num))]
+      (set! r-val (num-val num))
+      (apply-cont)]
     [var-exp [var]
-      (apply-cont cont (apply-env env var))]
+      (set! r-val (apply-env r-env var))
+      (apply-cont)]
     [proc-exp [vars body]
-      (apply-cont cont (proc-val (procedure vars body env)))]
+      (set! r-val (proc-val (procedure vars body r-env)))
+      (apply-cont)]
     [letrec-exp [names varss bodies letrec-body]
-      (value-of/k letrec-body (extend-env-rec names varss bodies env) cont)]
+      (set! r-env (extend-env-rec names varss bodies r-env))
+      (set! r-expr letrec-body)
+      (value-of/k)]
     [zero?-exp [exp1]
-      (value-of/k exp1 env
-        (zero?-cont cont))]
+      (set! r-cont (zero?-cont r-cont))
+      (set! r-expr exp1)
+      (value-of/k)]
     [let-exp [vars exps body]
-      (if (null? vars)
-        (value-of/k body env cont)
-        (value-of/k (car exps) env
-          (let-cont vars (cdr exps) '() body env cont)))]
+      (cond [(null? vars)
+             (set! r-expr body)
+             (value-of/k)]
+            [else
+             (set! r-cont (let-cont vars (cdr exps) '() body r-env r-cont))
+             (set! r-expr (car exps))
+             (value-of/k)])]
     [if-exp [exp1 exp2 exp3]
-      (value-of/k exp1 env
-        (if-test-cont exp2 exp3 env cont))]
+      (set! r-cont (if-test-cont exp2 exp3 r-env r-cont))
+      (set! r-expr exp1)
+      (value-of/k)]
     [diff-exp [exp1 exp2]
-      (value-of/k exp1 env
-        (diff1-cont exp2 env cont))]
+      (set! r-cont (diff1-cont exp2 r-env r-cont))
+      (set! r-expr exp1)
+      (value-of/k)]
+    [multi-exp [exp1 exp2]
+      (set! r-cont (multi1-cont exp2 r-env r-cont))
+      (set! r-expr exp1)
+      (value-of/k)]
     [call-exp [rator rands]
-      (value-of/k rator env
-        (rator-cont rands env cont))]
+      (set! r-cont (rator-cont rands r-env r-cont))
+      (set! r-expr rator)
+      (value-of/k)]
     ))
 
-; apply-cont : Cont x ExpVal -> Bounce
-(define (apply-cont cont1 val)
-  (cases cont cont1
+; apply-cont : Cont x ExpVal -> FinalAnswer
+(define (apply-cont)
+  ;(eopl:printf "cont: ~a\nval: ~a\n" r-cont r-val)
+  (cases cont r-cont
     [end-cont []
-      (begin (eopl:printf "End of computation.~%") val)]
-    [else
-      (a-bounce cont1 val)]))
-
-; apply-proc/k : Proc x ExpVal x Cont -> Bounce
-(define (apply-proc/k proc1 vals cont)
-  (cases proc proc1
-    [procedure [vars body saved-env]
-      (value-of/k body (extend-env vars vals saved-env) cont)]))
-
-; trampoline : Bounce -> FinalAnswer
-(define (trampoline bounce1)
-  (if (expval? bounce1)
-    bounce1
-    (trampoline 
-      (cases bounce bounce1
-        [a-bounce [cont1 val]
-          (cases cont cont1
-            [end-cont []
-              (begin (eopl:printf "End of computation.~%") val)]
-            [zero?-cont [saved-cont]
-              (apply-cont saved-cont
-                (bool-val (zero? (expval->num val))))]
-            [let-cont [vars exps vals body saved-env saved-cont]
-              (let ([vals (cons val vals)])
-                (if (null? exps)
-                  (value-of/k body (extend-env vars (reverse vals) saved-env) saved-cont)
-                  (value-of/k (car exps) saved-env
-                    (let-cont vars (cdr exps) vals body saved-env saved-cont))))]
-            [if-test-cont [exp2 exp3 saved-env saved-cont]
-              (if (expval->bool val)
-                (value-of/k exp2 saved-env saved-cont)
-                (value-of/k exp3 saved-env saved-cont))]
-            [diff1-cont [exp2 saved-env saved-cont]
-              (value-of/k exp2 saved-env
-                (diff2-cont val saved-cont))]
-            [diff2-cont [val1 saved-cont]
-              (let ([num1 (expval->num val1)] [num2 (expval->num val)])
-                (apply-cont saved-cont (num-val (- num1 num2))))]
-            [rator-cont [rands saved-env saved-cont]
-              (if (null? rands)
-                (apply-proc/k (expval->proc val) '() saved-cont)
-                (value-of/k (car rands) saved-env
-                  (rands-cont val (cdr rands) '() saved-env saved-cont)))]
-            [rands-cont [rator rands vals saved-env saved-cont]
-              (let ([vals (cons val vals)])
-                (if (null? rands)
-                  (apply-proc/k (expval->proc rator) (reverse vals) saved-cont)
-                  (value-of/k (car rands) saved-env
-                    (rands-cont rator (cdr rands) vals saved-env saved-cont))))]
+      (begin (eopl:printf "End of computation.~%") r-val)]
+    [zero?-cont [saved-cont]
+      (set! r-val (bool-val (zero? (expval->num r-val))))
+      (set! r-cont saved-cont)
+      (apply-cont)]
+    [let-cont [vars exps vals body saved-env saved-cont]
+      (let ([vals (cons r-val vals)])
+        (cond [(null? exps)
+               (set! r-cont saved-cont)
+               (set! r-env (extend-env vars (reverse vals) saved-env))
+               (set! r-expr body)
+               (value-of/k)]
+              [else
+               (set! r-cont (let-cont vars (cdr exps) vals body saved-env saved-cont))
+               (set! r-env saved-env)
+               (set! r-expr (car exps))
+               (value-of/k)]))]
+    [if-test-cont [exp2 exp3 saved-env saved-cont]
+      (set! r-cont saved-cont)
+      (set! r-env saved-env)
+      (if (expval->bool r-val)
+        (set! r-expr exp2)
+        (set! r-expr exp3)) 
+      (value-of/k)]
+    [diff1-cont [exp2 saved-env saved-cont]
+      (set! r-cont (diff2-cont r-val saved-cont))
+      (set! r-env saved-env)
+      (set! r-expr exp2)
+      (value-of/k)]
+    [diff2-cont [val1 saved-cont]
+      (let ([num1 (expval->num val1)] [num2 (expval->num r-val)])
+        (set! r-val (num-val (- num1 num2)))
+        (set! r-cont saved-cont)
+        (apply-cont))]
+    [multi1-cont [exp2 saved-env saved-cont]
+      (set! r-cont (multi2-cont r-val saved-cont))
+      (set! r-env saved-env)
+      (set! r-expr exp2)
+      (value-of/k)]
+    [multi2-cont [val1 saved-cont]
+      (let ([num1 (expval->num val1)] [num2 (expval->num r-val)])
+        (set! r-val (num-val (* num1 num2)))
+        (set! r-cont saved-cont)
+        (apply-cont))]
+    [rator-cont [rands saved-env saved-cont]
+      (cond [(null? rands)
+             (set! r-cont saved-cont)
+             (set! r-vals '())
+             (set! r-proc (expval->proc r-val))
+             (apply-proc/k)]
             [else
-              (report-invalid-cont 'apply-cont cont1 val1)]
-            )]))))
+             (set! r-cont (rands-cont r-val (cdr rands) '() saved-env saved-cont))
+             (set! r-env saved-env)
+             (set! r-expr (car rands))
+             (value-of/k)])]
+    [rands-cont [rator rands vals saved-env saved-cont]
+      (let ([vals (cons r-val vals)])
+        (cond [(null? rands)
+               (set! r-cont saved-cont)
+               (set! r-vals (reverse vals))
+               (set! r-proc (expval->proc rator))
+               (apply-proc/k)]
+              [else
+               (set! r-cont (rands-cont rator (cdr rands) vals saved-env saved-cont))
+               (set! r-env saved-env)
+               (set! r-expr (car rands))
+               (value-of/k)]))]
+    [else
+      (report-invalid-cont 'apply-cont cont1 val1)]
+    ))
+
+; apply-proc/k : Proc x ExpVal x Cont -> FinalAnswer
+(define (apply-proc/k)
+  ;(eopl:printf "proc: ~a\nvals: ~a\ncont: ~a\n" r-proc r-vals r-cont)
+  (cases proc r-proc
+    [procedure [vars body saved-env]
+      (if (pair? vars) (set! r-env (extend-env vars r-vals saved-env)) #f)
+      (set! r-expr body)
+      (value-of/k)]))
 
 ;(trace apply-env)
 ;(trace apply-proc/k)
@@ -128,3 +181,9 @@
        y = 1
        f = proc(x y) -(x, y)
    in (f x y)")
+
+; res = (num-val 24)
+(define p7
+  "letrec fact-iter(n) = (fact-iter-acc n 1)
+          fact-iter-acc(n a) = if zero?(n) then a else (fact-iter-acc -(n, 1) *(n, a))
+   in (fact-iter 4)")

@@ -1,5 +1,7 @@
 (load "types.rkt")
 
+; Expression ::= *( Expression , Expression )
+
 (define scanner-spec
   '([whitespace (whitespace) skip]
     [identifier (letter (arbno (or letter digit "_" "-" "?"))) symbol]
@@ -16,6 +18,7 @@
     [expression ("(" expression (arbno expression) ")") call-exp]
     [expression ("letrec" (arbno identifier "(" (arbno identifier) ")" "=" expression)
                  "in" expression) letrec-exp]
+    [expression ("*" "(" expression "," expression ")") multi-exp]
     ))
 
 (define scan&parse

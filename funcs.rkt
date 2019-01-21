@@ -14,20 +14,18 @@
     [empty-env []
       (report-no-binding-found var)]
     [extend-env [saved-vars saved-vals saved-env]
-      (define (found vars vals)
+      (let loop([vars saved-vars] [vals saved-vals])
         (cond [(null? vars) (apply-env saved-env var)]
               [(eqv? (car vars) var) (car vals)]
-              [else (found (cdr vars) (cdr vals))]))
-      (found saved-vars saved-vals)]
+              [else (loop (cdr vars) (cdr vals))]))]
     [extend-env-rec [names varss bodies saved-env]
-      (define (found names varss bodies)
+      (let loop([names names] [varss varss] [bodies bodies])
         (cond [(null? names) 
                (apply-env saved-env var)]
               [(eqv? (car names) var) 
                (proc-val (procedure (car varss) (car bodies) env1))]
               [else 
-               (found (cdr names) (cdr varss) (cdr bodies))]))
-      (found names varss bodies)]
+               (loop (cdr names) (cdr varss) (cdr bodies))]))]
     ))
 
 (define (expval->num val)

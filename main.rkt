@@ -9,24 +9,30 @@
 (define r-val  'uninit)
 (define r-proc 'uninit)
 (define r-vals 'uninit)
+(define r-pc   'uninit)
 
 ; FinalAnswer = ExpVal
 (define (run str)
   (value-of-program
     (scan&parse str)))
 
+; trampoline : Bounce -> FinalAnswer
+(define (trampoline pc)
+  (if (expval? pc) pc (trampoline (pc))))
+
 ; value-of-program : Program -> FinalAnswer
 (define (value-of-program pgm)
-  (cases program pgm
-    [a-program [exp1]
-      (set! r-cont (end-cont))
-      (set! r-env (init-env))
-      (set! r-expr exp1)
-      (value-of/k)]))
+  (trampoline
+    (cases program pgm
+      [a-program [exp1]
+        (set! r-cont (end-cont))
+        (set! r-env (init-env))
+        (set! r-expr exp1)
+        (value-of/k)])))
 
-; value-of/k : Exp x Env x Cont -> FinalAnswer
+; value-of/k : Exp x Env x Cont -> Bounce
 (define (value-of/k)
-  (eopl:printf "expr: ~a\nenv: ~a\ncont: ~a\n" r-expr r-env r-cont)
+  ;(eopl:printf "expr: ~a\nenv: ~a\ncont: ~a\n" r-expr r-env r-cont)
   (cases expression r-expr
     [const-exp [num]
       (set! r-val (num-val num))
@@ -71,9 +77,9 @@
       (value-of/k)]
     ))
 
-; apply-cont : Cont x ExpVal -> FinalAnswer
+; apply-cont : Cont x ExpVal -> Bounce
 (define (apply-cont)
-  (eopl:printf "cont: ~a\nval: ~a\n" r-cont r-val)
+  ;(eopl:printf "cont: ~a\nval: ~a\n" r-cont r-val)
   (cases cont r-cont
     [end-cont []
       (begin (eopl:printf "End of computation.~%") r-val)]
@@ -125,7 +131,8 @@
              (set! r-cont saved-cont)
              (set! r-vals '())
              (set! r-proc (expval->proc r-val))
-             (apply-proc/k)]
+             (set! r-pc apply-proc/k)
+             r-pc]
             [else
              (set! r-cont (rands-cont r-val (cdr rands) '() saved-env saved-cont))
              (set! r-env saved-env)
@@ -137,7 +144,8 @@
                (set! r-cont saved-cont)
                (set! r-vals (reverse vals))
                (set! r-proc (expval->proc rator))
-               (apply-proc/k)]
+               (set! r-pc (apply-proc/k))
+               r-pc]
               [else
                (set! r-cont (rands-cont rator (cdr rands) vals saved-env saved-cont))
                (set! r-env saved-env)
@@ -147,9 +155,9 @@
       (report-invalid-cont 'apply-cont cont1 val1)]
     ))
 
-; apply-proc/k : Proc x ExpVal x Cont -> FinalAnswer
+; apply-proc/k : Proc x ExpVal x Cont -> Bounce
 (define (apply-proc/k)
-  (eopl:printf "proc: ~a\nvals: ~a\ncont: ~a\n" r-proc r-vals r-cont)
+  ;(eopl:printf "proc: ~a\nvals: ~a\ncont: ~a\n" r-proc r-vals r-cont)
   (cases proc r-proc
     [procedure [vars body saved-env]
       (if (pair? vars) (set! r-env (extend-env vars r-vals saved-env)) #f)
@@ -157,9 +165,10 @@
       (value-of/k)]))
 
 ;(trace apply-env)
-(trace apply-proc/k)
-(trace value-of/k)
-(trace apply-cont)
+;(trace apply-proc/k)
+;(trace value-of/k)
+;(trace apply-cont)
+;(trace trampoline)
 
 ; res = (num-val 1)
 (define p1

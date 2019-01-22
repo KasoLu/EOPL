@@ -9,6 +9,8 @@
 (define r-val  'uninit)
 (define r-proc 'uninit)
 (define r-vals 'uninit)
+(define r-com1 'uninit)
+(define r-com2 'uninit)
 
 ; FinalAnswer = ExpVal
 (define (run str)
@@ -26,7 +28,7 @@
 
 ; value-of/k : Exp x Env x Cont -> FinalAnswer
 (define (value-of/k)
-  (eopl:printf "expr: ~a\nenv: ~a\ncont: ~a\n" r-expr r-env r-cont)
+  ;(eopl:printf "expr: ~a\nenv: ~a\ncont: ~a\n" r-expr r-env r-cont)
   (cases expression r-expr
     [const-exp [num]
       (set! r-val (num-val num))
@@ -50,7 +52,8 @@
              (set! r-expr body)
              (value-of/k)]
             [else
-             (set! r-cont (let-cont vars (cdr exps) '() body r-env r-cont))
+             (set! r-vals '())
+             (set! r-cont (let-cont vars (cdr exps) body r-env r-cont))
              (set! r-expr (car exps))
              (value-of/k)])]
     [if-exp [exp1 exp2 exp3]
@@ -69,15 +72,11 @@
       (set! r-cont (rator-cont rands r-env r-cont))
       (set! r-expr rator)
       (value-of/k)]
-    [multi-exp [exp1 exp2]
-      (set! r-cont (multi1-cont exp2 r-env r-cont))
-      (set! r-expr exp1)
-      (value-of/k)]
     ))
 
 ; apply-cont : Cont x ExpVal -> FinalAnswer
 (define (apply-cont)
-  (eopl:printf "cont: ~a\nval: ~a\n" r-cont r-val)
+  ;(eopl:printf "cont: ~a\nval: ~a\n" r-cont r-val)
   (cases cont r-cont
     [end-cont []
       (begin (eopl:printf "End of computation.~%") r-val)]
@@ -85,18 +84,18 @@
       (set! r-val (bool-val (zero? (expval->num r-val))))
       (set! r-cont saved-cont)
       (apply-cont)]
-    [let-cont [vars exps vals body saved-env saved-cont]
-      (let ([vals (cons r-val vals)])
-        (cond [(null? exps)
-               (set! r-cont saved-cont)
-               (set! r-env (extend-env vars (reverse vals) saved-env))
-               (set! r-expr body)
-               (value-of/k)]
-              [else
-               (set! r-cont (let-cont vars (cdr exps) vals body saved-env saved-cont))
-               (set! r-env saved-env)
-               (set! r-expr (car exps))
-               (value-of/k)]))]
+    [let-cont [vars exps body saved-env saved-cont]
+      (set! r-vals (cons r-val r-vals))
+      (cond [(null? exps)
+             (set! r-cont saved-cont)
+             (set! r-env (extend-env vars (reverse r-vals) saved-env))
+             (set! r-expr body)
+             (value-of/k)]
+            [else
+             (set! r-cont (let-cont vars (cdr exps) body saved-env saved-cont))
+             (set! r-env saved-env)
+             (set! r-expr (car exps))
+             (value-of/k)])]
     [if-test-cont [exp2 exp3 saved-env saved-cont]
       (set! r-cont saved-cont)
       (set! r-env saved-env)
@@ -110,68 +109,62 @@
       (set! r-expr exp2)
       (value-of/k)]
     [diff2-cont [val1 saved-cont]
-      (let ([num1 (expval->num val1)] [num2 (expval->num r-val)])
-        (set! r-val (num-val (- num1 num2)))
-        (set! r-cont saved-cont)
-        (apply-cont))]
+      (set! r-com1 (expval->num val1))
+      (set! r-com2 (expval->num r-val))
+      (set! r-val (num-val (- r-com1 r-com2)))
+      (set! r-cont saved-cont)
+      (apply-cont)]
     [multi1-cont [exp2 saved-env saved-cont]
       (set! r-cont (multi2-cont r-val saved-cont))
       (set! r-env saved-env)
       (set! r-expr exp2)
       (value-of/k)]
     [multi2-cont [val1 saved-cont]
-      (let ([num1 (expval->num val1)] [num2 (expval->num r-val)])
-        (set! r-val (num-val (* num1 num2)))
-        (set! r-cont saved-cont)
-        (apply-cont))]
+      (set! r-com1 (expval->num val1))
+      (set! r-com2 (expval->num r-val))
+      (set! r-val (num-val (* r-com1 r-com2)))
+      (set! r-cont saved-cont)
+      (apply-cont)]
     [rator-cont [rands saved-env saved-cont]
+      (set! r-vals '())
       (cond [(null? rands)
              (set! r-cont saved-cont)
-             (set! r-vals '())
              (set! r-proc (expval->proc r-val))
              (apply-proc/k)]
             [else
-             (set! r-cont (rands-cont r-val (cdr rands) '() saved-env saved-cont))
+             (set! r-cont (rands-cont r-val (cdr rands) saved-env saved-cont))
+             (set! r-env saved-env)
              (set! r-expr (car rands))
              (value-of/k)])]
-    [rands-cont [rator rands vals saved-env saved-cont]
-      (let ([vals (cons r-val vals)])
-        (cond [(null? rands)
-               (set! r-cont saved-cont)
-               (set! r-vals (reverse vals))
-               (set! r-proc (expval->proc rator))
-               (apply-proc/k)]
-              [else
-               (set! r-cont (rands-cont rator (cdr rands) vals saved-env saved-cont))
-               (set! r-expr (car rands))
-               (value-of/k)]))]
-    [multi1-cont [exp2 saved-env saved-cont]
-      (set! r-cont (multi2-cont r-val saved-cont))
-      (set! r-env saved-env)
-      (set! r-expr exp2)
-      (value-of/k)]
-    [multi2-cont [val1 saved-cont]
-      (let ([num1 (expval->num val1)] [num2 (expval->num r-val)])
-        (set! r-val (num-val (* num1 num2)))
-        (set! r-cont saved-cont)
-        (apply-cont))]
+    [rands-cont [rator rands saved-env saved-cont]
+      (set! r-vals (cons r-val r-vals))
+      (cond [(null? rands)
+             (set! r-cont saved-cont)
+             (set! r-vals (reverse r-vals))
+             (set! r-proc (expval->proc rator))
+             (apply-proc/k)]
+            [else
+             (set! r-cont (rands-cont rator (cdr rands) saved-env saved-cont))
+             (set! r-env saved-env)
+             (set! r-expr (car rands))
+             (value-of/k)])]
     [else
       (report-invalid-cont 'apply-cont cont1 val1)]
     ))
 
-; apply-proc/k : Proc x ExpVals x Cont -> FinalAnswer
+; apply-proc/k : Proc x ExpVal x Cont -> FinalAnswer
 (define (apply-proc/k)
-  (eopl:printf "proc: ~a\nvals: ~a\ncont: ~a\n" r-proc r-vals r-cont)
+  ;(eopl:printf "proc: ~a\nvals: ~a\ncont: ~a\n" r-proc r-vals r-cont)
   (cases proc r-proc
     [procedure [vars body saved-env]
-      (if (pair? vars) (set! r-env (extend-env vars r-vals r-env)) #f)
+      (if (pair? vars) (set! r-env (extend-env vars r-vals saved-env)) #f)
       (set! r-expr body)
       (value-of/k)]))
 
 ;(trace apply-env)
-(trace apply-proc/k)
-(trace value-of/k)
-(trace apply-cont)
+;(trace apply-proc/k)
+;(trace value-of/k)
+;(trace apply-cont)
 
 ; res = (num-val 1)
 (define p1
@@ -194,9 +187,8 @@
        f = proc(x y) -(x, y)
    in (f x y)")
 
-; res = (num-val 0) [dynamic binding]
+; res = (num-val 24)
 (define p7
-  "let x = 1 y = 2
-   in let f = proc() -(y, x)
-      in let x = 2
-         in (f)")
+  "letrec fact-iter(n) = (fact-iter-acc n 1)
+          fact-iter-acc(n a) = if zero?(n) then a else (fact-iter-acc -(n, 1) *(n, a))
+   in (fact-iter 4)")

@@ -75,6 +75,10 @@
       (set! r-cont (rator-cont rands r-env r-cont))
       (set! r-expr rator)
       (value-of/k)]
+    [multi-exp [exp1 exp2]
+      (set! r-cont (multi1-cont exp2 r-env r-cont))
+      (set! r-expr exp1)
+      (value-of/k)]
     ))
 
 ; apply-cont : Cont x ExpVal -> Bounce
@@ -151,6 +155,16 @@
                (set! r-env saved-env)
                (set! r-expr (car rands))
                (value-of/k)]))]
+    [multi1-cont [exp2 saved-env saved-cont]
+      (set! r-cont (multi2-cont r-val saved-cont))
+      (set! r-env saved-env)
+      (set! r-expr exp2)
+      (value-of/k)]
+    [multi2-cont [val1 saved-cont]
+      (let ([num1 (expval->num val1)] [num2 (expval->num r-val)])
+        (set! r-val (num-val (* num1 num2)))
+        (set! r-cont saved-cont)
+        (apply-cont))]
     [else
       (report-invalid-cont 'apply-cont cont1 val1)]
     ))

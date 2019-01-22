@@ -53,6 +53,13 @@
     [vals  (list-of expval?)]
     [env   env?]
     [cont  cont?]]
+  [multi1-cont
+    [exp2 expression?]
+    [env  env?]
+    [cont cont?]]
+  [multi2-cont
+    [val1 expval?]
+    [cont cont?]]
   )
 
 (define-datatype proc proc?
@@ -104,5 +111,8 @@
     [varss  (list-of (list-of identifier?))]
     [bodies (list-of expression?)]
     [exp1   expression?]]
+  [multi-exp
+    [exp1 expression?]
+    [exp2 expression?]]
   )
 

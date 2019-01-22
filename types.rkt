@@ -50,7 +50,7 @@
   [rands-cont
     [rator expval?]
     [exps  (list-of expression?)]
-    [vals  (list-of expval?)]
+    [vals (list-of expval?)]
     [env   env?]
     [cont  cont?]]
   )

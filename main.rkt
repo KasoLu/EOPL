@@ -7,10 +7,7 @@
 (define r-env  'uninit)
 (define r-cont 'uninit)
 (define r-val  'uninit)
-(define r-proc 'uninit)
-(define r-vals 'uninit)
-(define r-com1 'uninit)
-(define r-com2 'uninit)
+(define r-com  'uninit)
 
 ; FinalAnswer = ExpVal
 (define (run str)
@@ -52,8 +49,7 @@
              (set! r-expr body)
              (value-of/k)]
             [else
-             (set! r-vals '())
-             (set! r-cont (let-cont vars (cdr exps) body r-env r-cont))
+             (set! r-cont (let-cont vars (cdr exps) '() body r-env r-cont))
              (set! r-expr (car exps))
              (value-of/k)])]
     [if-exp [exp1 exp2 exp3]
@@ -84,15 +80,15 @@
       (set! r-val (bool-val (zero? (expval->num r-val))))
       (set! r-cont saved-cont)
       (apply-cont)]
-    [let-cont [vars exps body saved-env saved-cont]
-      (set! r-vals (cons r-val r-vals))
+    [let-cont [vars exps vals body saved-env saved-cont]
+      (set! r-com (cons r-val vals))
       (cond [(null? exps)
              (set! r-cont saved-cont)
-             (set! r-env (extend-env vars (reverse r-vals) saved-env))
+             (set! r-env (extend-env vars (reverse r-com) saved-env))
              (set! r-expr body)
              (value-of/k)]
             [else
-             (set! r-cont (let-cont vars (cdr exps) body saved-env saved-cont))
+             (set! r-cont (let-cont vars (cdr exps) r-com body saved-env saved-cont))
              (set! r-env saved-env)
              (set! r-expr (car exps))
              (value-of/k)])]
@@ -109,9 +105,9 @@
       (set! r-expr exp2)
       (value-of/k)]
     [diff2-cont [val1 saved-cont]
-      (set! r-com1 (expval->num val1))
-      (set! r-com2 (expval->num r-val))
-      (set! r-val (num-val (- r-com1 r-com2)))
+      (set! r-com (expval->num val1))
+      (set! r-val (expval->num r-val))
+      (set! r-val (num-val (- r-com r-val)))
       (set! r-cont saved-cont)
       (apply-cont)]
     [multi1-cont [exp2 saved-env saved-cont]
@@ -120,31 +116,31 @@
       (set! r-expr exp2)
       (value-of/k)]
     [multi2-cont [val1 saved-cont]
-      (set! r-com1 (expval->num val1))
-      (set! r-com2 (expval->num r-val))
-      (set! r-val (num-val (* r-com1 r-com2)))
+      (set! r-com (expval->num val1))
+      (set! r-val (expval->num r-val))
+      (set! r-val (num-val (* r-com r-val)))
       (set! r-cont saved-cont)
       (apply-cont)]
     [rator-cont [rands saved-env saved-cont]
-      (set! r-vals '())
       (cond [(null? rands)
              (set! r-cont saved-cont)
-             (set! r-proc (expval->proc r-val))
+             (set! r-val '())
+             (set! r-expr (expval->proc r-val))
              (apply-proc/k)]
             [else
-             (set! r-cont (rands-cont r-val (cdr rands) saved-env saved-cont))
+             (set! r-cont (rands-cont r-val (cdr rands) '() saved-env saved-cont))
              (set! r-env saved-env)
              (set! r-expr (car rands))
              (value-of/k)])]
-    [rands-cont [rator rands saved-env saved-cont]
-      (set! r-vals (cons r-val r-vals))
+    [rands-cont [rator rands vals saved-env saved-cont]
+      (set! r-com (cons r-val vals))
       (cond [(null? rands)
              (set! r-cont saved-cont)
-             (set! r-vals (reverse r-vals))
-             (set! r-proc (expval->proc rator))
+             (set! r-val (reverse r-com))
+             (set! r-expr (expval->proc rator))
              (apply-proc/k)]
             [else
-             (set! r-cont (rands-cont rator (cdr rands) saved-env saved-cont))
+             (set! r-cont (rands-cont rator (cdr rands) r-com saved-env saved-cont))
              (set! r-env saved-env)
              (set! r-expr (car rands))
              (value-of/k)])]
@@ -154,10 +150,10 @@
 
 ; apply-proc/k : Proc x ExpVal x Cont -> FinalAnswer
 (define (apply-proc/k)
-  ;(eopl:printf "proc: ~a\nvals: ~a\ncont: ~a\n" r-proc r-vals r-cont)
-  (cases proc r-proc
+  ;(eopl:printf "proc: ~a\nvals: ~a\ncont: ~a\n" r-expr r-val r-cont)
+  (cases proc r-expr
     [procedure [vars body saved-env]
-      (if (pair? vars) (set! r-env (extend-env vars r-vals saved-env)) #f)
+      (if (pair? vars) (set! r-env (extend-env vars r-val saved-env)) #f)
       (set! r-expr body)
       (value-of/k)]))
 

@@ -20,6 +20,7 @@
   [let-cont
     [vars (list-of identifier?)]
     [exps (list-of expression?)]
+    [vals (list-of expval?)]
     [body expression?]
     [env  env?]
     [cont cont?]]
@@ -49,6 +50,7 @@
   [rands-cont
     [rator expval?]
     [exps  (list-of expression?)]
+    [vals (list-of expval?)]
     [env   env?]
     [cont  cont?]]
   )

@@ -9,30 +9,24 @@
 (define r-val  'uninit)
 (define r-proc 'uninit)
 (define r-vals 'uninit)
-(define r-pc   'uninit)
 
 ; FinalAnswer = ExpVal
 (define (run str)
   (value-of-program
     (scan&parse str)))
 
-; trampoline : Bounce -> FinalAnswer
-(define (trampoline pc)
-  (if (expval? pc) pc (trampoline (pc))))
-
 ; value-of-program : Program -> FinalAnswer
 (define (value-of-program pgm)
-  (trampoline
-    (cases program pgm
-      [a-program [exp1]
-        (set! r-cont (end-cont))
-        (set! r-env (init-env))
-        (set! r-expr exp1)
-        (value-of/k)])))
+  (cases program pgm
+    [a-program [exp1]
+      (set! r-cont (end-cont))
+      (set! r-env (init-env))
+      (set! r-expr exp1)
+      (value-of/k)]))
 
-; value-of/k : Exp x Env x Cont -> Bounce
+; value-of/k : Exp x Env x Cont -> FinalAnswer
 (define (value-of/k)
-  ;(eopl:printf "expr: ~a\nenv: ~a\ncont: ~a\n" r-expr r-env r-cont)
+  (eopl:printf "expr: ~a\nenv: ~a\ncont: ~a\n" r-expr r-env r-cont)
   (cases expression r-expr
     [const-exp [num]
       (set! r-val (num-val num))
@@ -81,9 +75,9 @@
       (value-of/k)]
     ))
 
-; apply-cont : Cont x ExpVal -> Bounce
+; apply-cont : Cont x ExpVal -> FinalAnswer
 (define (apply-cont)
-  ;(eopl:printf "cont: ~a\nval: ~a\n" r-cont r-val)
+  (eopl:printf "cont: ~a\nval: ~a\n" r-cont r-val)
   (cases cont r-cont
     [end-cont []
       (begin (eopl:printf "End of computation.~%") r-val)]
@@ -135,11 +129,9 @@
              (set! r-cont saved-cont)
              (set! r-vals '())
              (set! r-proc (expval->proc r-val))
-             (set! r-pc apply-proc/k)
-             r-pc]
+             (apply-proc/k)]
             [else
              (set! r-cont (rands-cont r-val (cdr rands) '() saved-env saved-cont))
-             (set! r-env saved-env)
              (set! r-expr (car rands))
              (value-of/k)])]
     [rands-cont [rator rands vals saved-env saved-cont]
@@ -148,11 +140,9 @@
                (set! r-cont saved-cont)
                (set! r-vals (reverse vals))
                (set! r-proc (expval->proc rator))
-               (set! r-pc (apply-proc/k))
-               r-pc]
+               (apply-proc/k)]
               [else
                (set! r-cont (rands-cont rator (cdr rands) vals saved-env saved-cont))
-               (set! r-env saved-env)
                (set! r-expr (car rands))
                (value-of/k)]))]
     [multi1-cont [exp2 saved-env saved-cont]
@@ -169,20 +159,19 @@
       (report-invalid-cont 'apply-cont cont1 val1)]
     ))
 
-; apply-proc/k : Proc x ExpVal x Cont -> Bounce
+; apply-proc/k : Proc x ExpVals x Cont -> FinalAnswer
 (define (apply-proc/k)
-  ;(eopl:printf "proc: ~a\nvals: ~a\ncont: ~a\n" r-proc r-vals r-cont)
+  (eopl:printf "proc: ~a\nvals: ~a\ncont: ~a\n" r-proc r-vals r-cont)
   (cases proc r-proc
     [procedure [vars body saved-env]
-      (if (pair? vars) (set! r-env (extend-env vars r-vals saved-env)) #f)
+      (if (pair? vars) (set! r-env (extend-env vars r-vals r-env)) #f)
       (set! r-expr body)
       (value-of/k)]))
 
 ;(trace apply-env)
-;(trace apply-proc/k)
-;(trace value-of/k)
-;(trace apply-cont)
-;(trace trampoline)
+(trace apply-proc/k)
+(trace value-of/k)
+(trace apply-cont)
 
 ; res = (num-val 1)
 (define p1
@@ -205,8 +194,9 @@
        f = proc(x y) -(x, y)
    in (f x y)")
 
-; res = (num-val 24)
+; res = (num-val 0) [dynamic binding]
 (define p7
-  "letrec fact-iter(n) = (fact-iter-acc n 1)
-          fact-iter-acc(n a) = if zero?(n) then a else (fact-iter-acc -(n, 1) *(n, a))
-   in (fact-iter 4)")
+  "let x = 1 y = 2
+   in let f = proc() -(y, x)
+      in let x = 2
+         in (f)")

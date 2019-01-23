@@ -1,6 +1,12 @@
 (load "types.rkt")
 
 ; Expression ::= *( Expression , Expression )
+; Expression ::= list( {Expression ,}* )
+; Expression ::= car( Expression )
+; Expression ::= cdr( Expression )
+; Expression ::= null?( Expression )
+; Expression ::= try Expression catch ( Identifier ) Expression
+; Expression ::= raise Expression
 
 (define scanner-spec
   '([whitespace (whitespace) skip]
@@ -19,6 +25,12 @@
     [expression ("letrec" (arbno identifier "(" (arbno identifier) ")" "=" expression)
                  "in" expression) letrec-exp]
     [expression ("*" "(" expression "," expression ")") multi-exp]
+    [expression ("list" "(" (separated-list expression ",") ")") list-exp]
+    [expression ("car" "(" expression ")") car-exp]
+    [expression ("cdr" "(" expression ")") cdr-exp]
+    [expression ("null?" "(" expression ")") null?-exp]
+    [expression ("try" expression "catch" "(" identifier ")" expression) try-exp]
+    [expression ("raise" expression) raise-exp]
     ))
 
 (define scan&parse

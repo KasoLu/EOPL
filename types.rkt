@@ -50,9 +50,27 @@
   [rands-cont
     [rator expval?]
     [exps  (list-of expression?)]
-    [vals (list-of expval?)]
+    [vals  (list-of expval?)]
     [env   env?]
     [cont  cont?]]
+  [list-cont
+    [exps (list-of expression?)]
+    [vals (list-of expval?)]
+    [env  env?]
+    [cont cont?]]
+  [car-cont
+    [cont cont?]]
+  [cdr-cont
+    [cont cont?]]
+  [null?-cont
+    [cont cont?]]
+  [try-cont
+    [var identifier?]
+    [handler-exp expression?]
+    [env env?]
+    [cont cont?]]
+  [raise1-cont
+    [cont cont?]]
   )
 
 (define-datatype proc proc?
@@ -66,6 +84,7 @@
   [num-val  [num  number?]]
   [bool-val [bool boolean?]]
   [proc-val [proc proc?]]
+  [list-val [lst  list?]]
   )
 
 (define-datatype program program?
@@ -104,5 +123,19 @@
     [varss  (list-of (list-of identifier?))]
     [bodies (list-of expression?)]
     [exp1   expression?]]
+  [list-exp
+    [exps (list-of expression?)]]
+  [car-exp
+    [exp1 expression?]]
+  [cdr-exp
+    [exp1 expression?]]
+  [null?-exp
+    [exp1 expression?]]
+  [try-exp
+    [exp1 expression?]
+    [var  identifier?]
+    [handler-exp expression?]]
+  [raise-exp
+    [exp1 expression?]]
   )
 

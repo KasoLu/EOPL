@@ -26,103 +26,103 @@
       (value-of/k letrec-body (extend-env-rec names varss bodies env) cont)]
     [zero?-exp [exp1]
       (value-of/k exp1 env
-        (zero?-cont cont))]
+        (zero?-cont cont (found-try-cont cont)))]
     [let-exp [vars exps body]
       (if (null? vars)
         (value-of/k body env cont)
         (value-of/k (car exps) env
-          (let-cont vars (cdr exps) '() body env cont)))]
+          (let-cont vars (cdr exps) '() body env cont (found-try-cont cont))))]
     [if-exp [exp1 exp2 exp3]
       (value-of/k exp1 env
-        (if-test-cont exp2 exp3 env cont))]
+        (if-test-cont exp2 exp3 env cont (found-try-cont cont)))]
     [diff-exp [exp1 exp2]
       (value-of/k exp1 env
-        (diff1-cont exp2 env cont))]
+        (diff1-cont exp2 env cont (found-try-cont cont)))]
     [multi-exp [exp1 exp2]
       (value-of/k exp1 env
-        (multi1-cont exp2 env cont))]
+        (multi1-cont exp2 env cont (found-try-cont cont)))]
     [call-exp [rator rands]
       (value-of/k rator env
-        (rator-cont rands env cont))]
+        (rator-cont rands env cont (found-try-cont cont)))]
     [list-exp [exps]
       (if (null? exps)
         (apply-cont cont (list-val '()))
         (value-of/k (car exps) env
-          (list-cont (cdr exps) '() env cont)))]
+          (list-cont (cdr exps) '() env cont (found-try-cont cont))))]
     [car-exp [exp1]
       (value-of/k exp1 env
-        (car-cont cont))]
+        (car-cont cont (found-try-cont cont)))]
     [cdr-exp [exp1]
       (value-of/k exp1 env
-        (cdr-cont cont))]
+        (cdr-cont cont (found-try-cont cont)))]
     [null?-exp [exp1]
       (value-of/k exp1 env
-        (null?-cont cont))]
+        (null?-cont cont (found-try-cont cont)))]
     [try-exp [exp1 var handler-exp]
       (value-of/k exp1 env
-        (try-cont var handler-exp env cont))]
+        (try-cont var handler-exp env cont (found-try-cont cont)))]
     [raise-exp [exp1]
       (value-of/k exp1 env
-        (raise1-cont cont))]
+        (raise1-cont cont (found-try-cont cont)))]
     ))
 
 ; apply-cont : Cont x ExpVal -> ExpVal
 (define (apply-cont cont1 val)
-  (cases cont cont1
+  (cases continuation cont1
     [end-cont []
       (begin (eopl:printf "End of computation.~%") val)]
-    [zero?-cont [saved-cont]
+    [zero?-cont [saved-cont try-cont]
       (apply-cont saved-cont
         (bool-val (zero? (expval->num val))))]
-    [let-cont [vars exps vals body saved-env saved-cont]
+    [let-cont [vars exps vals body saved-env saved-cont try-cont]
       (let ([vals (cons val vals)])
         (if (null? exps)
           (value-of/k body (extend-env vars (reverse vals) saved-env) saved-cont)
           (value-of/k (car exps) saved-env
-            (let-cont vars (cdr exps) vals body saved-env saved-cont))))]
-    [if-test-cont [exp2 exp3 saved-env saved-cont]
+            (let-cont vars (cdr exps) vals body saved-env saved-cont try-cont))))]
+    [if-test-cont [exp2 exp3 saved-env saved-cont try-cont]
       (if (expval->bool val)
         (value-of/k exp2 saved-env saved-cont)
         (value-of/k exp3 saved-env saved-cont))]
-    [diff1-cont [exp2 saved-env saved-cont]
+    [diff1-cont [exp2 saved-env saved-cont try-cont]
       (value-of/k exp2 saved-env
-        (diff2-cont val saved-cont))]
-    [diff2-cont [val1 saved-cont]
+        (diff2-cont val saved-cont try-cont))]
+    [diff2-cont [val1 saved-cont try-cont]
       (let ([num1 (expval->num val1)] [num2 (expval->num val)])
         (apply-cont saved-cont (num-val (- num1 num2))))]
-    [multi1-cont [exp2 saved-env saved-cont]
+    [multi1-cont [exp2 saved-env saved-cont try-cont]
       (value-of/k exp2 saved-env
-        (multi2-cont val saved-cont))]
-    [multi2-cont [val1 saved-cont]
+        (multi2-cont val saved-cont try-cont))]
+    [multi2-cont [val1 saved-cont try-cont]
       (let ([num1 (expval->num val1)] [num2 (expval->num val)])
         (apply-cont saved-cont (num-val (* num1 num2))))]
-    [rator-cont [rands saved-env saved-cont]
+    [rator-cont [rands saved-env saved-cont try-cont]
       (if (null? rands)
         (apply-proc/k (expval->proc val) '() saved-cont)
         (value-of/k (car rands) saved-env
-          (rands-cont val (cdr rands) '() saved-env saved-cont)))]
-    [rands-cont [rator rands vals saved-env saved-cont]
+          (rands-cont val (cdr rands) '() saved-env saved-cont try-cont)))]
+    [rands-cont [rator rands vals saved-env saved-cont try-cont]
       (let ([vals (cons val vals)])
         (if (null? rands)
           (apply-proc/k (expval->proc rator) (reverse vals) saved-cont)
           (value-of/k (car rands) saved-env
-            (rands-cont rator (cdr rands) vals saved-env saved-cont))))]
-    [list-cont [exps vals saved-env saved-cont]
+            (rands-cont rator (cdr rands) vals saved-env saved-cont try-cont))))]
+    [list-cont [exps vals saved-env saved-cont try-cont]
       (let ([vals (cons val vals)])
         (if (null? exps)
           (apply-cont saved-cont (list-val (reverse vals)))
           (value-of/k (car exps) saved-env
-            (list-cont (cdr exps) vals saved-env saved-cont))))]
-    [car-cont [saved-cont]
+            (list-cont (cdr exps) vals saved-env saved-cont try-cont))))]
+    [car-cont [saved-cont try-cont]
       (apply-cont saved-cont (car (expval->list val)))]
-    [cdr-cont [saved-cont]
+    [cdr-cont [saved-cont try-cont]
       (apply-cont saved-cont (list-val (cdr (expval->list val))))]
-    [null?-cont [saved-cont]
+    [null?-cont [saved-cont try-cont]
       (apply-cont saved-cont (bool-val (null? (expval->list val))))]
-    [try-cont [var handler-exp env saved-cont]
+    [try-cont [var handler-exp env saved-cont last-cont]
       (apply-cont saved-cont val)]
-    [raise1-cont [saved-cont]
-      (apply-handler val saved-cont)]
+    [raise1-cont [saved-cont try-cont]
+      (apply-handler val try-cont)]
     [else
       (report-invalid-cont 'apply-cont cont1 val1)]
     ))
@@ -134,39 +134,59 @@
 
 ; apply-handler : ExpVal x Cont -> ExpVal
 (define (apply-handler val cont1)
-  (cases cont cont1
-    [try-cont [var handler-exp saved-env saved-cont]
+  (cases continuation cont1
+    [try-cont [var handler-exp saved-env saved-cont last-cont]
       (value-of/k handler-exp (extend-env (list var) (list val) saved-env) saved-cont)]
     [end-cont []
       (report-uncaught-exception)]
-    [zero?-cont [saved-cont]
-      (apply-handler val saved-cont)]
-    [let-cont [vars exps vals body saved-env saved-cont]
-      (apply-handler val saved-cont)]
-    [if-test-cont [exp2 exp3 saved-env saved-cont]
-      (apply-handler val saved-cont)]
-    [diff1-cont [exp2 saved-env saved-cont]
-      (apply-handler val saved-cont)]
-    [diff2-cont [val1 saved-cont]
-      (apply-handler val saved-cont)]
-    [multi1-cont [exp2 saved-env saved-cont]
-      (apply-handler val saved-cont)]
-    [multi2-cont [val1 saved-cont]
-      (apply-handler val saved-cont)]
-    [rator-cont [rands saved-env saved-cont]
-      (apply-handler val saved-cont)]
-    [rands-cont [rator rands vals saved-env saved-cont]
-      (apply-handler val saved-cont)]
-    [list-cont [exps vals saved-env saved-cont]
-      (apply-handler val saved-cont)]
-    [car-cont [saved-cont]
-      (apply-handler val saved-cont)]
-    [cdr-cont [saved-cont]
-      (apply-handler val saved-cont)]
-    [null?-cont [saved-cont]
-      (apply-handler val saved-cont)]
-    [raise1-cont [saved-cont]
-      (apply-handler val saved-cont)]
+    [zero?-cont [saved-cont try-cont]
+      (apply-handler val try-cont)]
+    [let-cont [vars exps vals body saved-env saved-cont try-cont]
+      (apply-handler val try-cont)]
+    [if-test-cont [exp2 exp3 saved-env saved-cont try-cont]
+      (apply-handler val try-cont)]
+    [diff1-cont [exp2 saved-env saved-cont try-cont]
+      (apply-handler val try-cont)]
+    [diff2-cont [val1 saved-cont try-cont]
+      (apply-handler val try-cont)]
+    [multi1-cont [exp2 saved-env saved-cont try-cont]
+      (apply-handler val try-cont)]
+    [multi2-cont [val1 saved-cont try-cont]
+      (apply-handler val try-cont)]
+    [rator-cont [rands saved-env saved-cont try-cont]
+      (apply-handler val try-cont)]
+    [rands-cont [rator rands vals saved-env saved-cont try-cont]
+      (apply-handler val try-cont)]
+    [list-cont [exps vals saved-env saved-cont try-cont]
+      (apply-handler val try-cont)]
+    [car-cont [saved-cont try-cont]
+      (apply-handler val try-cont)]
+    [cdr-cont [saved-cont try-cont]
+      (apply-handler val try-cont)]
+    [null?-cont [saved-cont try-cont]
+      (apply-handler val try-cont)]
+    [raise1-cont [saved-cont try-cont]
+      (apply-handler val try-cont)]
+    ))
+
+(define (found-try-cont cont)
+  (cases continuation cont
+    [try-cont [var handler-exp saved-env saved-cont last-cont] cont]
+    [end-cont [] cont]
+    [zero?-cont [saved-cont try-cont] try-cont]
+    [let-cont [vars exps vals body saved-env saved-cont try-cont] try-cont]
+    [if-test-cont [exp2 exp3 saved-env saved-cont try-cont] try-cont]
+    [diff1-cont [exp2 saved-env saved-cont try-cont] try-cont]
+    [diff2-cont [val1 saved-cont try-cont] try-cont]
+    [multi1-cont [exp2 saved-env saved-cont try-cont] try-cont]
+    [multi2-cont [val1 saved-cont try-cont] try-cont]
+    [rator-cont [rands saved-env saved-cont try-cont] try-cont]
+    [rands-cont [rator rands vals saved-env saved-cont try-cont] try-cont]
+    [list-cont [exps vals saved-env saved-cont try-cont] try-cont]
+    [car-cont [saved-cont try-cont] try-cont]
+    [cdr-cont [saved-cont try-cont] try-cont]
+    [null?-cont [saved-cont try-cont] try-cont]
+    [raise1-cont [saved-cont try-cont] try-cont]
     ))
 
 ;(trace apply-env)
@@ -201,3 +221,13 @@
                       try (inner lst)
                       catch (x) -1
    in ((index 5) list(2, 3))")
+
+; res = (num-val 30)
+(define p4
+  "try
+     list(
+       try 10 catch(e2) e2,
+       try raise 30 catch(e3) raise e3
+     )
+   catch(e1)
+     e1")

@@ -13,64 +13,79 @@
     [env    env?]]
   )
 
-(define-datatype cont cont?
+(define-datatype continuation cont?
   [end-cont]
   [zero?-cont
-    [cont cont?]]
+    [cont cont?]
+    [try-cont cont?]]
   [let-cont
     [vars (list-of identifier?)]
     [exps (list-of expression?)]
     [vals (list-of expval?)]
     [body expression?]
     [env  env?]
-    [cont cont?]]
+    [cont cont?]
+    [try-cont cont?]]
   [if-test-cont
     [exp2 expression?]
     [exp3 expression?]
     [env  env?]
-    [cont cont?]]
+    [cont cont?]
+    [try-cont cont?]]
   [diff1-cont
     [exp2 expression?]
     [env  env?]
-    [cont cont?]]
+    [cont cont?]
+    [try-cont cont?]]
   [diff2-cont
     [val1 expval?]
-    [cont cont?]]
+    [cont cont?]
+    [try-cont cont?]]
   [multi1-cont
     [exp2 expression?]
     [env  env?]
-    [cont cont?]]
+    [cont cont?]
+    [try-cont cont?]]
   [multi2-cont
     [val1 expval?]
-    [cont cont?]]
+    [cont cont?]
+    [try-cont cont?]]
   [rator-cont
     [exps (list-of expression?)]
     [env  env?]
-    [cont cont?]]
+    [cont cont?]
+    [try-cont cont?]]
   [rands-cont
     [rator expval?]
     [exps  (list-of expression?)]
     [vals  (list-of expval?)]
     [env   env?]
-    [cont  cont?]]
+    [cont  cont?]
+    [try-cont cont?]]
   [list-cont
     [exps (list-of expression?)]
     [vals (list-of expval?)]
     [env  env?]
-    [cont cont?]]
+    [cont cont?]
+    [try-cont cont?]]
   [car-cont
-    [cont cont?]]
+    [cont cont?]
+    [try-cont cont?]]
   [cdr-cont
-    [cont cont?]]
+    [cont cont?]
+    [try-cont cont?]]
   [null?-cont
-    [cont cont?]]
+    [cont cont?]
+    [try-cont cont?]]
   [try-cont
     [var identifier?]
     [handler-exp expression?]
     [env env?]
-    [cont cont?]]
+    [cont cont?]
+    [last-cont cont?]]
   [raise1-cont
-    [cont cont?]]
+    [cont cont?]
+    [try-cont cont?]]
   )
 
 (define-datatype proc proc?

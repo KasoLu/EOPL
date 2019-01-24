@@ -103,7 +103,7 @@
       (cases proc (expval->proc val)
         [procedure [vars body saved-env2]
           (cond [(not (= (length vars) (length rands)))
-                 (apply-handler (num-val -1) saved-cont)]
+                 (apply-handler (num-val -1) saved-cont saved-cont)]
                 [(null? rands)
                  (value-of/k body saved-env2 saved-cont)]
                 [else
@@ -132,58 +132,58 @@
     [try-cont [var handler-exp env saved-cont]
       (apply-cont saved-cont val)]
     [raise1-cont [saved-cont]
-      (apply-handler val saved-cont)]
+      (apply-handler val saved-cont saved-cont)]
     [div1-cont [exp2 saved-env saved-cont]
       (value-of/k exp2 saved-env
         (div2-cont val saved-cont))]
     [div2-cont [val1 saved-cont]
       (let ([num1 (expval->num val1)] [num2 (expval->num val)])
         (if (zero? num2)
-          (apply-handler (num-val -1) saved-cont)
+          (apply-handler (num-val -1) saved-cont saved-cont)
           (apply-cont saved-cont (num-val (/ num1 num2)))))]
     [else
       (report-invalid-cont 'apply-cont cont1 val1)]
     ))
 
 ; apply-handler : ExpVal x Cont -> ExpVal
-(define (apply-handler val cont1)
+(define (apply-handler val cont1 curr-cont)
   (cases cont cont1
     [try-cont [var handler-exp saved-env saved-cont]
-      (value-of/k handler-exp (extend-env (list var) (list val) saved-env) saved-cont)]
+      (value-of/k handler-exp (extend-env (list var) (list val) saved-env) curr-cont)]
     [end-cont []
       (report-uncaught-exception)]
     [zero?-cont [saved-cont]
-      (apply-handler val saved-cont)]
+      (apply-handler val saved-cont curr-cont)]
     [let-cont [vars exps vals body saved-env saved-cont]
-      (apply-handler val saved-cont)]
+      (apply-handler val saved-cont curr-cont)]
     [if-test-cont [exp2 exp3 saved-env saved-cont]
-      (apply-handler val saved-cont)]
+      (apply-handler val saved-cont curr-cont)]
     [diff1-cont [exp2 saved-env saved-cont]
-      (apply-handler val saved-cont)]
+      (apply-handler val saved-cont curr-cont)]
     [diff2-cont [val1 saved-cont]
-      (apply-handler val saved-cont)]
+      (apply-handler val saved-cont curr-cont)]
     [multi1-cont [exp2 saved-env saved-cont]
-      (apply-handler val saved-cont)]
+      (apply-handler val saved-cont curr-cont)]
     [multi2-cont [val1 saved-cont]
-      (apply-handler val saved-cont)]
+      (apply-handler val saved-cont curr-cont)]
     [rator-cont [rands saved-env saved-cont]
-      (apply-handler val saved-cont)]
+      (apply-handler val saved-cont curr-cont)]
     [rands-cont [rator rands vals saved-env saved-cont]
-      (apply-handler val saved-cont)]
+      (apply-handler val saved-cont curr-cont)]
     [list-cont [exps vals saved-env saved-cont]
-      (apply-handler val saved-cont)]
+      (apply-handler val saved-cont curr-cont)]
     [car-cont [saved-cont]
-      (apply-handler val saved-cont)]
+      (apply-handler val saved-cont curr-cont)]
     [cdr-cont [saved-cont]
-      (apply-handler val saved-cont)]
+      (apply-handler val saved-cont curr-cont)]
     [null?-cont [saved-cont]
-      (apply-handler val saved-cont)]
+      (apply-handler val saved-cont curr-cont)]
     [raise1-cont [saved-cont]
-      (apply-handler val saved-cont)]
+      (apply-handler val saved-cont curr-cont)]
     [div1-cont [exp2 saved-env saved-cont]
-      (apply-handler val saved-cont)]
+      (apply-handler val saved-cont curr-cont)]
     [div2-cont [val1 saved-cont]
-      (apply-handler val saved-cont)]
+      (apply-handler val saved-cont curr-cont)]
     ))
 
 ;(trace apply-env)
@@ -233,3 +233,11 @@
      /(10, 0)
    catch(e)
      e")
+
+; res = (num-val 30)
+(define p6
+  "try
+     let x = 10 y = raise 20 in y
+   catch(e)
+     -(e, -10)")
+

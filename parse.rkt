@@ -7,6 +7,7 @@
 ; Expression ::= null?( Expression )
 ; Expression ::= try Expression catch ( Identifier ) Expression
 ; Expression ::= raise Expression
+; Expression ::= /( Expression , Expression )
 
 (define scanner-spec
   '([whitespace (whitespace) skip]
@@ -31,6 +32,7 @@
     [expression ("null?" "(" expression ")") null?-exp]
     [expression ("try" expression "catch" "(" identifier ")" expression) try-exp]
     [expression ("raise" expression) raise-exp]
+    [expression ("/" "(" expression "," expression ")") div-exp]
     ))
 
 (define scan&parse

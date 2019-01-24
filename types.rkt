@@ -71,6 +71,13 @@
     [cont cont?]]
   [raise1-cont
     [cont cont?]]
+  [div1-cont
+    [exp2 expression?]
+    [env  env?]
+    [cont cont?]]
+  [div2-cont
+    [val1 expval?]
+    [cont cont?]]
   )
 
 (define-datatype proc proc?
@@ -137,5 +144,8 @@
     [handler-exp expression?]]
   [raise-exp
     [exp1 expression?]]
+  [div-exp
+    [exp1 expression?]
+    [exp2 expression?]]
   )
 

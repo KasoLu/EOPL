@@ -64,6 +64,9 @@
     [raise-exp [exp1]
       (value-of/k exp1 env
         (raise1-cont cont))]
+    [div-exp [exp1 exp2]
+      (value-of/k exp1 env
+        (div1-cont exp2 env cont))]
     ))
 
 ; apply-cont : Cont x ExpVal -> ExpVal
@@ -130,6 +133,14 @@
       (apply-cont saved-cont val)]
     [raise1-cont [saved-cont]
       (apply-handler val saved-cont)]
+    [div1-cont [exp2 saved-env saved-cont]
+      (value-of/k exp2 saved-env
+        (div2-cont val saved-cont))]
+    [div2-cont [val1 saved-cont]
+      (let ([num1 (expval->num val1)] [num2 (expval->num val)])
+        (if (zero? num2)
+          (apply-handler (num-val -1) saved-cont)
+          (apply-cont saved-cont (num-val (/ num1 num2)))))]
     [else
       (report-invalid-cont 'apply-cont cont1 val1)]
     ))
@@ -168,6 +179,10 @@
     [null?-cont [saved-cont]
       (apply-handler val saved-cont)]
     [raise1-cont [saved-cont]
+      (apply-handler val saved-cont)]
+    [div1-cont [exp2 saved-env saved-cont]
+      (apply-handler val saved-cont)]
+    [div2-cont [val1 saved-cont]
       (apply-handler val saved-cont)]
     ))
 
@@ -209,5 +224,12 @@
   "let f = proc(x y z) *(x, *(y, z)) in 
    try
      (f 1 2)
+   catch(e)
+     e")
+
+; res = (num-val -1)
+(define p5
+  "try
+     /(10, 0)
    catch(e)
      e")

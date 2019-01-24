@@ -71,9 +71,6 @@
     [cont cont?]]
   [raise1-cont
     [cont cont?]]
-  [excp1-cont
-    [curr-cont cont?]
-    [rest-cont cont?]]
   )
 
 (define-datatype proc proc?

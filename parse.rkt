@@ -34,7 +34,6 @@
     [expression ("try" expression "catch" "(" identifier ")" expression) try-exp]
     [expression ("raise" expression) raise-exp]
     [expression ("letcc" identifier "in" expression) letcc-exp]
-    [expression ("throw" expression "to" expression) throw-exp]
     ))
 
 (define scan&parse

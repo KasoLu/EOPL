@@ -65,10 +65,8 @@
       (value-of/k exp1 env
         (raise1-cont cont))]
     [letcc-exp [var1 exp1]
-      (value-of/k exp1 (extend-env (list var1) (list (cont-val cont)) env) cont)]
-    [throw-exp [exp1 exp2]
-      (value-of/k exp1 env
-        (throw1-cont exp2 env cont))]
+      (let ([ext-env (extend-env (list var1) (list (proc-val (cc-proc cont))) env)])
+        (value-of/k exp1 ext-env cont))]
     ))
 
 ; apply-cont : Cont x ExpVal -> ExpVal
@@ -128,12 +126,6 @@
       (apply-cont saved-cont val)]
     [raise1-cont [saved-cont]
       (apply-handler val saved-cont)]
-    [throw1-cont [exp2 saved-env saved-cont]
-      (value-of/k exp2 saved-env
-        (throw2-cont val saved-cont))]
-    [throw2-cont [val1 saved-cont]
-      (let ([jump-cont (expval->cont val)])
-        (apply-cont jump-cont val1))]
     [else
       (report-invalid-cont 'apply-cont cont1 val1)]
     ))
@@ -141,7 +133,9 @@
 (define (apply-proc/k proc1 vals cont)
   (cases proc proc1
     [procedure [vars body saved-env]
-      (value-of/k body (extend-env vars vals saved-env) cont)]))
+      (value-of/k body (extend-env vars vals saved-env) cont)]
+    [cc-proc [saved-cont]
+      (apply-cont saved-cont (car vals))]))
 
 ; apply-handler : ExpVal x Cont -> ExpVal
 (define (apply-handler val cont1)
@@ -177,10 +171,6 @@
     [null?-cont [saved-cont]
       (apply-handler val saved-cont)]
     [raise1-cont [saved-cont]
-      (apply-handler val saved-cont)]
-    [throw1-cont [exp2 saved-env saved-cont]
-      (apply-handler val saved-cont)]
-    [throw2-cont [val1 saved-cont]
       (apply-handler val saved-cont)]
     ))
 
@@ -221,11 +211,11 @@
 (define p4
   "letcc end
    in letrec f(x) = if zero?(x) 
-                      then throw 100 to end
+                      then (end 100)
                       else (f -(x, 1))
       in -((f 1), -10)")
 
 ; res = (num-val 10)
 (define p5
-  "let x = letcc cc in -(100, throw 10 to cc)
+  "let x = letcc cc in -(100, (cc 10))
    in x")

@@ -7,8 +7,7 @@
 ; Expression ::= null?( Expression )
 ; Expression ::= try Expression catch ( Identifier ) Expression
 ; Expression ::= raise Expression
-; Expression ::= letcc Identifier in Expression
-; Expression ::= throw Expression to Expression
+; expression ::= cwcc Expression
 
 (define scanner-spec
   '([whitespace (whitespace) skip]
@@ -34,6 +33,8 @@
     [expression ("try" expression "catch" "(" identifier ")" expression) try-exp]
     [expression ("raise" expression) raise-exp]
     [expression ("letcc" identifier "in" expression) letcc-exp]
+    [expression ("throw" expression "to" expression) throw-exp]
+    [expression ("cwcc" expression) cwcc-exp]
     ))
 
 (define scan&parse

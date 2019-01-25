@@ -71,6 +71,8 @@
     [cont cont?]]
   [raise1-cont
     [cont cont?]]
+  [cwcc-cont
+    [cont cont?]]
   )
 
 (define-datatype proc proc?
@@ -87,7 +89,6 @@
   [bool-val [val boolean?]]
   [proc-val [val proc?]]
   [list-val [val list?]]
-  [cont-val [val cont?]]
   )
 
 (define-datatype program program?
@@ -140,8 +141,7 @@
     [handler-exp expression?]]
   [raise-exp
     [exp1 expression?]]
-  [letcc-exp
-    [var1 identifier?]
-    [exp2 expression?]]
+  [cwcc-exp
+    [exp1 expression?]]
   )
 

@@ -64,9 +64,9 @@
     [raise-exp [exp1]
       (value-of/k exp1 env
         (raise1-cont cont))]
-    [letcc-exp [var1 exp1]
-      (let ([ext-env (extend-env (list var1) (list (proc-val (cc-proc cont))) env)])
-        (value-of/k exp1 ext-env cont))]
+    [cwcc-exp [exp1]
+      (value-of/k exp1 env
+        (cwcc-cont cont))]
     ))
 
 ; apply-cont : Cont x ExpVal -> ExpVal
@@ -126,6 +126,9 @@
       (apply-cont saved-cont val)]
     [raise1-cont [saved-cont]
       (apply-handler val saved-cont)]
+    [cwcc-cont [saved-cont]
+      (let ([proc (expval->proc val)])
+        (apply-proc/k proc (list (proc-val (cc-proc saved-cont))) saved-cont))]
     [else
       (report-invalid-cont 'apply-cont cont1 val1)]
     ))
@@ -172,6 +175,8 @@
       (apply-handler val saved-cont)]
     [raise1-cont [saved-cont]
       (apply-handler val saved-cont)]
+    [cwcc-cont [saved-cont]
+      (apply-handler val saved-cont)]
     ))
 
 ;(trace apply-env)
@@ -209,13 +214,5 @@
 
 ; res = (num-val 10)
 (define p4
-  "letcc end
-   in letrec f(x) = if zero?(x) 
-                      then (end 100)
-                      else (f -(x, 1))
-      in -((f 1), -10)")
-
-; res = (num-val 10)
-(define p5
-  "let x = letcc cc in -(100, (cc 10))
+  "let x = cwcc proc(ret) -(100, (ret 10))
    in x")

@@ -13,10 +13,6 @@
     [env    env?]]
   )
 
-(define-datatype keyword keyword?
-  [continue-keyword]
-  [break-keyword])
-
 (define-datatype cont cont?
   [end-cont]
   [zero?-cont
@@ -74,10 +70,6 @@
     [env env?]
     [cont cont?]]
   [raise1-cont
-    [key1 keyword?]
-    [cont cont?]]
-  [continue-cont
-    [try  cont?]
     [cont cont?]]
   )
 
@@ -89,11 +81,10 @@
   )
 
 (define-datatype expval expval?
-  [num-val  [val number?]]
-  [bool-val [val boolean?]]
-  [proc-val [val proc?]]
-  [list-val [lst list?]]
-  [cont-val [val cont?]]
+  [num-val  [num  number?]]
+  [bool-val [bool boolean?]]
+  [proc-val [proc proc?]]
+  [list-val [lst  list?]]
   )
 
 (define-datatype program program?
@@ -145,7 +136,6 @@
     [var  identifier?]
     [handler-exp expression?]]
   [raise-exp
-    [exp1 expression?]
-    [key1 keyword?]]
+    [exp1 expression?]]
   )
 

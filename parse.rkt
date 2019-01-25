@@ -6,8 +6,7 @@
 ; Expression ::= cdr( Expression )
 ; Expression ::= null?( Expression )
 ; Expression ::= try Expression catch ( Identifier ) Expression
-; Expression ::= raise Expression Keyword
-; Keyword    ::= continue | break
+; Expression ::= raise Expression
 
 (define scanner-spec
   '([whitespace (whitespace) skip]
@@ -31,9 +30,7 @@
     [expression ("cdr" "(" expression ")") cdr-exp]
     [expression ("null?" "(" expression ")") null?-exp]
     [expression ("try" expression "catch" "(" identifier ")" expression) try-exp]
-    [expression ("raise" expression keyword) raise-exp]
-    [keyword ("continue") continue-keyword]
-    [keyword ("break") break-keyword]
+    [expression ("raise" expression) raise-exp]
     ))
 
 (define scan&parse

@@ -64,6 +64,9 @@
     [raise-exp [exp1]
       (value-of/k exp1 env
         (raise1-cont cont))]
+    [cwcc-exp [exp1]
+      (value-of/k exp1 env
+        (cwcc-cont cont))]
     ))
 
 ; apply-cont : Cont x ExpVal -> ExpVal
@@ -123,6 +126,9 @@
       (apply-cont saved-cont val)]
     [raise1-cont [saved-cont]
       (apply-handler val saved-cont)]
+    [cwcc-cont [saved-cont]
+      (let ([proc (expval->proc val)])
+        (apply-proc/k proc (list (proc-val (cc-proc saved-cont))) saved-cont))]
     [else
       (report-invalid-cont 'apply-cont cont1 val1)]
     ))
@@ -130,7 +136,9 @@
 (define (apply-proc/k proc1 vals cont)
   (cases proc proc1
     [procedure [vars body saved-env]
-      (value-of/k body (extend-env vars vals saved-env) cont)]))
+      (value-of/k body (extend-env vars vals saved-env) cont)]
+    [cc-proc [saved-cont]
+      (apply-cont saved-cont (car vals))]))
 
 ; apply-handler : ExpVal x Cont -> ExpVal
 (define (apply-handler val cont1)
@@ -167,6 +175,8 @@
       (apply-handler val saved-cont)]
     [raise1-cont [saved-cont]
       (apply-handler val saved-cont)]
+    [cwcc-cont [saved-cont]
+      (apply-handler val saved-cont)]
     ))
 
 ;(trace apply-env)
@@ -201,3 +211,8 @@
                       try (inner lst)
                       catch (x) -1
    in ((index 5) list(2, 3))")
+
+; res = (num-val 10)
+(define p4
+  "let x = cwcc proc(ret) -(100, (ret 10))
+   in x")

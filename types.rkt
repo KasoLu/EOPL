@@ -71,6 +71,8 @@
     [cont cont?]]
   [raise1-cont
     [cont cont?]]
+  [cwcc-cont
+    [cont cont?]]
   )
 
 (define-datatype proc proc?
@@ -78,13 +80,15 @@
     [vars (list-of identifier?)]
     [body expression?]
     [env  env?]]
+  [cc-proc
+    [cont cont?]]
   )
 
 (define-datatype expval expval?
-  [num-val  [num  number?]]
-  [bool-val [bool boolean?]]
-  [proc-val [proc proc?]]
-  [list-val [lst  list?]]
+  [num-val  [val number?]]
+  [bool-val [val boolean?]]
+  [proc-val [val proc?]]
+  [list-val [val list?]]
   )
 
 (define-datatype program program?
@@ -136,6 +140,8 @@
     [var  identifier?]
     [handler-exp expression?]]
   [raise-exp
+    [exp1 expression?]]
+  [cwcc-exp
     [exp1 expression?]]
   )
 

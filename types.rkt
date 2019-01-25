@@ -71,6 +71,13 @@
     [cont cont?]]
   [raise1-cont
     [cont cont?]]
+  [throw1-cont
+    [exp2 expression?]
+    [env  env?]
+    [cont cont?]]
+  [throw2-cont
+    [val1 expval?]
+    [cont cont?]]
   )
 
 (define-datatype proc proc?
@@ -81,10 +88,11 @@
   )
 
 (define-datatype expval expval?
-  [num-val  [num  number?]]
-  [bool-val [bool boolean?]]
-  [proc-val [proc proc?]]
-  [list-val [lst  list?]]
+  [num-val  [val number?]]
+  [bool-val [val boolean?]]
+  [proc-val [val proc?]]
+  [list-val [val list?]]
+  [cont-val [val cont?]]
   )
 
 (define-datatype program program?
@@ -137,5 +145,11 @@
     [handler-exp expression?]]
   [raise-exp
     [exp1 expression?]]
+  [letcc-exp
+    [var1 identifier?]
+    [exp2 expression?]]
+  [throw-exp
+    [exp1 expression?]
+    [exp2 expression?]]
   )
 

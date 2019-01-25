@@ -44,4 +44,8 @@
   (cases expval val
     [list-val [lst] lst]
     [else (report-expval-extractor-error 'list val)]))
+(define (expval->cont val)
+  (cases expval val
+    [cont-val [cont] cont]
+    [else (report-expval-extractor-error 'cont val)]))
 

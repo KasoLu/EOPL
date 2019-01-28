@@ -69,9 +69,10 @@
 
 ; apply-cont : Cont x ExpVal -> FinalAnswer
 (define (apply-cont cont1 val)
+  ;(eopl:printf "The-remain-time: ~a\n" the-time-remaining)
   (if (time-expired?)
     (begin 
-      (place-on-ready-queue! (lambda () (apply-cont cont1 val)))
+      (place-on-ready-queue! (lambda () (apply-cont cont1 val)) (time-max-slice))
       (run-next-thread))
     (begin 
       (decrement-timer!)
@@ -124,7 +125,8 @@
           (let ([proc1 (expval->proc val)])
             (place-on-ready-queue!
               (lambda ()
-                (apply-proc/k proc1 (list (newref (num-val 28))) (end-subthread-cont))))
+                (apply-proc/k proc1 (list (newref (num-val 28))) (end-subthread-cont)))
+              (time-max-slice))
             (apply-cont saved-cont (num-val 73)))]
         [wait-cont [saved-cont]
           (wait-for-mutex
@@ -135,7 +137,7 @@
             (expval->mutex val)
             (lambda () (apply-cont saved-cont (num-val 53))))]
         [yield-cont [saved-cont]
-          (place-on-ready-queue! (lambda () (apply-cont saved-cont val)))
+          (place-on-ready-queue! (lambda () (apply-cont saved-cont val)) (time-remaining))
           (run-next-thread)]
         [print-cont [saved-cont]
           (eopl:printf "~a\n" val)

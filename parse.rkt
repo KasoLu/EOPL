@@ -5,6 +5,8 @@
 ; Expression ::= mutex( )
 ; Expression ::= wait( Expression )
 ; Expression ::= signal( Expression )
+; Expression ::= yield
+; Expression ::= print( Expression )
 
 (define scanner-spec
   '([whitespace (whitespace) skip]
@@ -28,6 +30,8 @@
     [expression ("mutex" "(" ")") mutex-exp]
     [expression ("wait" "(" expression ")") wait-exp]
     [expression ("signal" "(" expression ")") signal-exp]
+    [expression ("yield") yield-exp]
+    [expression ("print" "(" expression ")") print-exp]
     ))
 
 (define scan&parse

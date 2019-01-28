@@ -60,6 +60,11 @@
     [signal-exp [exp1]
       (value-of/k exp1 env
         (signal-cont cont))]
+    [yield-exp []
+      (apply-cont (yield-cont cont) (num-val 99))]
+    [print-exp [exp1]
+      (value-of/k exp1 env
+        (print-cont cont))]
     ))
 
 ; apply-cont : Cont x ExpVal -> FinalAnswer
@@ -129,6 +134,12 @@
           (signal-mutex
             (expval->mutex val)
             (lambda () (apply-cont saved-cont (num-val 53))))]
+        [yield-cont [saved-cont]
+          (place-on-ready-queue! (lambda () (apply-cont saved-cont val)))
+          (run-next-thread)]
+        [print-cont [saved-cont]
+          (eopl:printf "~a\n" val)
+          (apply-cont saved-cont (num-val 100))]
         ))))
 
 ; apply-proc/k : Proc x List(Ref) -> Cont
@@ -138,8 +149,8 @@
       (value-of/k body (extend-env vars refs saved-env) cont)]))
 
 ;(trace value-of/k)
-;(trace apply-proc/k)
 ;(trace apply-cont)
+;(trace apply-proc/k)
 
 ; res = (num-val 1)
 (define p1
@@ -194,3 +205,15 @@
               spawn((incr_x 200));
               spawn((incr_x 300))
             end")
+
+; res = (num-val 100)
+(define p6
+  "let f = proc(x) begin yield; print(100); print(101) end
+       g = proc(x) begin yield; print(200); print(201) end
+   in begin print(1); spawn(f); print(2); spawn(g); print(3) end")
+
+; res = (num-val 100)
+(define p7
+  "let f = proc(x) begin print(100); print(101) end
+       g = proc(x) begin print(200); print(201) end
+   in begin print(1); spawn(f); print(2); spawn(g); print(3) end")

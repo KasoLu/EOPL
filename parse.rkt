@@ -1,13 +1,10 @@
 (load "types.rkt")
 
-; Expression ::= *( Expression , Expression )
-; Expression ::= list( {Expression ,}* )
-; Expression ::= car( Expression )
-; Expression ::= cdr( Expression )
-; Expression ::= null?( Expression )
-; Expression ::= try Expression catch ( Identifier ) Expression
-; Expression ::= raise Expression
-; expression ::= cwcc Expression
+; Expression ::= set Identifier = Expression
+; Expression ::= spawn( Expression )
+; Expression ::= mutex( )
+; Expression ::= wait( Expression )
+; Expression ::= signal( Expression )
 
 (define scanner-spec
   '([whitespace (whitespace) skip]
@@ -25,17 +22,14 @@
     [expression ("(" expression (arbno expression) ")") call-exp]
     [expression ("letrec" (arbno identifier "(" (arbno identifier) ")" "=" expression)
                  "in" expression) letrec-exp]
-    [expression ("*" "(" expression "," expression ")") multi-exp]
-    [expression ("list" "(" (separated-list expression ",") ")") list-exp]
-    [expression ("car" "(" expression ")") car-exp]
-    [expression ("cdr" "(" expression ")") cdr-exp]
-    [expression ("null?" "(" expression ")") null?-exp]
-    [expression ("try" expression "catch" "(" identifier ")" expression) try-exp]
-    [expression ("raise" expression) raise-exp]
-    [expression ("letcc" identifier "in" expression) letcc-exp]
-    [expression ("throw" expression "to" expression) throw-exp]
-    [expression ("cwcc" expression) cwcc-exp]
+    [expression ("begin" expression (arbno ";" expression) "end") begin-exp]
+    [expression ("set" identifier "=" expression) assign-exp]
+    [expression ("spawn" "(" expression ")") spawn-exp]
+    [expression ("mutex" "(" ")") mutex-exp]
+    [expression ("wait" "(" expression ")") wait-exp]
+    [expression ("signal" "(" expression ")") signal-exp]
     ))
 
 (define scan&parse
   (sllgen:make-string-parser scanner-spec grammar-spec))
+

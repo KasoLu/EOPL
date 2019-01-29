@@ -5,7 +5,7 @@
 
 ; run : String -> FinalAnswer
 (define (run str)
-  (value-of-program 12 (scan&parse str)))
+  (value-of-program 2 (scan&parse str)))
 
 ; value-of-program : Int x Program -> FinalAnswer
 (define (value-of-program timeslice pgm)
@@ -60,9 +60,6 @@
     [signal-exp [exp1]
       (value-of/k exp1 env
         (signal-cont cont))]
-    [print-exp [exp1]
-      (value-of/k exp1 env
-        (print-cont cont))]
     ))
 
 ; apply-cont : Cont x ExpVal -> FinalAnswer
@@ -96,7 +93,8 @@
           (let ([vals (cons (newref val) vals)])
             (if (null? rands)
               (apply-proc/k (expval->proc rator) (reverse vals) cont)
-                (value-of/k rator (car rands) vals env cont)))]
+                (value-of/k (car rands) env
+                  (rands-cont rator (cdr rands) vals env cont))))]
         [zero?-cont [cont]
           (apply-cont cont (bool-val (zero? (expval->num val))))]
              [if-test-cont [exp2 exp3 env cont]
@@ -131,9 +129,6 @@
           (signal-mutex
             (expval->mutex val)
             (lambda () (apply-cont saved-cont (num-val 53))))]
-        [print-cont [saved-cont]
-          (eopl:printf "~a\n" val)
-          (apply-cont saved-cont (num-val 100))]
         ))))
 
 ; apply-proc/k : Proc x List(Ref) -> Cont
@@ -186,39 +181,35 @@
 
 ; res = (num-val 73)
 (define p5
-  "let x = 0
-   in let mut = mutex()
-      in let incr_x = proc(id) proc(dummy)
-                        begin
-                          wait(mut);
-                          set x = -(x, -1);
-                          signal(mut)
-                        end
-         in begin
-              spawn((incr_x 100));
-              spawn((incr_x 200));
-              spawn((incr_x 300))
-            end")
+  "let x = 0 mut = mutex()
+   in let incr_x = proc(id) proc(dummy)
+                     begin
+                       wait(mut);
+                       set x = -(x, -1);
+                       signal(mut)
+                     end
+      in begin
+           spawn((incr_x 100));
+           spawn((incr_x 200));
+           spawn((incr_x 300))
+         end")
 
 (define p6
-  "let buf = 0 mut = mutex()
-   in letrec producer(n) = 
-               begin 
-                 print(1000); wait(mut); 
-                 print(1001); set buf = n; 
-                 print(1002); signal(mut);
-                 (producer -(n, -1))
-               end 
-             consumer() = 
-               begin 
-                 print(2000); wait(mut);
-                 print(buf);  set buf = 0; 
-                 print(2003); signal(mut);
-                 (consumer)
-               end 
+  "let x = 0 mut_outer1 = mutex() mut_outer2 = mutex() mut_outer3 = mutex() 
+       mut_inner = mutex()
+   in let incr_x = proc(mut_outer) proc(dummy) 
+                    begin
+                      wait(mut_outer);
+                      wait(mut_inner);
+                      set x = -(x, -1);
+                      signal(mut_inner);
+                      signal(mut_outer)
+                    end
       in begin
-           print(3000);
-           spawn(proc(d) (producer 10));
-           spawn(proc(d) (consumer));
-           print(3001)
+           spawn((incr_x mut_outer1));
+           spawn((incr_x mut_outer2));
+           spawn((incr_x mut_outer3));
+           wait(mut_outer1); wait(mut_outer2); wait(mut_outer3);
+           signal(mut_outer1); signal(mut_outer2); signal(mut_outer3);
+           x
          end")

@@ -85,7 +85,6 @@
   (set! the-ready-queue (enqueue the-ready-queue th)))
 ; run-next-thread : () -> FinalAnswer
 (define (run-next-thread)
-  (eopl:printf "run-next-thread\n")
   (if (empty? the-ready-queue)
     the-final-answer
     (dequeue the-ready-queue
@@ -108,7 +107,6 @@
   (a-mutex (newref #f) (newref '())))
 ; wait-for-mutex : Mutex x Thread -> FinalAnswer
 (define (wait-for-mutex m th)
-  (eopl:printf "wait-for-mutex\n")
   (cases mutex m
     [a-mutex [ref-to-closed? ref-to-wait-queue]
       (cond [(deref ref-to-closed?)
@@ -119,7 +117,6 @@
              (th)])]))
 ; signal-mutex : Mutex x Thread -> FinalAnswer
 (define (signal-mutex m th)
-  (eopl:printf "signal-mutex\n")
   (cases mutex m
     [a-mutex [ref-to-closed? ref-to-wait-queue]
       (let ([closed? (deref ref-to-closed?)] [wait-queue (deref ref-to-wait-queue)])

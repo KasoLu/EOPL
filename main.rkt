@@ -62,86 +62,109 @@
         (signal-cont cont))]
     ))
 
-; apply-cont : Cont x ExpVal -> FinalAnswer
-(define (apply-cont cont1 val)
-  (if (time-expired?)
-    (begin 
-      (place-on-ready-queue! (cont-thread cont1 val))
-      (run-next-thread))
-    (begin 
-      (decrement-timer!)
-      (cases cont cont1
-        [end-main-thread-cont []
+(define (end-main-thread-cont)
+  (cons (lambda (val cont)
           (eopl:printf "End of mainthread: ~a\n" val)
           (set-final-answer! val)
-          (run-next-thread)]
-        [end-subthread-cont []
+          (run-next-thread))
+        '()))
+(define (end-subthread-cont)
+  (cons (lambda (val cont)
           (eopl:printf "End of subthread: ~a\n" val)
-          (run-next-thread)]
-        [diff1-cont [exp2 env cont]
+          (run-next-thread))
+        '()))
+(define (diff1-cont exp2 env saved-cont)
+  (cons (lambda (val cont)
           (value-of/k exp2 env
-            (diff2-cont val env cont))]
-        [diff2-cont [val1 env cont]
+            (diff2-cont val env cont)))
+        saved-cont))
+(define (diff2-cont val1 env saved-cont)
+  (cons (lambda (val cont)
           (let ([num1 (expval->num val1)] [num2 (expval->num val)])
-            (apply-cont cont (num-val (- num1 num2))))]
-        [rator-cont [rands env cont]
+            (apply-cont cont (num-val (- num1 num2)))))
+        saved-cont))
+(define (rator-cont rands env saved-cont)
+  (cons (lambda (val cont)
           (if (null? rands)
             (apply-proc/k (expval->proc val) '() cont)
             (value-of/k (car rands) env
-              (rands-cont val (cdr rands) '() env cont)))]
-        [rands-cont [rator rands vals env cont]
+              (rands-cont val (cdr rands) '() env cont))))
+        saved-cont))
+(define (rands-cont rator rands vals env saved-cont)
+  (cons (lambda (val cont)
           (let ([vals (cons (newref val) vals)])
             (if (null? rands)
               (apply-proc/k (expval->proc rator) (reverse vals) cont)
-                (value-of/k (car rands) env
-                  (rands-cont rator (cdr rands) vals env cont))))]
-        [zero?-cont [cont]
-          (apply-cont cont (bool-val (zero? (expval->num val))))]
-             [if-test-cont [exp2 exp3 env cont]
-                (if (expval->bool val)
-                  (value-of/k exp2 env cont)
-                  (value-of/k exp3 env cont))]
-        [let-cont [vars exps vals body env cont]
+              (value-of/k (car rands) env
+                (rands-cont rator (cdr rands) vals env cont)))))
+        saved-cont))
+(define (zero?-cont saved-cont)
+  (cons (lambda (val cont)
+          (apply-cont cont (bool-val (zero? (expval->num val)))))
+        saved-cont))
+(define (if-test-cont exp2 exp3 env saved-cont)
+  (cons (lambda (val cont)
+          (if (expval->bool val)
+            (value-of/k exp2 env cont)
+            (value-of/k exp3 env cont)))
+        saved-cont))
+(define (let-cont vars exps vals body env saved-cont)
+  (cons (lambda (val cont)
           (let ([vals (cons (newref val) vals)])
             (if (null? exps)
               (value-of/k body (extend-env vars (reverse vals) env) cont)
               (value-of/k (car exps) env
-                (let-cont vars (cdr exps) vals body env cont))))]
-        [assign-cont [ref cont]
+                (let-cont vars (cdr exps) vals body env cont)))))
+        saved-cont))
+(define (assign-cont ref saved-cont)
+  (cons (lambda (val cont)
           (begin (setref! ref val)
-                 (apply-cont cont (num-val 27)))]
-        [begin-cont [exps env cont]
+                 (apply-cont cont (num-val 27))))
+        saved-cont))
+(define (begin-cont exps env saved-cont)
+  (cons (lambda (val cont)
           (if (null? exps)
             (apply-cont cont val)
             (value-of/k (car exps) env
-              (begin-cont (cdr exps) env cont)))]
-        [spawn-cont [saved-cont]
-          (let ([proc1 (expval->proc val)])
-            (place-on-ready-queue! 
-              (proc-thread proc1 (list (newref (num-val 28))) (end-subthread-cont)))
-            (apply-cont saved-cont (num-val 73)))]
-        [wait-cont [saved-cont]
-          (wait-for-mutex
+              (begin-cont (cdr exps) env cont))))
+        saved-cont))
+(define (spawn-cont saved-cont)
+  (cons (lambda (val cont)
+          (place-on-ready-queue!
+            (lambda () 
+              (apply-proc/k (expval->proc val) 
+                            (list (newref (num-val 28))) 
+                            (end-subthread-cont))))
+          (apply-cont cont (num-val 73)))
+        saved-cont))
+(define (wait-cont saved-cont)
+  (cons (lambda (val cont)
+          (wait-for-mutex 
             (expval->mutex val)
-            (cont-thread saved-cont (num-val 52)))]
-        [signal-cont [saved-cont]
+            (lambda () (apply-cont cont (num-val 52)))))
+        saved-cont))
+(define (signal-cont saved-cont)
+  (cons (lambda (val cont)
           (signal-mutex
             (expval->mutex val)
-            (cont-thread saved-cont (num-val 53)))]
-        ))))
+            (lambda () (apply-cont cont (num-val 53)))))
+        saved-cont))
+
+; apply-cont : Cont x ExpVal -> FinalAnswer
+(define (apply-cont cont val)
+  (if (time-expired?)
+    (begin (place-on-ready-queue! (lambda () (apply-cont cont val)))
+           (run-next-thread))
+    (begin (decrement-timer!)
+           (if (pair? cont)
+             ((car cont) val (cdr cont))
+             (void)))))
 
 ; apply-proc/k : Proc x List(Ref) -> Cont
 (define (apply-proc/k proc1 refs cont)
   (cases proc proc1
     [procedure [vars body saved-env]
       (value-of/k body (extend-env vars refs saved-env) cont)]))
-
-(define (apply-thread th)
-  (cases thread th
-    [cont-thread [cont val]
-      (apply-cont cont val)]
-    [proc-thread [proc vals cont]
-      (apply-proc/k proc vals cont)]))
 
 ;(trace value-of/k)
 ;(trace apply-proc/k)

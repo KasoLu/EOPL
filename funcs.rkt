@@ -91,7 +91,7 @@
       (lambda (first-ready-thread other-ready-threads)
         (set! the-ready-queue other-ready-threads)
         (set! the-time-remaining the-max-time-slice)
-        (apply-thread first-ready-thread)))))
+        (first-ready-thread)))))
 ; set-final-answer! : ExpVal -> Unspecified
 (define (set-final-answer! val)
   (set! the-final-answer val))
@@ -114,7 +114,7 @@
              (run-next-thread)]
             [else
              (setref! ref-to-closed? #t)
-             (apply-thread th)])]))
+             (th)])]))
 ; signal-mutex : Mutex x Thread -> FinalAnswer
 (define (signal-mutex m th)
   (cases mutex m
@@ -128,7 +128,7 @@
                 (place-on-ready-queue! first-waiting-th)
                 (setref! ref-to-wait-queue other-waiting-ths))))
           (void))
-        (apply-thread th))]))
+        (th))]))
 
 ; empty-queue : () -> Queue
 (define (empty-queue) '())

@@ -80,6 +80,8 @@
     [exp1 expression?]]
   [signal-exp
     [exp1 expression?]]
+  [print-exp
+    [exp1 expression?]]
   )
 
 (define-datatype cont cont?
@@ -129,6 +131,8 @@
   [wait-cont
     [cont cont?]]
   [signal-cont
+    [cont cont?]]
+  [print-cont
     [cont cont?]]
   )
 

@@ -60,13 +60,16 @@
     [signal-exp [exp1]
       (value-of/k exp1 env
         (signal-cont cont))]
+    [print-exp [exp1]
+      (value-of/k exp1 env
+        (print-cont cont))]
     ))
 
 ; apply-cont : Cont x ExpVal -> FinalAnswer
 (define (apply-cont cont1 val)
   (if (time-expired?)
     (begin 
-      (place-on-ready-queue! (lambda () (apply-cont cont1 val)))
+      (place-on-ready-queue! (lambda () (apply-cont cont1 val)) (get-thread-id))
       (run-next-thread))
     (begin 
       (decrement-timer!)
@@ -116,11 +119,16 @@
             (value-of/k (car exps) env
               (begin-cont (cdr exps) env cont)))]
         [spawn-cont [saved-cont]
-          (let ([proc1 (expval->proc val)])
+          (let ([proc1 (expval->proc val)]
+                [new-id (create-thread-id)]
+                [cur-id (get-thread-id)])
             (place-on-ready-queue!
               (lambda ()
-                (apply-proc/k proc1 (list (newref (num-val 28))) (end-subthread-cont))))
-            (apply-cont saved-cont (num-val 73)))]
+                (apply-proc/k proc1 (list (newref (num-val new-id)) 
+                                          (newref (num-val cur-id))) 
+                  (end-subthread-cont)))
+              new-id)
+            (apply-cont saved-cont (num-val new-id)))]
         [wait-cont [saved-cont]
           (wait-for-mutex
             (expval->mutex val)
@@ -129,6 +137,9 @@
           (signal-mutex
             (expval->mutex val)
             (lambda () (apply-cont saved-cont (num-val 53))))]
+        [print-cont [saved-cont]
+          (eopl:printf "~a\n" val)
+          (apply-cont saved-cont (num-val 100))]
         ))))
 
 ; apply-proc/k : Proc x List(Ref) -> Cont
@@ -172,44 +183,17 @@
 ; res = (num-val 73)
 (define p4
   "let x = 0
-   in let incr_x = proc(id) proc(dummy) set x = -(x, -1)
-      in begin
-           spawn((incr_x 100));
-           spawn((incr_x 200));
-           spawn((incr_x 300))
-         end")
-
-; res = (num-val 73)
-(define p5
-  "let x = 0 mut = mutex()
-   in let incr_x = proc(id) proc(dummy)
-                     begin
-                       wait(mut);
-                       set x = -(x, -1);
-                       signal(mut)
-                     end
-      in begin
-           spawn((incr_x 100));
-           spawn((incr_x 200));
-           spawn((incr_x 300))
-         end")
-
-(define p6
-  "let x = 0 mut_outer1 = mutex() mut_outer2 = mutex() mut_outer3 = mutex() 
-       mut_inner = mutex()
-   in let incr_x = proc(mut_outer) proc(dummy) 
-                    begin
-                      wait(mut_outer);
-                      wait(mut_inner);
-                      set x = -(x, -1);
-                      signal(mut_inner);
-                      signal(mut_outer)
-                    end
-      in begin
-           spawn((incr_x mut_outer1));
-           spawn((incr_x mut_outer2));
-           spawn((incr_x mut_outer3));
-           wait(mut_outer1); wait(mut_outer2); wait(mut_outer3);
-           signal(mut_outer1); signal(mut_outer2); signal(mut_outer3);
-           x
-         end")
+   in let mut = mutex()
+      in let incr_x = proc(id) proc(id par_id)
+                        begin
+                          print(-(id, -100));
+                          print(-(par_id, -200));
+                          wait(mut);
+                          set x = -(x, -1);
+                          signal(mut)
+                        end
+         in begin
+              spawn((incr_x 100));
+              spawn((incr_x 200));
+              spawn((incr_x 300))
+            end")

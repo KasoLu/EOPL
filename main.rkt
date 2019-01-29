@@ -60,19 +60,13 @@
     [signal-exp [exp1]
       (value-of/k exp1 env
         (signal-cont cont))]
-    [yield-exp []
-      (apply-cont (yield-cont cont) (num-val 99))]
-    [print-exp [exp1]
-      (value-of/k exp1 env
-        (print-cont cont))]
     ))
 
 ; apply-cont : Cont x ExpVal -> FinalAnswer
 (define (apply-cont cont1 val)
-  ;(eopl:printf "The-remain-time: ~a\n" the-time-remaining)
   (if (time-expired?)
     (begin 
-      (place-on-ready-queue! (lambda () (apply-cont cont1 val)) (time-max-slice))
+      (place-on-ready-queue! (cont-thread cont1 val))
       (run-next-thread))
     (begin 
       (decrement-timer!)
@@ -123,25 +117,17 @@
               (begin-cont (cdr exps) env cont)))]
         [spawn-cont [saved-cont]
           (let ([proc1 (expval->proc val)])
-            (place-on-ready-queue!
-              (lambda ()
-                (apply-proc/k proc1 (list (newref (num-val 28))) (end-subthread-cont)))
-              (time-max-slice))
+            (place-on-ready-queue! 
+              (proc-thread proc1 (list (newref (num-val 28))) (end-subthread-cont)))
             (apply-cont saved-cont (num-val 73)))]
         [wait-cont [saved-cont]
           (wait-for-mutex
             (expval->mutex val)
-            (lambda () (apply-cont saved-cont (num-val 52))))]
+            (cont-thread saved-cont (num-val 52)))]
         [signal-cont [saved-cont]
           (signal-mutex
             (expval->mutex val)
-            (lambda () (apply-cont saved-cont (num-val 53))))]
-        [yield-cont [saved-cont]
-          (place-on-ready-queue! (lambda () (apply-cont saved-cont val)) (time-remaining))
-          (run-next-thread)]
-        [print-cont [saved-cont]
-          (eopl:printf "~a\n" val)
-          (apply-cont saved-cont (num-val 100))]
+            (cont-thread saved-cont (num-val 53)))]
         ))))
 
 ; apply-proc/k : Proc x List(Ref) -> Cont
@@ -150,9 +136,16 @@
     [procedure [vars body saved-env]
       (value-of/k body (extend-env vars refs saved-env) cont)]))
 
+(define (apply-thread th)
+  (cases thread th
+    [cont-thread [cont val]
+      (apply-cont cont val)]
+    [proc-thread [proc vals cont]
+      (apply-proc/k proc vals cont)]))
+
 ;(trace value-of/k)
-;(trace apply-cont)
 ;(trace apply-proc/k)
+;(trace apply-cont)
 
 ; res = (num-val 1)
 (define p1
@@ -196,26 +189,10 @@
 (define p5
   "let x = 0
    in let mut = mutex()
-      in let incr_x = proc(id) proc(dummy)
-                        begin
-                          wait(mut);
-                          set x = -(x, -1);
-                          signal(mut)
-                        end
+      in let incr_x = 
+             proc(id) proc(dummy) begin wait(mut); set x = -(x, -1); signal(mut) end
          in begin
               spawn((incr_x 100));
               spawn((incr_x 200));
               spawn((incr_x 300))
             end")
-
-; res = (num-val 100)
-(define p6
-  "let f = proc(x) begin yield; print(100); print(101) end
-       g = proc(x) begin yield; print(200); print(201) end
-   in begin print(1); spawn(f); print(2); spawn(g); print(3) end")
-
-; res = (num-val 100)
-(define p7
-  "let f = proc(x) begin print(100); print(101) end
-       g = proc(x) begin print(200); print(201) end
-   in begin print(1); spawn(f); print(2); spawn(g); print(3) end")

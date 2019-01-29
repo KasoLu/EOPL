@@ -70,7 +70,6 @@
   (set! the-store (setref-inner the-store ref)))
 
 (define the-ready-queue    'uninit)
-(define the-ready-times    'uninit)
 (define the-final-answer   'uninit)
 (define the-max-time-slice 'uninit)
 (define the-time-remaining 'uninit)
@@ -78,26 +77,21 @@
 ; init-scheduler! : Int -> Unspecified
 (define (init-scheduler! ticks)
   (set! the-ready-queue (empty-queue))
-  (set! the-ready-times (empty-queue))
   (set! the-final-answer 'uninit)
   (set! the-max-time-slice ticks)
   (set! the-time-remaining the-max-time-slice))
-; place-on-ready-queue! : Thread x Int -> Unspecified
-(define (place-on-ready-queue! th times)
-  (set! the-ready-queue (enqueue the-ready-queue th))
-  (set! the-ready-times (enqueue the-ready-times times)))
+; place-on-ready-queue! : Thread -> Unspecified
+(define (place-on-ready-queue! th)
+  (set! the-ready-queue (enqueue the-ready-queue th)))
 ; run-next-thread : () -> FinalAnswer
 (define (run-next-thread)
   (if (empty? the-ready-queue)
     the-final-answer
     (dequeue the-ready-queue
       (lambda (first-ready-thread other-ready-threads)
-        (dequeue the-ready-times
-          (lambda (first-ready-times other-ready-timess)
-            (set! the-ready-queue other-ready-threads)
-            (set! the-ready-times other-ready-timess)
-            (set! the-time-remaining first-ready-times)
-            (first-ready-thread)))))))
+        (set! the-ready-queue other-ready-threads)
+        (set! the-time-remaining the-max-time-slice)
+        (apply-thread first-ready-thread)))))
 ; set-final-answer! : ExpVal -> Unspecified
 (define (set-final-answer! val)
   (set! the-final-answer val))
@@ -107,12 +101,6 @@
 ; decrement-timer! : () -> Unspecified
 (define (decrement-timer!)
   (set! the-time-remaining (- the-time-remaining 1)))
-; time-max-slice : () -> Int
-(define (time-max-slice) 
-  the-max-time-slice)
-; time-remaining : () -> Int
-(define (time-remaining)
-  the-time-remaining)
 
 ; new-mutex : () -> Mutex
 (define (new-mutex)
@@ -126,7 +114,7 @@
              (run-next-thread)]
             [else
              (setref! ref-to-closed? #t)
-             (th)])]))
+             (apply-thread th)])]))
 ; signal-mutex : Mutex x Thread -> FinalAnswer
 (define (signal-mutex m th)
   (cases mutex m
@@ -137,10 +125,10 @@
             (setref! ref-to-closed? #f)
             (dequeue wait-queue
               (lambda (first-waiting-th other-waiting-ths)
-                (place-on-ready-queue! first-waiting-th (time-max-slice))
+                (place-on-ready-queue! first-waiting-th)
                 (setref! ref-to-wait-queue other-waiting-ths))))
           (void))
-        (th))]))
+        (apply-thread th))]))
 
 ; empty-queue : () -> Queue
 (define (empty-queue) '())

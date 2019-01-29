@@ -22,6 +22,16 @@
     [env  env?]]
   )
 
+(define-datatype thread thread?
+  [cont-thread
+    [cont  cont?]
+    [val   expval?]]
+  [proc-thread
+    [proc  proc?]
+    [vals  (list-of reference?)]
+    [cont  cont?]]
+  )
+
 (define-datatype mutex mutex?
   [a-mutex
     [ref-to-closed? reference?]
@@ -80,9 +90,6 @@
     [exp1 expression?]]
   [signal-exp
     [exp1 expression?]]
-  [yield-exp]
-  [print-exp
-    [exp1 expression?]]
   )
 
 (define-datatype cont cont?
@@ -103,7 +110,7 @@
   [rands-cont
     [rator expval?]
     [rands (list-of expression?)]
-    [vals  (list-of reference?)]
+    [vals  (list-of expval?)]
     [env   env?]
     [cont  cont?]]
   [zero?-cont
@@ -116,7 +123,7 @@
   [let-cont
     [vars (list-of identifier?)]
     [exps (list-of expression?)]
-    [vals (list-of reference?)]
+    [vals (list-of expval?)]
     [body expression?]
     [env  env?]
     [cont cont?]]
@@ -132,10 +139,6 @@
   [wait-cont
     [cont cont?]]
   [signal-cont
-    [cont cont?]]
-  [yield-cont
-    [cont cont?]]
-  [print-cont
     [cont cont?]]
   )
 

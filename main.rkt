@@ -152,6 +152,44 @@
 ;(trace apply-proc/k)
 ;(trace apply-cont)
 
+(lambda (x y)
+  (p (+ 8 x) (q y)))
+(lambda (x y k)
+  (q y (lambda (qv)
+         (p (+ 8 x) qv))))
 
+(lambda (x y u v)
+  (+ 1 (f (g x y) (+ u v))))
+(lambda (x y u v)
+  (g x y (lambda (gv)
+           (f gv (+ u v) (lambda (fv)
+                           (+ 1 fv))))))
 
+(+ 1 (f (g x y) (+ u (h v))))
+(g x y (lambda (gv)
+         (h v (lambda (hv)
+                (f gv (+ u hv) (lambda (fv)
+                                 (+ 1 fv)))))))
 
+(zero? (if a (p x) (p y)))
+(if a 
+  (p x (lambda (pv) (zero? pv)))
+  (p y (lambda (pv) (zero? pv))))
+
+(zero? (if (f a) (p x) (p y)))
+(f a (lambda (fv)
+       (if fv
+         (p x (lambda (pv) (zero? pv)))
+         (p y (lambda (pv) (zero? pv))))))
+
+(let ([x (let ([y 8]) (p y))]) x)
+(let ([y 8])
+  (p y (lambda (pv)
+         (let ([x pv]) x))))
+
+(let ([x (if a (p x) (p y))]) x)
+(if a
+  (p x (lambda (pv)
+         (let ([x pv]) x)))
+  (p y (lambda (pv)
+         (let ([x pv]) x))))

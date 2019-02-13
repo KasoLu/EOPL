@@ -73,16 +73,18 @@
 (define the-final-answer   'uninit)
 (define the-max-time-slice 'uninit)
 (define the-time-remaining 'uninit)
+(define the-thread-id      'uninit)
 
 ; init-scheduler! : Int -> Unspecified
 (define (init-scheduler! ticks)
   (set! the-ready-queue (empty-queue))
   (set! the-final-answer 'uninit)
   (set! the-max-time-slice ticks)
-  (set! the-time-remaining the-max-time-slice))
+  (set! the-time-remaining the-max-time-slice)
+  (set! the-thread-id (create-thread-id)))
 ; place-on-ready-queue! : Thread -> Unspecified
-(define (place-on-ready-queue! th)
-  (set! the-ready-queue (enqueue the-ready-queue th)))
+(define (place-on-ready-queue! th id)
+  (set! the-ready-queue (enqueue the-ready-queue (cons th id))))
 ; run-next-thread : () -> FinalAnswer
 (define (run-next-thread)
   (if (empty? the-ready-queue)
@@ -91,7 +93,8 @@
       (lambda (first-ready-thread other-ready-threads)
         (set! the-ready-queue other-ready-threads)
         (set! the-time-remaining the-max-time-slice)
-        (first-ready-thread)))))
+        (set! the-thread-id (cdr first-ready-thread))
+        ((car first-ready-thread))))))
 ; set-final-answer! : ExpVal -> Unspecified
 (define (set-final-answer! val)
   (set! the-final-answer val))
@@ -110,7 +113,8 @@
   (cases mutex m
     [a-mutex [ref-to-closed? ref-to-wait-queue]
       (cond [(deref ref-to-closed?)
-             (setref! ref-to-wait-queue (enqueue (deref ref-to-wait-queue) th))
+             (setref! ref-to-wait-queue 
+                      (enqueue (deref ref-to-wait-queue) (cons th (get-thread-id))))
              (run-next-thread)]
             [else
              (setref! ref-to-closed? #t)
@@ -125,7 +129,7 @@
             (setref! ref-to-closed? #f)
             (dequeue wait-queue
               (lambda (first-waiting-th other-waiting-ths)
-                (place-on-ready-queue! first-waiting-th)
+                (place-on-ready-queue! (car first-waiting-th) (cdr first-waiting-th))
                 (setref! ref-to-wait-queue other-waiting-ths))))
           (void))
         (th))]))
@@ -136,3 +140,10 @@
 (define (enqueue q x) (append q (list x)))
 ; dequeue : Queue x Proc(head rest) -> Unspecified
 (define (dequeue q c) (if (empty? q) (void) (c (car q) (cdr q))))
+
+; create-thread-id : () -> Int
+(define the-thread-id-counter 0)
+(define (create-thread-id)
+  (begin (set! the-thread-id-counter (+ the-thread-id-counter 1)) the-thread-id-counter))
+; get-thread-id : () -> Int
+(define (get-thread-id) the-thread-id)

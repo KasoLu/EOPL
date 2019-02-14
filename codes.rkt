@@ -1,0 +1,28 @@
+; 1
+(lambda (x y)
+  (g x (lambda (gv)
+         (f gv (lambda (fv)
+                 (j y (lambda (jv)
+                        (h jv (lambda (hv) 
+                                (+ fv hv))))))))))
+; 2
+(lambda (x y)
+  (g x (lambda (gv)
+         (j y (lambda (jv)
+                (f gv (lambda (fv)
+                        (h jv (lambda (hv)
+                                (+ fv hv))))))))))
+; 3
+(lambda (x y)
+  (g x (lambda (gv)
+         (j y (lambda (jv)
+                (h jv (lambda (hv)
+                        (f gv (lambda (fv)
+                                (+ fv hv))))))))))
+; 4
+(lambda (x y)
+  (j y (lambda (jv)
+         (g x (lambda (gv)
+                (f gv (lambda (fv)
+                        (h jv (lambda (hv)
+                                (+ fv hv))))))))))

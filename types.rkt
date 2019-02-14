@@ -22,16 +22,10 @@
     [env  env?]]
   )
 
-(define-datatype mutex mutex?
-  [a-mutex
-    [ref-to-closed? reference?]
-    [ref-to-wait-queue reference?]])
-
 (define-datatype expval expval?
-  [num-val   [val number?]]
-  [bool-val  [val boolean?]]
-  [proc-val  [val proc?]]
-  [mutex-val [val mutex?]]
+  [num-val  [num number?]]
+  [bool-val [bool boolean?]]
+  [proc-val [proc proc?]]
   )
 
 (define-datatype program program?
@@ -67,73 +61,5 @@
     [varss  (list-of (list-of identifier?))]
     [bodies (list-of expression?)]
     [exp1   expression?]]
-  [assign-exp
-    [var  identifier?]
-    [exp1 expression?]]
-  [begin-exp
-    [exp1 expression?]
-    [exps (list-of expression?)]]
-  [spawn-exp
-    [exp1 expression?]]
-  [mutex-exp]
-  [wait-exp
-    [exp1 expression?]]
-  [signal-exp
-    [exp1 expression?]]
-  [print-exp
-    [exp1 expression?]]
   )
-
-(define-datatype cont cont?
-  [end-main-thread-cont]
-  [end-subthread-cont]
-  [diff1-cont 
-    [exp2 expression?]
-    [env  env?]
-    [cont cont?]]
-  [diff2-cont
-    [val1 expval?]
-    [env  env?]
-    [cont cont?]]
-  [rator-cont
-    [rands (list-of expression?)]
-    [env   env?]
-    [cont  cont?]]
-  [rands-cont
-    [rator expval?]
-    [rands (list-of expression?)]
-    [vals  (list-of reference?)]
-    [env   env?]
-    [cont  cont?]]
-  [zero?-cont
-    [cont cont?]]
-  [if-test-cont
-    [exp2 expression?]
-    [exp3 expression?]
-    [env  env?]
-    [cont cont?]]
-  [let-cont
-    [vars (list-of identifier?)]
-    [exps (list-of expression?)]
-    [vals (list-of reference?)]
-    [body expression?]
-    [env  env?]
-    [cont cont?]]
-  [assign-cont
-    [ref  reference?]
-    [cont cont?]]
-  [begin-cont
-    [exps (list-of expression?)]
-    [env  env?]
-    [cont cont?]]
-  [spawn-cont
-    [cont cont?]]
-  [wait-cont
-    [cont cont?]]
-  [signal-cont
-    [cont cont?]]
-  [print-cont
-    [cont cont?]]
-  )
-
 

@@ -3,155 +3,135 @@
 (load "funcs.rkt")
 (require racket/trace)
 
-; run : String -> FinalAnswer
 (define (run str)
-  (value-of-program 2 (scan&parse str)))
+  (value-of-program
+    (scan&parse str)))
 
-; value-of-program : Int x Program -> FinalAnswer
-(define (value-of-program timeslice pgm)
-  (init-store!)
-  (init-scheduler! timeslice)
+; value-of-program : Program -> ExpVal
+(define (value-of-program pgm)
   (cases program pgm
     [a-program [expr]
-      (value-of/k expr (init-env) (end-main-thread-cont))]))
+      (value-of/k expr (init-env)
+        (lambda (type val)
+          (if (eqv? type 'cont)
+            (begin (eopl:printf "End of computation.~%") val)
+            (report-uncaught-exception val))))]))
 
-; value-of/k : Expr x Env x Cont -> FinalAnswer
+; value-of/k : Exp x Env x Cont -> ExpVal
 (define (value-of/k expr env cont)
   (cases expression expr
-    [const-exp [num] 
-      (apply-cont cont (num-val num))]
+    [const-exp [num]
+      (cont 'cont (num-val num))]
     [var-exp [var]
-      (apply-cont cont (deref (apply-env env var)))]
+      (cont 'cont (apply-env env var))]
     [proc-exp [vars body]
-      (apply-cont cont (proc-val (procedure vars body env)))]
+      (cont 'cont (proc-val (procedure vars body env)))]
     [letrec-exp [names varss bodies letrec-body]
       (value-of/k letrec-body (extend-env-rec names varss bodies env) cont)]
     [zero?-exp [exp1]
       (value-of/k exp1 env
-        (zero?-cont cont))]
-    [if-exp [exp1 exp2 exp3]
-      (value-of/k exp1 env
-        (if-test-cont exp2 exp3 env cont))]
+        (lambda (type val)
+          (if (eqv? type 'cont)
+            (cont type (bool-val (zero? (expval->num val))))
+            (cont type val))))]
     [let-exp [vars exps body]
       (if (null? vars)
         (value-of/k body env cont)
-        (value-of/k (car exps) env
-          (let-cont vars (cdr exps) '() body env cont)))]
+        (let loop([exps exps] [vals '()])
+          (if (null? exps)
+            (value-of/k body (extend-env vars (reverse vals) env) cont)
+            (value-of/k (car exps) env
+              (lambda (type val)
+                (if (eqv? type 'cont)
+                  (loop (cdr exps) (cons val vals))
+                  (cont type val)))))))]
+    [if-exp [exp1 exp2 exp3]
+      (value-of/k exp1 env
+        (lambda (type val)
+          (if (eqv? type 'cont)
+            (if (expval->bool val)
+              (value-of/k exp2 env cont)
+              (value-of/k exp3 env cont))
+            (cont type val))))]
     [diff-exp [exp1 exp2]
       (value-of/k exp1 env
-        (diff1-cont exp2 env cont))]
+        (lambda (type1 val1)
+          (if (eqv? type1 'cont)
+            (value-of/k exp2 env
+              (lambda (type2 val2)
+                (if (eqv? type2 'cont)
+                  (cont type2 (num-val (- (expval->num val1) (expval->num val2))))
+                  (cont type2 val2))))
+            (cont type1 val1))))]
+    [multi-exp [exp1 exp2]
+      (value-of/k exp1 env
+        (lambda (type1 val1)
+          (if (eqv? type1 'cont)
+            (value-of/k exp2 env
+              (lambda (type2 val2)
+                (if (eqv? type2 'cont)
+                  (cont type2 (num-val (* (expval->num val1) (expval->num val2))))
+                  (cont type2 val2))))
+            (cont type1 val1))))]
     [call-exp [rator rands]
       (value-of/k rator env
-        (rator-cont rands env cont))]
-    [assign-exp [var exp1]
+        (lambda (type val)
+          (if (eqv? type 'cont)
+            (let loop([rands rands] [vals '()])
+              (if (null? rands)
+                (apply-proc/k (expval->proc val) (reverse vals) cont)
+                (value-of/k (car rands) env
+                  (lambda (rand-type rand-val)
+                    (if (eqv? rand-type 'cont)
+                      (loop (cdr rands) (cons rand-val vals))
+                      (cont rand-type rand-val))))))
+            (cont type val))))]
+    [list-exp [exps]
+      (let loop([exps exps] [vals '()])
+        (if (null? exps)
+          (cont 'cont (list-val (reverse vals)))
+          (value-of/k (car exps) env
+            (lambda (type val)
+              (if (eqv? type 'cont)
+                (loop (cdr exps) (cons val vals))
+                (cont type val))))))]
+    [car-exp [exp1]
       (value-of/k exp1 env
-        (assign-cont (apply-env env var) cont))]
-    [begin-exp [exp1 exps]
+        (lambda (type val)
+          (if (eqv? type 'cont)
+            (cont type (car (expval->list val)))
+            (cont type val))))]
+    [cdr-exp [exp1]
       (value-of/k exp1 env
-        (begin-cont exps env cont))]
-    [spawn-exp [exp1]
+        (lambda (type val)
+          (if (eqv? type 'cont)
+            (cont type (list-val (cdr (expval->list val))))
+            (cont type val))))]
+    [null?-exp [exp1]
       (value-of/k exp1 env
-        (spawn-cont cont))]
-    [mutex-exp []
-      (apply-cont cont (mutex-val (new-mutex)))]
-    [wait-exp [exp1]
+        (lambda (type val)
+          (if (eqv? type 'cont)
+            (cont type (bool-val (null? (expval->list val))))
+            (cont type val))))]
+    [try-exp [exp1 var handler-exp]
       (value-of/k exp1 env
-        (wait-cont cont))]
-    [signal-exp [exp1]
+        (lambda (type val)
+          (if (eqv? type 'cont) 
+            (cont type val)
+            (value-of/k handler-exp (extend-env (list var) (list val) env) cont))))]
+    [raise-exp [exp1]
       (value-of/k exp1 env
-        (signal-cont cont))]
-    [print-exp [exp1]
-      (value-of/k exp1 env
-        (print-cont cont))]
+        (lambda (type val)
+          (cont 'exception val)))]
     ))
 
-; apply-cont : Cont x ExpVal -> FinalAnswer
-(define (apply-cont cont1 val)
-  (if (time-expired?)
-    (begin 
-      (place-on-ready-queue! (lambda () (apply-cont cont1 val)) (get-thread-id))
-      (run-next-thread))
-    (begin 
-      (decrement-timer!)
-      (cases cont cont1
-        [end-main-thread-cont []
-          (eopl:printf "End of mainthread: ~a\n" val)
-          (set-final-answer! val)
-          (run-next-thread)]
-        [end-subthread-cont []
-          (eopl:printf "End of subthread: ~a\n" val)
-          (run-next-thread)]
-        [diff1-cont [exp2 env cont]
-          (value-of/k exp2 env
-            (diff2-cont val env cont))]
-        [diff2-cont [val1 env cont]
-          (let ([num1 (expval->num val1)] [num2 (expval->num val)])
-            (apply-cont cont (num-val (- num1 num2))))]
-        [rator-cont [rands env cont]
-          (if (null? rands)
-            (apply-proc/k (expval->proc val) '() cont)
-            (value-of/k (car rands) env
-              (rands-cont val (cdr rands) '() env cont)))]
-        [rands-cont [rator rands vals env cont]
-          (let ([vals (cons (newref val) vals)])
-            (if (null? rands)
-              (apply-proc/k (expval->proc rator) (reverse vals) cont)
-                (value-of/k (car rands) env
-                  (rands-cont rator (cdr rands) vals env cont))))]
-        [zero?-cont [cont]
-          (apply-cont cont (bool-val (zero? (expval->num val))))]
-             [if-test-cont [exp2 exp3 env cont]
-                (if (expval->bool val)
-                  (value-of/k exp2 env cont)
-                  (value-of/k exp3 env cont))]
-        [let-cont [vars exps vals body env cont]
-          (let ([vals (cons (newref val) vals)])
-            (if (null? exps)
-              (value-of/k body (extend-env vars (reverse vals) env) cont)
-              (value-of/k (car exps) env
-                (let-cont vars (cdr exps) vals body env cont))))]
-        [assign-cont [ref cont]
-          (begin (setref! ref val)
-                 (apply-cont cont (num-val 27)))]
-        [begin-cont [exps env cont]
-          (if (null? exps)
-            (apply-cont cont val)
-            (value-of/k (car exps) env
-              (begin-cont (cdr exps) env cont)))]
-        [spawn-cont [saved-cont]
-          (let ([proc1 (expval->proc val)]
-                [new-id (create-thread-id)]
-                [cur-id (get-thread-id)])
-            (place-on-ready-queue!
-              (lambda ()
-                (apply-proc/k proc1 (list (newref (num-val new-id)) 
-                                          (newref (num-val cur-id))) 
-                  (end-subthread-cont)))
-              new-id)
-            (apply-cont saved-cont (num-val new-id)))]
-        [wait-cont [saved-cont]
-          (wait-for-mutex
-            (expval->mutex val)
-            (lambda () (apply-cont saved-cont (num-val 52))))]
-        [signal-cont [saved-cont]
-          (signal-mutex
-            (expval->mutex val)
-            (lambda () (apply-cont saved-cont (num-val 53))))]
-        [print-cont [saved-cont]
-          (eopl:printf "~a\n" val)
-          (apply-cont saved-cont (num-val 100))]
-        ))))
-
-; apply-proc/k : Proc x List(Ref) -> Cont
-(define (apply-proc/k proc1 refs cont)
+(define (apply-proc/k proc1 vals cont)
   (cases proc proc1
     [procedure [vars body saved-env]
-      (value-of/k body (extend-env vars refs saved-env) cont)]))
+      (value-of/k body (extend-env vars vals saved-env) cont)]))
 
-;(trace value-of/k)
+;(trace apply-env)
 ;(trace apply-proc/k)
+;(trace value-of/k)
 ;(trace apply-cont)
-
-
-
 

@@ -1,12 +1,5 @@
 (load "types.rkt")
 
-; Expression ::= set Identifier = Expression
-; Expression ::= spawn( Expression )
-; Expression ::= mutex( )
-; Expression ::= wait( Expression )
-; Expression ::= signal( Expression )
-; Expression ::= print( Expression )
-
 (define scanner-spec
   '([whitespace (whitespace) skip]
     [identifier (letter (arbno (or letter digit "_" "-" "?"))) symbol]
@@ -23,15 +16,7 @@
     [expression ("(" expression (arbno expression) ")") call-exp]
     [expression ("letrec" (arbno identifier "(" (arbno identifier) ")" "=" expression)
                  "in" expression) letrec-exp]
-    [expression ("begin" expression (arbno ";" expression) "end") begin-exp]
-    [expression ("set" identifier "=" expression) assign-exp]
-    [expression ("spawn" "(" expression ")") spawn-exp]
-    [expression ("mutex" "(" ")") mutex-exp]
-    [expression ("wait" "(" expression ")") wait-exp]
-    [expression ("signal" "(" expression ")") signal-exp]
-    [expression ("print" "(" expression ")") print-exp]
     ))
 
 (define scan&parse
   (sllgen:make-string-parser scanner-spec grammar-spec))
-

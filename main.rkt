@@ -113,3 +113,85 @@
                 (lambda (rand-val)
                   (loop (cdr rands) (cons rand-val vals))))))))]
     ))
+
+;inppgm->cpspgm : InpPgm x Cont -> CpsPgm
+(define (inppgm->cpspgm pgm cont)
+  (cases inppgm pgm
+    [a-inppgm [inpexp]
+      (inpexp->tsfexp inpexp
+        (lambda (tsf) (cont (a-cpspgm tsf))))]))
+
+;inpexp->smpexp : InpExp x Cont -> SmpExp
+(define (inpexp->smpexp inp cont)
+  (cases inpexp inp
+    [inp-const-exp [num]
+      (cont (smp-const-exp num))]
+    [inp-var-exp [var]
+      (cont (smp-var-exp var))]
+    [inp-diff-exp [inp1 inp2]
+      (inpexp->smpexp inp1
+        (lambda (smp1)
+          (inpexp->smpexp inp2
+            (lambda (smp2)
+              (cont (smp-diff-exp smp1 smp2))))))]
+    [inp-zero?-exp [inp1]
+      (inpexp->smpexp inp1
+        (lambda (smp1)
+          (cont (smp-zero?-exp smp1))))]
+    [inp-proc-exp [vars body-inp]
+      (inpexp->tsfexp body-inp
+        (lambda (tsf1)
+          (cont (smp-proc-exp vars tsf1))))]
+    [else
+      (eopl:printf "Error inpexp: ~a\n" inp)]
+    ))
+
+;inpexp->tsfexp : InpExp x Cont -> TsfExp
+(define (inpexp->tsfexp inp cont)
+  (cases inpexp inp
+    [inp-if-exp [inp1 inp2 inp3]
+      (inpexp->smpexp inp1
+        (lambda (smp1)
+          (inpexp->tsfexp inp2
+            (lambda (tsf2)
+              (inpexp->tsfexp inp3
+                (lambda (tsf3)
+                  (cont (tsf-if-exp smp1 tsf2 tsf3))))))))]
+    [inp-let-exp [vars inps body-inp]
+      (inpexp->tsfexp body-inp
+        (lambda (body-tsf)
+          (let loop([inps inps] [smps '()])
+            (if (null? inps)
+              (cont (tsf-let-exp vars (reverse smps) body-tsf))
+              (inpexp->smpexp (car inps)
+                (lambda (smp)
+                  (loop (cdr inps) (cons smp smps))))))))]
+    [inp-letrec-exp [names varss procs-inp rbody-inp]
+      (inpexp->tsfexp rbody-inp
+        (lambda (rbody-tsf)
+          (let loop([procs-inp procs-inp] [procs-tsf '()])
+            (if (null? procs-inp)
+              (cont (tsf-letrec-exp names varss (reverse procs-tsf) rbody-tsf))
+              (inpexp->tsfexp (car procs-inp)
+                (lambda (proc-tsf)
+                  (loop (cdr procs-inp) (cons proc-tsf procs-tsf))))))))]
+    [inp-call-exp [rator-inp rands-inp]
+      (inpexp->smpexp rator-inp
+        (lambda (rator-smp)
+          (let loop([rands-inp rands-inp] [rands-smp '()])
+            (if (null? rands-inp)
+              (cont (tsf-call-exp rator-smp (reverse rands-smp)))
+              (inpexp->smpexp (car rands-inp)
+                (lambda (rand-smp)
+                  (loop (cdr rands-inp) (cons rand-smp rands-smp))))))))]
+    [else
+      (inpexp->smpexp inp
+        (lambda (smp)
+          (cont (smpexp->tsfexp smp))))]
+    ))
+
+;inp->cps-run : String -> FinalAnswer
+(define (inp->cps-run str)
+  (inppgm->cpspgm (scan&parse-inp str)
+    (lambda (cpspgm)
+      (value-of-program-cps cpspgm))))

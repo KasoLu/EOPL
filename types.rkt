@@ -1,24 +1,25 @@
-(define (identifier? x) (symbol? x))
-(define (reference? v) (integer? v))
-(define (store? s) (list? s))
+(define identifier? symbol?)
+(define reference?  integer?)
+(define store?      list?)
+(define any?        (lambda (_) #t))
 
 (define-datatype env env?
   [empty-env]
   [extend-env
     [vars (list-of identifier?)]
-    [vals (list-of (lambda (x) #t))]
+    [vals (list-of any?)]
     [env  env?]]
   [extend-env-rec
-    [names  (list-of identifier?)]
-    [varss  (list-of (list-of identifier?))]
-    [bodies (list-of expression?)]
-    [env    env?]]
+    [names (list-of identifier?)]
+    [varss (list-of (list-of identifier?))]
+    [procs (list-of any?)]
+    [env   env?]]
   )
 
 (define-datatype proc proc?
   [procedure
     [vars (list-of identifier?)]
-    [body expression?]
+    [body any?]
     [env  env?]]
   )
 
@@ -28,38 +29,76 @@
   [proc-val [proc proc?]]
   )
 
-(define-datatype program program?
-  [a-program 
-    [exp1 expression?]])
+(define-datatype inppgm inppgm?
+  [a-inppgm
+    [exp1 inpexp?]])
 
-(define-datatype expression expression?
-  [const-exp
+(define-datatype inpexp inpexp?
+  [inp-const-exp
     [num number?]]
-  [diff-exp
-    [exp1 expression?]
-    [exp2 expression?]]
-  [zero?-exp
-    [exp1 expression?]]
-  [if-exp
-    [exp1 expression?]
-    [exp2 expression?]
-    [exp3 expression?]]
-  [var-exp
+  [inp-var-exp
     [var identifier?]]
-  [let-exp
+  [inp-diff-exp
+    [exp1 inpexp?]
+    [exp2 inpexp?]]
+  [inp-zero?-exp
+    [exp1 inpexp?]]
+  [inp-if-exp
+    [exp1 inpexp?]
+    [exp2 inpexp?]
+    [exp3 inpexp?]]
+  [inp-let-exp
     [vars (list-of identifier?)]
-    [exps (list-of expression?)]
-    [body expression?]]
-  [proc-exp
+    [exps (list-of inpexp?)]
+    [body inpexp?]]
+  [inp-letrec-exp
+    [names (list-of identifier?)]
+    [varss (list-of (list-of identifier?))]
+    [procs (list-of inpexp?)]
+    [rbody inpexp?]]
+  [inp-proc-exp
     [vars (list-of identifier?)]
-    [body expression?]]
-  [call-exp
-    [rator expression?]
-    [rands (list-of expression?)]]
-  [letrec-exp
-    [names  (list-of identifier?)]
-    [varss  (list-of (list-of identifier?))]
-    [bodies (list-of expression?)]
-    [exp1   expression?]]
+    [body inpexp?]]
+  [inp-call-exp
+    [rator inpexp?]
+    [rands (list-of inpexp?)]]
   )
 
+(define-datatype cpspgm cpspgm?
+  [a-cpspgm
+    [exp1 tsfexp?]])
+(define-datatype smpexp smpexp?
+  [smp-const-exp
+    [num number?]]
+  [smp-var-exp
+    [var identifier?]]
+  [smp-diff-exp
+    [exp1 smpexp?]
+    [exp2 smpexp?]]
+  [smp-zero?-exp
+    [exp1 smpexp?]]
+  [smp-proc-exp
+    [vars (list-of identifier?)]
+    [body tsfexp?]]
+  )
+
+(define-datatype tsfexp tsfexp?
+  [smpexp->tsfexp
+    [exp1 smpexp?]]
+  [tsf-let-exp
+    [vars (list-of identifier?)]
+    [exps (list-of smpexp?)]
+    [body tsfexp?]]
+  [tsf-letrec-exp
+    [names (list-of identifier?)]
+    [varss (list-of (list-of identifier?))]
+    [procs (list-of tsfexp?)]
+    [rbody tsfexp?]]
+  [tsf-if-exp
+    [exp1 smpexp?]
+    [exp2 tsfexp?]
+    [exp3 tsfexp?]]
+  [tsf-call-exp
+    [rator smpexp?]
+    [rands (list-of smpexp?)]]
+  )

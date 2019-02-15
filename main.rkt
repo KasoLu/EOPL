@@ -3,135 +3,113 @@
 (load "funcs.rkt")
 (require racket/trace)
 
-(define (run str)
-  (value-of-program
-    (scan&parse str)))
+;run-cps : String -> FinalAnswer
+(define (run-cps str)
+  (value-of-program-cps
+    (scan&parse-cps str)))
 
-; value-of-program : Program -> ExpVal
-(define (value-of-program pgm)
-  (cases program pgm
-    [a-program [expr]
-      (value-of/k expr (init-env)
-        (lambda (type val)
-          (if (eqv? type 'cont)
-            (begin (eopl:printf "End of computation.~%") val)
-            (report-uncaught-exception val))))]))
+;value-of-program-cps : CpsPgm -> FinalAnswer
+(define (value-of-program-cps pgm)
+  (cases cpspgm pgm
+    [a-cpspgm [expr]
+      (value-of/k-cps expr (init-env)
+        (lambda (val) val))]))
 
-; value-of/k : Exp x Env x Cont -> ExpVal
-(define (value-of/k expr env cont)
-  (cases expression expr
-    [const-exp [num]
-      (cont 'cont (num-val num))]
-    [var-exp [var]
-      (cont 'cont (apply-env env var))]
-    [proc-exp [vars body]
-      (cont 'cont (proc-val (procedure vars body env)))]
-    [letrec-exp [names varss bodies letrec-body]
-      (value-of/k letrec-body (extend-env-rec names varss bodies env) cont)]
-    [zero?-exp [exp1]
-      (value-of/k exp1 env
-        (lambda (type val)
-          (if (eqv? type 'cont)
-            (cont type (bool-val (zero? (expval->num val))))
-            (cont type val))))]
-    [let-exp [vars exps body]
-      (if (null? vars)
-        (value-of/k body env cont)
-        (let loop([exps exps] [vals '()])
-          (if (null? exps)
-            (value-of/k body (extend-env vars (reverse vals) env) cont)
-            (value-of/k (car exps) env
-              (lambda (type val)
-                (if (eqv? type 'cont)
-                  (loop (cdr exps) (cons val vals))
-                  (cont type val)))))))]
-    [if-exp [exp1 exp2 exp3]
-      (value-of/k exp1 env
-        (lambda (type val)
-          (if (eqv? type 'cont)
-            (if (expval->bool val)
-              (value-of/k exp2 env cont)
-              (value-of/k exp3 env cont))
-            (cont type val))))]
-    [diff-exp [exp1 exp2]
-      (value-of/k exp1 env
-        (lambda (type1 val1)
-          (if (eqv? type1 'cont)
-            (value-of/k exp2 env
-              (lambda (type2 val2)
-                (if (eqv? type2 'cont)
-                  (cont type2 (num-val (- (expval->num val1) (expval->num val2))))
-                  (cont type2 val2))))
-            (cont type1 val1))))]
-    [multi-exp [exp1 exp2]
-      (value-of/k exp1 env
-        (lambda (type1 val1)
-          (if (eqv? type1 'cont)
-            (value-of/k exp2 env
-              (lambda (type2 val2)
-                (if (eqv? type2 'cont)
-                  (cont type2 (num-val (* (expval->num val1) (expval->num val2))))
-                  (cont type2 val2))))
-            (cont type1 val1))))]
-    [call-exp [rator rands]
-      (value-of/k rator env
-        (lambda (type val)
-          (if (eqv? type 'cont)
-            (let loop([rands rands] [vals '()])
-              (if (null? rands)
-                (apply-proc/k (expval->proc val) (reverse vals) cont)
-                (value-of/k (car rands) env
-                  (lambda (rand-type rand-val)
-                    (if (eqv? rand-type 'cont)
-                      (loop (cdr rands) (cons rand-val vals))
-                      (cont rand-type rand-val))))))
-            (cont type val))))]
-    [list-exp [exps]
-      (let loop([exps exps] [vals '()])
-        (if (null? exps)
-          (cont 'cont (list-val (reverse vals)))
-          (value-of/k (car exps) env
-            (lambda (type val)
-              (if (eqv? type 'cont)
-                (loop (cdr exps) (cons val vals))
-                (cont type val))))))]
-    [car-exp [exp1]
-      (value-of/k exp1 env
-        (lambda (type val)
-          (if (eqv? type 'cont)
-            (cont type (car (expval->list val)))
-            (cont type val))))]
-    [cdr-exp [exp1]
-      (value-of/k exp1 env
-        (lambda (type val)
-          (if (eqv? type 'cont)
-            (cont type (list-val (cdr (expval->list val))))
-            (cont type val))))]
-    [null?-exp [exp1]
-      (value-of/k exp1 env
-        (lambda (type val)
-          (if (eqv? type 'cont)
-            (cont type (bool-val (null? (expval->list val))))
-            (cont type val))))]
-    [try-exp [exp1 var handler-exp]
-      (value-of/k exp1 env
-        (lambda (type val)
-          (if (eqv? type 'cont) 
-            (cont type val)
-            (value-of/k handler-exp (extend-env (list var) (list val) env) cont))))]
-    [raise-exp [exp1]
-      (value-of/k exp1 env
-        (lambda (type val)
-          (cont 'exception val)))]
+;value-of/k-cps : TsfExp x Env x Cont -> FinalAnswer
+(define (value-of/k-cps expr env cont)
+  (cases tsfexp expr
+    [smpexp->tsfexp [smpexp]
+      (cont (value-of-smpexp smpexp env))]
+    [tsf-let-exp [vars exps body]
+      (let ([vals (map (lambda (x) (value-of-smpexp x env)) exps)])
+        (value-of/k-cps body (extend-env vars vals env) cont))]
+    [tsf-letrec-exp [names varss procs rbody]
+      (value-of/k-cps rbody (extend-env-rec names varss procs env) cont)]
+    [tsf-if-exp [smp1 exp2 exp3]
+      (if (expval->bool (value-of-smpexp smp1 env))
+        (value-of/k-cps exp2 env cont)
+        (value-of/k-cps exp3 env cont))]
+    [tsf-call-exp [rator rands]
+      (let ([rator-proc (expval->proc (value-of-smpexp rator env))]
+            [rands-vals (map (lambda (x) (value-of-smpexp x env)) rands)])
+        (cases proc rator-proc
+          [procedure [vars body env]
+            (value-of/k-cps body (extend-env vars rands-vals env) cont)]))]
     ))
 
-(define (apply-proc/k proc1 vals cont)
-  (cases proc proc1
-    [procedure [vars body saved-env]
-      (value-of/k body (extend-env vars vals saved-env) cont)]))
+;value-of-smpexp : SmpExp x Env -> FinalAnswer
+(define (value-of-smpexp smp env)
+  (cases smpexp smp
+    [smp-const-exp [num]
+      (num-val num)]
+    [smp-var-exp [var]
+      (apply-env env var)]
+    [smp-diff-exp [exp1 exp2]
+      (let ([val1 (value-of-smpexp exp1 env)] [val2 (value-of-smpexp exp2 env)])
+        (num-val (- (expval->num val1) (expval->num val2))))]
+    [smp-zero?-exp [exp1]
+      (bool-val (zero? (expval->num (value-of-smpexp exp1 env))))]
+    [smp-proc-exp [vars body]
+      (proc-val (procedure vars body env))]
+    ))
 
-;(trace apply-env)
-;(trace apply-proc/k)
-;(trace value-of/k)
-;(trace apply-cont)
+;run-inp : String -> FinalAnswer
+(define (run-inp str)
+  (value-of-program-inp
+    (scan&parse-inp str)))
 
+;value-of-program-inp : InpExp -> FinalAnswer
+(define (value-of-program-inp pgm)
+  (cases inppgm pgm
+    [a-inppgm [expr]
+      (value-of/k-inp expr (init-env)
+        (lambda (val) val))]))
+
+;value-of/k-inp : InpExp x Env -> FinalAnswer
+(define (value-of/k-inp expr env cont)
+  (cases inpexp expr
+    [inp-const-exp [num]
+      (cont (num-val num))]
+    [inp-var-exp [var]
+      (cont (apply-env env var))]
+    [inp-diff-exp [inp1 inp2]
+      (value-of/k-inp inp1 env
+        (lambda (val1)
+          (value-of/k-inp inp2 env
+            (lambda (val2)
+              (cont (num-val (- (expval->num val1) (expval->num val2))))))))]
+    [inp-zero?-exp [inp1]
+      (value-of/k-inp inp1 env
+        (lambda (val1)
+          (cont (bool-val (zero? (expval->num val1))))))]
+    [inp-if-exp [inp1 inp2 inp3]
+      (value-of/k-inp inp1 env
+        (lambda (val1)
+          (if (expval->bool val1)
+            (value-of/k-inp inp2 env cont)
+            (value-of/k-inp inp3 env cont))))]
+    [inp-let-exp [vars inps body]
+      (if (null? vars)
+        (value-of/k-inp body env cont)
+        (let loop([inps inps] [vals '()])
+          (if (null? inps)
+            (value-of/k-inp body (extend-env vars (reverse vals) env) cont)
+            (value-of/k-inp (car inps) env
+              (lambda (val)
+                (loop (cdr inps) (cons val vals)))))))]
+    [inp-letrec-exp [names varss procs rbody]
+      (value-of/k-inp rbody (extend-env-rec names varss procs env) cont)]
+    [inp-proc-exp [vars body]
+      (cont (proc-val (procedure vars body env)))]
+    [inp-call-exp [rator rands]
+      (value-of/k-inp rator env
+        (lambda (rator-val)
+          (let loop([rands rands] [vals '()])
+            (if (null? rands)
+              (cases proc (expval->proc rator-val)
+                [procedure [vars body env]
+                  (value-of/k-inp body (extend-env vars (reverse vals) env) cont)])
+              (value-of/k-inp (car rands) env
+                (lambda (rand-val)
+                  (loop (cdr rands) (cons rand-val vals))))))))]
+    ))

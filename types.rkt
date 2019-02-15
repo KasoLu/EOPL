@@ -29,54 +29,26 @@
   [proc-val [proc proc?]]
   )
 
-(define-datatype inppgm inppgm?
-  [a-inppgm
-    [exp1 inpexp?]])
-
-(define-datatype inpexp inpexp?
-  [inp-const-exp
-    [num number?]]
-  [inp-var-exp
-    [var identifier?]]
-  [inp-diff-exp
-    [exp1 inpexp?]
-    [exp2 inpexp?]]
-  [inp-zero?-exp
-    [exp1 inpexp?]]
-  [inp-if-exp
-    [exp1 inpexp?]
-    [exp2 inpexp?]
-    [exp3 inpexp?]]
-  [inp-let-exp
-    [vars (list-of identifier?)]
-    [exps (list-of inpexp?)]
-    [body inpexp?]]
-  [inp-letrec-exp
-    [names (list-of identifier?)]
-    [varss (list-of (list-of identifier?))]
-    [procs (list-of inpexp?)]
-    [rbody inpexp?]]
-  [inp-proc-exp
-    [vars (list-of identifier?)]
-    [body inpexp?]]
-  [inp-call-exp
-    [rator inpexp?]
-    [rands (list-of inpexp?)]]
-  )
-
 (define-datatype cpspgm cpspgm?
   [a-cpspgm
     [exp1 tsfexp?]])
+
+(define-datatype cstexp cstexp?
+  [cst-const-exp
+    [num number?]]
+  [cst-var-exp
+    [var identifier?]])
+
 (define-datatype smpexp smpexp?
   [smp-const-exp
     [num number?]]
   [smp-var-exp
     [var identifier?]]
   [smp-diff-exp
-    [exp1 smpexp?]
-    [exp2 smpexp?]]
+    [exp1 cstexp?]
+    [exp2 cstexp?]]
   [smp-zero?-exp
-    [exp1 smpexp?]]
+    [exp1 cstexp?]]
   [smp-proc-exp
     [vars (list-of identifier?)]
     [body tsfexp?]]

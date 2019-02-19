@@ -63,10 +63,10 @@
 ;cps-of-exps: Listof(InpExp) x (Listof(SmpExp) -> TsfExp) -> TsfExp
 (define (cps-of-exps exps builder)
   ;cps-of-rest : Listof(InpExp) -> TsfExp
-  (let cps-of-rest ([exps (reverse exps)])
+  (let cps-of-rest ([exps exps])
     (let ([pos (list-index (lambda (e) (not (inp-exp-simple? e))) exps)])
       (if (not pos)
-        (builder (reverse (map cps-of-simple-exp exps)))
+        (builder (map cps-of-simple-exp exps))
         (let ([var (fresh-identifier 'var)])
           (cps-of-exp
             (list-ref exps pos)
@@ -146,11 +146,13 @@
         (map (lambda (proc) (cps-of-exp proc (smp-var-exp 'k%00))) procs)
         (cps-of-exp rbody k-exp))]
     [inp-call-exp [rator rands]
-      (cps-of-exps (cons rator rands)
-        (lambda (smps)
-          (tsf-call-exp
-            (car smps)
-            (append (cdr smps) (list k-exp)))))]
+      (cps-of-exps rands 
+        (lambda (rand-smps)
+          (cps-of-exps (list rator)
+            (lambda (rator-smps)
+              (tsf-call-exp
+                (car rator-smps)
+                (append rand-smps (list k-exp)))))))]
     [inp-sum-exp [exps]
       (cps-of-exps exps
         (lambda (smps)

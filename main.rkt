@@ -146,13 +146,11 @@
         (map (lambda (proc) (cps-of-exp proc (smp-var-exp 'k%00))) procs)
         (cps-of-exp rbody k-exp))]
     [inp-call-exp [rator rands]
-      (cps-of-exps rands 
-        (lambda (rand-smps)
-          (cps-of-exps (list rator)
-            (lambda (rator-smps)
-              (tsf-call-exp
-                (car rator-smps)
-                (append rand-smps (list k-exp)))))))]
+      (cps-of-exps (cons rator rands)
+        (lambda (smps)
+          (tsf-call-exp
+            (car smps)
+            (append (cdr smps) (list k-exp)))))]
     [inp-sum-exp [exps]
       (cps-of-exps exps
         (lambda (smps)
@@ -175,4 +173,8 @@
 
 ;make-send-to-cont : SmpExp x SmpExp -> TsfExp
 (define (make-send-to-cont k-exp smp)
-  (tsf-call-exp k-exp (list smp)))
+  (cases smpexp k-exp
+    [smp-proc-exp [vars body]
+      (tsf-let-exp vars (list smp) body)]
+    [else
+      (tsf-call-exp k-exp (list smp))]))

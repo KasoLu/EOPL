@@ -41,3 +41,27 @@
     [proc-val [proc] proc]
     [else (report-expval-extractor-error 'proc val)]))
 
+;list-index : Pred x List(SchemeVal) -> Int
+(define (list-index pred ls)
+  (let loop ([ls ls] [pos 0])
+    (cond [(null? ls) #f]
+          [(pred (car ls)) pos]
+          [else (loop (cdr ls) (+ 1 pos))])))
+
+;list-set : List(SchemeVal) x Int x SchemeVal -> List(SchemeVal)
+(define (list-set ls idx val)
+  (let loop ([ls ls] [pos 0])
+    (cond [(null? ls) '()]
+          [(eqv? idx pos) (cons val (cdr ls))]
+          [else (cons (car ls) (loop (cdr ls) (+ 1 pos)))])))
+
+;every? : Pred x List(SchemeVal) -> Bool
+(define (every? pred ls)
+  (if (null? ls) #t (and (pred (car ls)) (every? pred (cdr ls)))))
+
+;fresh-identifier : Symbol -> Symbol
+(define g-count 0)
+(define (fresh-identifier id)
+  (let ([id-str (symbol->string id)])
+    (set! g-count (+ 1 g-count))
+    (string->symbol (string-append id-str (number->string g-count)))))

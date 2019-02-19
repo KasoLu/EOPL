@@ -63,10 +63,10 @@
 ;cps-of-exps: Listof(InpExp) x (Listof(SmpExp) -> TsfExp) -> TsfExp
 (define (cps-of-exps exps builder)
   ;cps-of-rest : Listof(InpExp) -> TsfExp
-  (let cps-of-rest ([exps exps])
+  (let cps-of-rest ([exps (reverse exps)])
     (let ([pos (list-index (lambda (e) (not (inp-exp-simple? e))) exps)])
       (if (not pos)
-        (builder (map cps-of-simple-exp exps))
+        (builder (reverse (map cps-of-simple-exp exps)))
         (let ([var (fresh-identifier 'var)])
           (cps-of-exp
             (list-ref exps pos)

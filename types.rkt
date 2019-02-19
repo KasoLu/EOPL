@@ -24,9 +24,10 @@
   )
 
 (define-datatype expval expval?
-  [num-val  [num number?]]
-  [bool-val [bool boolean?]]
-  [proc-val [proc proc?]]
+  [num-val  [val number?]]
+  [bool-val [val boolean?]]
+  [proc-val [val proc?]]
+  [list-val [val list?]]
   )
 
 (define-datatype inppgm inppgm?
@@ -64,6 +65,8 @@
     [rands (list-of inpexp?)]]
   [inp-sum-exp
     [exps (list-of inpexp?)]]
+  [inp-list-exp
+    [exps (list-of inpexp?)]]
   )
 
 (define-datatype outpgm outpgm?
@@ -84,6 +87,8 @@
     [vars (list-of identifier?)]
     [body tsfexp?]]
   [smp-sum-exp
+    [exps (list-of tsfexp?)]]
+  [smp-list-exp
     [exps (list-of tsfexp?)]]
   )
 

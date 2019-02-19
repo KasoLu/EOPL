@@ -19,3 +19,7 @@
           g = proc(x) -(x, 1)
       in +(a, (f a), b, (g b))")
 
+;res = (list-val ((num-val 1) (num-val 2) (num-val 3)))
+(define p4
+  "let a = 1 b = 2
+   in list(a, b, +(a, b))")

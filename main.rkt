@@ -57,6 +57,13 @@
           (value-of-tsfexp (car exps) env
             (lambda (val)
               (loop (cdr exps) (cons val vals))))))]
+    [smp-list-exp [exps]
+      (let loop ([exps exps] [vals '()])
+        (if (null? exps)
+          (list-val (reverse vals))
+          (value-of-tsfexp (car exps) env
+            (lambda (val)
+              (loop (cdr exps) (cons val vals))))))]
     ))
 
 ;cps-of-exps: Listof(InpExp) x (Listof(SmpExp) -> TsfExp) -> TsfExp
@@ -83,6 +90,7 @@
       (inp-exp-simple? exp1)]
     [inp-proc-exp [vars body] #t]
     [inp-sum-exp [exps] (every? inp-exp-simple? exps)]
+    [inp-list-exp [exps] (every? inp-exp-simple? exps)]
     [else #f]
     ))
 
@@ -104,7 +112,9 @@
         (append vars (list 'k%00))
         (cps-of-exp body (smp-var-exp 'k%00)))]
     [inp-sum-exp [exps]
-      (smp-sum-exp (map cps-of-simple-exp exps))]
+      (smp-sum-exp (map (lambda (x) (smpexp->tsfexp (cps-of-simple-exp x))) exps))]
+    [inp-list-exp [exps]
+      (smp-list-exp (map cps-of-simple-exp exps))]
     [else
       (report-invalid-exp-to-cps-of-simple-exp expr)]))
 
@@ -131,11 +141,9 @@
     [inp-if-exp [exp1 exp2 exp3]
       (cps-of-exps (list exp1)
         (lambda (smps)
-          (let ([k-var (fresh-identifier 'k-var)])
-            (tsf-let-exp (list k-var) (list k-exp)
-              (tsf-if-exp (car smps)
-                (cps-of-exp exp2 (smp-var-exp k-var))
-                (cps-of-exp exp3 (smp-var-exp k-var)))))))]
+          (tsf-if-exp (car smps)
+            (cps-of-exp exp2 k-exp)
+            (cps-of-exp exp3 k-exp))))]
     [inp-let-exp [vars exps body]
       (cps-of-exps exps
         (lambda (smps)
@@ -156,6 +164,10 @@
       (cps-of-exps exps
         (lambda (smps)
           (make-send-to-cont k-exp (smp-sum-exp (map smpexp->tsfexp smps)))))]
+    [inp-list-exp [exps]
+      (cps-of-exps exps
+        (lambda (smps)
+          (make-send-to-cont k-exp (smp-list-exp (map smpexp->tsfexp smps)))))]
     ))
 
 ;cps-of-pgm : InpPgm -> CpsPgm
@@ -174,8 +186,4 @@
 
 ;make-send-to-cont : SmpExp x SmpExp -> TsfExp
 (define (make-send-to-cont k-exp smp)
-  (cases smpexp k-exp
-    [smp-proc-exp [vars body]
-      (tsf-let-exp vars (list smp) body)]
-    [else
-      (tsf-call-exp k-exp (list smp))]))
+  (tsf-call-exp k-exp (list smp)))

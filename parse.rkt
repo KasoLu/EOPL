@@ -11,6 +11,7 @@
 ;InpExp ::= proc({Identifier}*) InpExp
 ;InpExp ::= (InpExp {InpExp}*)
 ;InpExp ::= +({InpExp}*(,))
+;InpExp ::= list({inpexp}*(,))
 
 ;CpsPgm ::= TsfExp
 ;SmpExp ::= Number
@@ -19,6 +20,7 @@
 ;SmpExp ::= zero?(SmpExp)
 ;SmpExp ::= proc({Identifier}*) TsfExp
 ;SmpExp ::= +({TsfExp}*(,))
+;SmpExp ::= list({TsfExp}*(,))
 ;TsfExp ::= SmpExp
 ;TsfExp ::= let {Identifier = SmpExp}* in TsfExp
 ;TsfExp ::= letrec {Identifier ({Identifier}*) = TsfExp}* in TsfExp
@@ -45,6 +47,7 @@
     [inpexp ("proc" "(" (arbno identifier) ")" inpexp) inp-proc-exp]
     [inpexp ("(" inpexp (arbno inpexp) ")") inp-call-exp]
     [inpexp ("+" "(" (separated-list inpexp ",") ")") inp-sum-exp]
+    [inpexp ("list" "(" (separated-list inpexp ",") ")") inp-list-exp]
     ))
 
 (define scan&parse-inp
@@ -58,6 +61,7 @@
     [smpexp ("zero?" "(" smpexp ")") smp-zero?-exp]
     [smpexp ("proc" "(" (arbno identifier) ")" tsfexp) smp-proc-exp]
     [smpexp ("+" "(" (separated-list tsfexp ",") ")") smp-sum-exp]
+    [smpexp ("list" "(" (separated-list tsfexp ",") ")") smp-list-exp]
     [tsfexp (smpexp) smpexp->tsfexp]
     [tsfexp ("if" smpexp "then" tsfexp "else" tsfexp) tsf-if-exp]
     [tsfexp ("let" (arbno identifier "=" smpexp) "in" tsfexp) tsf-let-exp]

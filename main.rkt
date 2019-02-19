@@ -1,7 +1,6 @@
 (load "types.rkt")
 (load "parse.rkt")
 (load "funcs.rkt")
-(require racket/trace)
 
 ;run-out : String -> FinalAnswer
 (define (run-out str)
@@ -132,9 +131,11 @@
     [inp-if-exp [exp1 exp2 exp3]
       (cps-of-exps (list exp1)
         (lambda (smps)
-          (tsf-if-exp (car smps)
-            (cps-of-exp exp2 k-exp)
-            (cps-of-exp exp3 k-exp))))]
+          (let ([k-var (fresh-identifier 'k-var)])
+            (tsf-let-exp (list k-var) (list k-exp)
+              (tsf-if-exp (car smps)
+                (cps-of-exp exp2 (smp-var-exp k-var))
+                (cps-of-exp exp3 (smp-var-exp k-var)))))))]
     [inp-let-exp [vars exps body]
       (cps-of-exps exps
         (lambda (smps)

@@ -135,9 +135,13 @@
             (cps-of-exp exp2 k-exp)
             (cps-of-exp exp3 k-exp))))]
     [inp-let-exp [vars exps body]
-      (cps-of-exps exps
-        (lambda (smps)
-          (tsf-let-exp vars smps (cps-of-exp body k-exp))))]
+      (let loop ([vars vars] [exps exps])
+        (if (null? exps)
+          (cps-of-exp body k-exp)
+          (cps-of-exp (car exps)
+            (smp-proc-exp
+              (list (car vars))
+              (loop (cdr vars) (cdr exps))))))]
     [inp-letrec-exp [names varss procs rbody]
       (tsf-letrec-exp
         names
@@ -172,53 +176,4 @@
 
 ;make-send-to-cont : SmpExp x SmpExp -> TsfExp
 (define (make-send-to-cont k-exp smp)
-  (cases smpexp k-exp
-    [smp-proc-exp [vars body]
-      (tsf-replace-var-exp body vars (list smp))]
-    [else
-      (tsf-call-exp k-exp (list smp))]))
-
-;tsf-replace-var-exp : TsfExp x List(Var) x SmpExp -> TsfExp
-(define (tsf-replace-var-exp body vars targets)
-  (cases tsfexp body
-    [smpexp->tsfexp [smp]
-      (smpexp->tsfexp (smp-replace-var-exp smp vars targets))]
-    [tsf-let-exp [let-vars smp-exps tsf-body]
-      (tsf-let-exp
-        let-vars
-        (map (lambda (x) (smp-replace-var-exp x vars targets)) smp-exps)
-        tsf-body)]
-    [tsf-if-exp [smp1 tsf2 tsf3]
-      (tsf-if-exp
-        (smp-replace-var-exp smp1 vars targets)
-        tsf2
-        tsf3)]
-    [tsf-call-exp [rator rands]
-      (tsf-call-exp
-        (smp-replace-var-exp rator vars targets)
-        (map (lambda (x) (smp-replace-var-exp x vars targets)) rands))]
-    [else
-      body]
-    ))
-
-;smp-replace-var-exp : SmpExp x List(Var) x SmpExp -> SmpExp
-(define (smp-replace-var-exp body vars targets)
-  (cases smpexp body
-    [smp-var-exp [var]
-      (let loop ([vars vars] [targets targets])
-        (cond [(null? vars) body]
-              [(eqv? (car vars) var) (car targets)]
-              [else (loop (cdr vars) (cdr targets))]))]
-    [smp-diff-exp [smp1 smp2]
-      (smp-diff-exp
-        (smp-replace-var-exp smp1 vars targets)
-        (smp-replace-var-exp smp2 vars targets))]
-    [smp-zero?-exp [smp1]
-      (smp-zero?-exp
-        (smp-replace-var-exp smp1 vars targets))]
-    [smp-sum-exp [tsfs]
-      (smp-sum-exp
-        (map (lambda (x) (tsf-replace-var-exp x vars targets)) tsfs))]
-    [else
-      body]
-    ))
+  (tsf-call-exp k-exp (list smp)))

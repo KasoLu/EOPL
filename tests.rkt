@@ -12,10 +12,10 @@
   "let a = 1 b = 2 c = 3
    in +(a, -(c, 2), c)")
 
-;res = (num-val 3)
+;res = (num-val 2)
 (define p3
   "let a = 0 b = 1
    in let f = proc(x) +(x, 1)
           g = proc(x) -(x, 1)
-      in +(a, (f if zero?(a) then +(a, 1) else -(a, 1)), b, (g b))")
+      in +(a, (f a), b, (g b))")
 

@@ -12,19 +12,6 @@
 ;InpExp ::= (InpExp {InpExp}*)
 ;InpExp ::= +({InpExp}*(,))
 
-;CpsPgm ::= TsfExp
-;SmpExp ::= Number
-;SmpExp ::= Identifier
-;SmpExp ::= -(SmpExp, SmpExp)
-;SmpExp ::= zero?(SmpExp)
-;SmpExp ::= proc({Identifier}*) TsfExp
-;SmpExp ::= +({TsfExp}*(,))
-;TsfExp ::= SmpExp
-;TsfExp ::= let {Identifier = SmpExp}* in TsfExp
-;TsfExp ::= letrec {Identifier ({Identifier}*) = TsfExp}* in TsfExp
-;TsfExp ::= if SmpExp then TsfExp else TsfExp
-;TsfExp ::= (SmpExp {SmpExp}*)
-
 ;arbno | separated-list
 
 (define scanner-spec
@@ -49,22 +36,3 @@
 
 (define scan&parse-inp
   (sllgen:make-string-parser scanner-spec grammar-spec-inp))
-
-(define grammar-spec-out
-  '([cpspgm (tsfexp) a-outpgm]
-    [smpexp (number) smp-const-exp]
-    [smpexp (identifier) smp-var-exp]
-    [smpexp ("-" "(" smpexp "," smpexp ")") smp-diff-exp]
-    [smpexp ("zero?" "(" smpexp ")") smp-zero?-exp]
-    [smpexp ("proc" "(" (arbno identifier) ")" tsfexp) smp-proc-exp]
-    [smpexp ("+" "(" (separated-list tsfexp ",") ")") smp-sum-exp]
-    [tsfexp (smpexp) smpexp->tsfexp]
-    [tsfexp ("if" smpexp "then" tsfexp "else" tsfexp) tsf-if-exp]
-    [tsfexp ("let" (arbno identifier "=" smpexp) "in" tsfexp) tsf-let-exp]
-    [tsfexp ("letrec" (arbno identifier "(" (arbno identifier) ")" "=" tsfexp)
-             "in" tsfexp) tsf-letrec-exp]
-    [tsfexp ("(" smpexp (arbno smpexp) ")") tsf-call-exp]
-    ))
-
-(define scan&parse-out
-  (sllgen:make-string-parser scanner-spec grammar-spec-out))

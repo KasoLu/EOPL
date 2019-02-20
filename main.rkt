@@ -57,13 +57,6 @@
           (value-of-tsfexp (car exps) env
             (lambda (val)
               (loop (cdr exps) (cons val vals))))))]
-    [smp-list-exp [exps]
-      (let loop ([exps exps] [vals '()])
-        (if (null? exps)
-          (list-val (reverse vals))
-          (value-of-tsfexp (car exps) env
-            (lambda (val)
-              (loop (cdr exps) (cons val vals))))))]
     ))
 
 ;cps-of-exps: Listof(InpExp) x (Listof(SmpExp) -> TsfExp) -> TsfExp
@@ -90,7 +83,6 @@
       (inp-exp-simple? exp1)]
     [inp-proc-exp [vars body] #t]
     [inp-sum-exp [exps] (every? inp-exp-simple? exps)]
-    [inp-list-exp [exps] (every? inp-exp-simple? exps)]
     [else #f]
     ))
 
@@ -112,9 +104,7 @@
         (append vars (list 'k%00))
         (cps-of-exp body (smp-var-exp 'k%00)))]
     [inp-sum-exp [exps]
-      (smp-sum-exp (map (lambda (x) (smpexp->tsfexp (cps-of-simple-exp x))) exps))]
-    [inp-list-exp [exps]
-      (smp-list-exp (map cps-of-simple-exp exps))]
+      (smp-sum-exp (map cps-of-simple-exp exps))]
     [else
       (report-invalid-exp-to-cps-of-simple-exp expr)]))
 
@@ -164,10 +154,6 @@
       (cps-of-exps exps
         (lambda (smps)
           (make-send-to-cont k-exp (smp-sum-exp (map smpexp->tsfexp smps)))))]
-    [inp-list-exp [exps]
-      (cps-of-exps exps
-        (lambda (smps)
-          (make-send-to-cont k-exp (smp-list-exp (map smpexp->tsfexp smps)))))]
     ))
 
 ;cps-of-pgm : InpPgm -> CpsPgm
@@ -186,4 +172,53 @@
 
 ;make-send-to-cont : SmpExp x SmpExp -> TsfExp
 (define (make-send-to-cont k-exp smp)
-  (tsf-call-exp k-exp (list smp)))
+  (cases smpexp k-exp
+    [smp-proc-exp [vars body]
+      (tsf-replace-var-exp body vars (list smp))]
+    [else
+      (tsf-call-exp k-exp (list smp))]))
+
+;tsf-replace-var-exp : TsfExp x List(Var) x SmpExp -> TsfExp
+(define (tsf-replace-var-exp body vars targets)
+  (cases tsfexp body
+    [smpexp->tsfexp [smp]
+      (smpexp->tsfexp (smp-replace-var-exp smp vars targets))]
+    [tsf-let-exp [let-vars smp-exps tsf-body]
+      (tsf-let-exp
+        let-vars
+        (map (lambda (x) (smp-replace-var-exp x vars targets)) smp-exps)
+        tsf-body)]
+    [tsf-if-exp [smp1 tsf2 tsf3]
+      (tsf-if-exp
+        (smp-replace-var-exp smp1 vars targets)
+        tsf2
+        tsf3)]
+    [tsf-call-exp [rator rands]
+      (tsf-call-exp
+        (smp-replace-var-exp rator vars targets)
+        (map (lambda (x) (smp-replace-var-exp x vars targets)) rands))]
+    [else
+      body]
+    ))
+
+;smp-replace-var-exp : SmpExp x List(Var) x SmpExp -> SmpExp
+(define (smp-replace-var-exp body vars targets)
+  (cases smpexp body
+    [smp-var-exp [var]
+      (let loop ([vars vars] [targets targets])
+        (cond [(null? vars) body]
+              [(eqv? (car vars) var) (car targets)]
+              [else (loop (cdr vars) (cdr targets))]))]
+    [smp-diff-exp [smp1 smp2]
+      (smp-diff-exp
+        (smp-replace-var-exp smp1 vars targets)
+        (smp-replace-var-exp smp2 vars targets))]
+    [smp-zero?-exp [smp1]
+      (smp-zero?-exp
+        (smp-replace-var-exp smp1 vars targets))]
+    [smp-sum-exp [tsfs]
+      (smp-sum-exp
+        (map (lambda (x) (tsf-replace-var-exp x vars targets)) tsfs))]
+    [else
+      body]
+    ))

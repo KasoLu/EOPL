@@ -23,6 +23,7 @@
     [inpexp ("newref" "(" inpexp ")") inp-newref-exp]
     [inpexp ("deref" "(" inpexp ")") inp-deref-exp]
     [inpexp ("setref" "(" inpexp "," inpexp ")") inp-setref-exp]
+    [inpexp ("begin" inpexp (arbno ";" inpexp) "end") inp-begin-exp]
     ))
 
 (define scan&parse-inp

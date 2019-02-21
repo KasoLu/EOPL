@@ -72,6 +72,9 @@
   [inp-setref-exp
     [inp1 inpexp?]
     [inp2 inpexp?]]
+  [inp-begin-exp
+    [inp1 inpexp?]
+    [inps (list-of inpexp?)]]
   )
 
 (define-datatype outpgm outpgm?

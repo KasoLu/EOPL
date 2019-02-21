@@ -182,6 +182,10 @@
         (lambda (smps)
           (tpf-setrefk-exp (car smps) (cadr smps)
             (make-send-to-cont k-exp (smp-const-exp 23)))))]
+    [inp-begin-exp [inp1 inps]
+      (cps-of-exps (cons inp1 inps)
+        (lambda (smps)
+          (make-send-to-cont k-exp (last smps))))]
     ))
 
 ;cps-of-pgm : InpPgm -> CpsPgm

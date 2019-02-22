@@ -20,10 +20,8 @@
     [inpexp ("proc" "(" (arbno identifier) ")" inpexp) inp-proc-exp]
     [inpexp ("(" inpexp (arbno inpexp) ")") inp-call-exp]
     [inpexp ("+" "(" (separated-list inpexp ",") ")") inp-sum-exp]
-    [inpexp ("begin" inpexp (arbno ";" inpexp) "end") inp-begin-exp]
-    [inpexp ("set" identifier "=" inpexp) inp-set-exp]
-    [inpexp ("letcc" identifier "in" inpexp) inp-letcc-exp]
-    [inpexp ("throw" inpexp "to" inpexp) inp-throw-exp]
+    [inpexp ("try" inpexp "catch" "(" identifier ")" inpexp) inp-try-exp]
+    [inpexp ("raise" inpexp) inp-raise-exp]
     ))
 
 (define scan&parse-inp
@@ -43,9 +41,6 @@
     [tpfexp ("letrec" (arbno identifier "(" (arbno identifier) ")" "=" tpfexp)
              "in" tpfexp) tpf-letrec-exp]
     [tpfexp ("(" smpexp (arbno smpexp) ")") tpf-call-exp]
-    [tpfexp ("newrefk" "(" smpexp "," smpexp ")") tpf-newrefk-exp]
-    [tpfexp ("derefk" "(" smpexp "," smpexp ")") tpf-derefk-exp]
-    [tpfexp ("setrefk" "(" smpexp "," smpexp ")" ";" tpfexp) tpf-setrefk-exp]
     ))
 
 (define scan&parse-out

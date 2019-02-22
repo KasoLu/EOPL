@@ -25,18 +25,15 @@
    in let c = setref(a, 10)
       in +(deref(a), deref(b))")
 
-;res = (num-val 12)
+;res = (num-val 10)
 (define p5
-  "let a = newref(1) b = newref(2)
-   in begin setref(a, 10); +(deref(a), deref(b)) end")
-   
-;res = (num-val 10)
-(define p6
-  "let a = 1 b = 2 c = 3 f = proc(x) -(x, 1)
-   in begin set a = 10; (f +(a, -(c, 2))) end")
-
-;res = (num-val 10)
-(define p7
-  "let a = 1 b = 2
-   in letcc cont 
-      in +(a, throw 10 to cont)")
+  "let a = 1 b = 2 in
+     try
+       let c = 3 d = 4 in
+         +(d, try
+                let e = 5 f = 6 in
+                  +(e, raise 10)
+              catch(e1)
+                raise e1)
+     catch(e2)
+       e2")

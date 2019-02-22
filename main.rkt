@@ -2,140 +2,209 @@
 (load "parse.rkt")
 (load "funcs.rkt")
 
-;run-inp : String -> FinalAnswer
-(define (run-inp str)
-  (value-of-inppgm
-    (scan&parse-inp str)))
+;run-out : String -> FinalAnswer
+(define (run-out str)
+  (value-of-outpgm
+    (scan&parse-out str)))
 
-;value-of-pgm-inp : InpPgm -> FinalAnswer
-(define (value-of-inppgm pgm)
-  (cases inppgm pgm
-    [a-inppgm [expr]
-      (value-of-inpexp expr (init-env)
+;value-of-outpgm : OutPgm -> FinalAnswer
+(define (value-of-outpgm pgm)
+  (init-store!)
+  (cases outpgm pgm
+    [a-outpgm [expr]
+      (value-of-tpfexp expr (init-env)
         (lambda (val) val))]))
 
-;value-of-inpexp : InpExp x Env x Cont -> FinalAnswer
-(define (value-of-inpexp expr env cont)
-  (cases inpexp expr
-    [inp-const-exp [num]
-      (cont (num-val num))]
-    [inp-var-exp [var]
-      (cont (apply-env env var))]
-    [inp-diff-exp [inp1 inp2]
-      (value-of-inpexp inp1 env
-        (lambda (val1)
-          (value-of-inpexp inp2 env
-            (lambda (val2)
-              (cont (num-val (- (expval->num val1) (expval->num val2))))))))]
-    [inp-zero?-exp [inp1]
-      (value-of-inpexp inp1 env
-        (lambda (val1)
-          (cont (bool-val (zero? (expval->num val1))))))]
-    [inp-if-exp [inp1 inp2 inp3]
-      (value-of-inpexp inp1 env
-        (lambda (val1)
-          (if (expval->bool val1)
-            (value-of-inpexp inp2 env cont)
-            (value-of-inpexp inp3 env cont))))]
-    [inp-let-exp [vars inps body]
-      (let loop ([inps inps] [vals '()])
-        (if (null? inps)
-          (let ([ext-env (if (null? vars) env (extend-env vars (reverse vals) env))])
-            (value-of-inpexp body ext-env cont))
-          (value-of-inpexp (car inps) env
-            (lambda (val)
-              (loop (cdr inps) (cons val vals))))))]
-    [inp-letrec-exp [names varss procs rbody]
-      (value-of-inpexp rbody (extend-env-rec names varss procs env) cont)]
-    [inp-proc-exp [vars body]
-      (cont (proc-val (procedure vars body env)))]
-    [inp-call-exp [rator rands]
-      (value-of-inpexp rator env
-        (lambda (rator-val)
-          (let loop ([rands rands] [vals '()])
-            (if (null? rands)
-              (cases proc (expval->proc rator-val)
-                [procedure [vars body saved-env]
-                  (value-of-inpexp body (extend-env vars (reverse vals) saved-env) cont)])
-              (value-of-inpexp (car rands) env
-                (lambda (rand-val)
-                  (loop (cdr rands) (cons rand-val vals))))))))]
-    [inp-sum-exp [inps]
-      (let loop ([inps inps] [vals '()])
-        (if (null? inps)
-          (cont (num-val (foldl (lambda (x res) (+ (expval->num x) res)) 0 vals)))
-          (value-of-inpexp (car inps) env
-            (lambda (val)
-              (loop (cdr inps) (cons val vals))))))]
+;value-of-tpfexp : TpfExp x Env x Cont -> FinalAnswer
+(define (value-of-tpfexp expr env cont)
+  (cases tpfexp expr
+    [smpexp->tpfexp [smp]
+      (cont (value-of-smpexp smp env))]
+    [tpf-let-exp [vars smps body]
+      (let ([vals (map (lambda (x) (value-of-smpexp x env)) smps)])
+        (value-of-tpfexp body (extend-env vars vals env) cont))]
+    [tpf-letrec-exp [names varss procs rbody]
+      (value-of-tpfexp rbody (extend-env-rec names varss procs env) cont)]
+    [tpf-if-exp [smp1 tpf2 tpf3]
+      (if (expval->bool (value-of-smpexp smp1 env))
+        (value-of-tpfexp tpf2 env cont)
+        (value-of-tpfexp tpf3 env cont))]
+    [tpf-call-exp [rator rands]
+      (let ([rator-proc (expval->proc (value-of-smpexp rator env))]
+            [rands-vals (map (lambda (x) (value-of-smpexp x env)) rands)])
+        (apply-tpf-proc rator-proc rands-vals cont))]
+    [tpf-newrefk-exp [smp1 smp2]
+      (let ([val1 (value-of-smpexp smp1 env)] [val2 (value-of-smpexp smp2 env)])
+        (let ([newval (ref-val (newref val1))])
+          (apply-tpf-proc (expval->proc val2) (list newval) cont)))]
+    [tpf-derefk-exp [smp1 smp2]
+      (apply-tpf-proc 
+        (expval->proc (value-of-smpexp smp2 env))
+        (list (deref (expval->ref (value-of-smpexp smp1 env))))
+        cont)]
+    [tpf-setrefk-exp [smp1 smp2 body]
+      (let ([ref (expval->ref (value-of-smpexp smp1 env))]
+            [val (value-of-smpexp smp2 env)])
+        (begin (setref! ref val)
+               (value-of-tpfexp body env cont)))]
     ))
 
-;inp-is-simple? : InpExp -> Bool
-(define (inp-is-simple? expr)
+;value-of-smpexp : SmpExp x Env -> FinalAnswer
+(define (value-of-smpexp smp env)
+  (cases smpexp smp
+    [smp-const-exp [num]
+      (num-val num)]
+    [smp-var-exp [var]
+      (apply-env env var)]
+    [smp-diff-exp [smp1 smp2]
+      (let ([val1 (value-of-smpexp smp1 env)] [val2 (value-of-smpexp smp2 env)])
+        (num-val (- (expval->num val1) (expval->num val2))))]
+    [smp-zero?-exp [smp1]
+      (bool-val (zero? (expval->num (value-of-smpexp smp1 env))))]
+    [smp-proc-exp [vars body]
+      (proc-val (procedure vars body env))]
+    [smp-sum-exp [smps]
+      (num-val 
+        (foldl (lambda (x res) (+ (expval->num (value-of-smpexp x env)) res)) 0 smps))]
+    ))
+
+;apply-tpf-proc : Proc x List(ExpVal) x Cont -> FinalAnswer
+(define (apply-tpf-proc p args cont)
+  (cases proc p
+    [procedure [vars body env]
+      (value-of-tpfexp body (extend-env vars args env) cont)]))
+
+;cps-of-exps: Listof(InpExp) x (Listof(SmpExp) -> TpfExp) -> TpfExp
+(define (cps-of-exps exps builder)
+  ;cps-of-rest : Listof(InpExp) -> TpfExp
+  (let cps-of-rest ([exps exps])
+    (let ([pos (list-index (lambda (e) (not (inp-exp-simple? e))) exps)])
+      (if (not pos)
+        (builder (map cps-of-simple-exp exps))
+        (let ([var (fresh-identifier 'var)])
+          (cps-of-exp
+            (list-ref exps pos)
+            (smp-proc-exp (list var)
+              (cps-of-rest (list-set exps pos (inp-var-exp var))))))))))
+
+;inp-exp-simple? : InpExp -> Bool
+(define (inp-exp-simple? expr)
   (cases inpexp expr
     [inp-const-exp [num] #t]
     [inp-var-exp [var] #t]
-    [inp-diff-exp [exp1 exp2] (and (inp-is-simple? exp1) (inp-is-simple? exp2))]
-    [inp-zero?-exp [exp1] (inp-is-simple? exp1)]
+    [inp-diff-exp [exp1 exp2]
+      (and (inp-exp-simple? exp1) (inp-exp-simple? exp2))]
+    [inp-zero?-exp [exp1]
+      (inp-exp-simple? exp1)]
     [inp-proc-exp [vars body] #t]
-    [inp-sum-exp [exps] (every? inp-is-simple? exps)]
+    [inp-sum-exp [exps] (every? inp-exp-simple? exps)]
     [else #f]
     ))
 
-;anf-of-inps : List(InpExp) x (List(InpExp) -> InpExp) -> InpExp
-(define (anf-of-inps inps ctx)
-  (let anf-of-rest ([inps inps] [acc '()])
-    (cond [(null? inps)
-           (ctx (reverse acc))]
-          [(inp-is-simple? (car inps))
-           (anf-of-rest (cdr inps) (cons (anf-of-inp (car inps)) acc))]
-          [else
-           (let ([val-var (fresh-identifier 'val)])
-             (inp-let-exp
-               (list val-var)
-               (list (anf-of-inp (car inps)))
-               (anf-of-rest (cdr inps) (cons (inp-var-exp val-var) acc))))])))
-
-;anf-of-inp : InpExp -> InpExp
-(define (anf-of-inp inp)
-  (cases inpexp inp
-    [inp-diff-exp [inp1 inp2]
-      (anf-of-inps (list inp1 inp2)
-        (lambda (smps)
-          (inp-diff-exp (car smps) (cadr smps))))]
-    [inp-zero?-exp [inp1]
-      (anf-of-inps (list inp1)
-        (lambda (smps)
-          (inp-zero?-exp (car smps))))]
-    [inp-if-exp [inp1 inp2 inp3]
-      (anf-of-inps (list inp1)
-        (lambda (smps)
-          (inp-if-exp (car smps) (anf-of-inp inp2) (anf-of-inp inp3))))]
-    [inp-let-exp [vars inps body]
-      (anf-of-inps inps
-        (lambda (smps)
-          (inp-let-exp vars smps (anf-of-inp body))))]
-    [inp-letrec-exp [names varss procs rbody]
-      (inp-letrec-exp names varss (map anf-of-inp procs) (anf-of-inp rbody))]
+;cps-of-simple-exp : InpExp -> SmpExp
+(define (cps-of-simple-exp expr)
+  (cases inpexp expr
+    [inp-const-exp [num] 
+      (smp-const-exp num)]
+    [inp-var-exp [var]
+      (smp-var-exp var)]
+    [inp-diff-exp [exp1 exp2]
+      (smp-diff-exp
+        (cps-of-simple-exp exp1)
+        (cps-of-simple-exp exp2))]
+    [inp-zero?-exp [exp1]
+      (smp-zero?-exp (cps-of-simple-exp exp1))]
     [inp-proc-exp [vars body]
-      (inp-proc-exp vars (anf-of-inp body))]
+      (smp-proc-exp
+        (append vars (list 'k%00))
+        (cps-of-exp body (smp-var-exp 'k%00)))]
+    [inp-sum-exp [exps]
+      (smp-sum-exp (map cps-of-simple-exp exps))]
+    [else
+      (report-invalid-exp-to-cps-of-simple-exp expr)]))
+
+;cps-of-exp : InpExp x SmpExp -> TfsExp
+(define (cps-of-exp expr k-exp)
+  (cases inpexp expr
+    [inp-const-exp [num]
+      (make-send-to-cont k-exp (smp-const-exp num))]
+    [inp-var-exp [var]
+      (make-send-to-cont k-exp (smp-var-exp var))]
+    [inp-proc-exp [vars body]
+      (make-send-to-cont k-exp
+        (smp-proc-exp 
+          (append vars (list 'k%00)) 
+          (cps-of-exp body (smp-var-exp 'k%00))))]
+    [inp-zero?-exp [exp1]
+      (cps-of-exps (list exp1)
+        (lambda (smps)
+          (make-send-to-cont k-exp (smp-zero?-exp (car smps)))))]
+    [inp-diff-exp [exp1 exp2]
+      (cps-of-exps (list exp1 exp2)
+        (lambda (smps)
+          (make-send-to-cont k-exp (smp-diff-exp (car smps) (cadr smps)))))]
+    [inp-if-exp [exp1 exp2 exp3]
+      (cps-of-exps (list exp1)
+        (lambda (smps)
+          (tpf-if-exp (car smps)
+            (cps-of-exp exp2 k-exp)
+            (cps-of-exp exp3 k-exp))))]
+    [inp-let-exp [vars exps body]
+      (cps-of-exps exps
+        (lambda (smps)
+          (tpf-let-exp vars smps (cps-of-exp body k-exp))))]
+    [inp-letrec-exp [names varss procs rbody]
+      (tpf-letrec-exp
+        names
+        (map (lambda (vars) (append vars (list 'k%00))) varss)
+        (map (lambda (proc) (cps-of-exp proc (smp-var-exp 'k%00))) procs)
+        (cps-of-exp rbody k-exp))]
     [inp-call-exp [rator rands]
-      (anf-of-inps (cons rator rands)
+      (cps-of-exps (cons rator rands)
         (lambda (smps)
-          (inp-call-exp (car smps) (cdr smps))))]
-    [inp-sum-exp [inps]
-      (anf-of-inps inps
+          (tpf-call-exp
+            (car smps)
+            (append (cdr smps) (list k-exp)))))]
+    [inp-sum-exp [exps]
+      (cps-of-exps exps
         (lambda (smps)
-          (inp-sum-exp smps)))]
-    [else inp]))
+          (make-send-to-cont k-exp (smp-sum-exp smps))))]
+    [inp-newref-exp [inp1]
+      (cps-of-exps (list inp1)
+        (lambda (smps)
+          (tpf-newrefk-exp (car smps) k-exp)))]
+    [inp-deref-exp [inp1]
+      (cps-of-exps (list inp1)
+        (lambda (smps)
+          (tpf-derefk-exp (car smps) k-exp)))]
+    [inp-setref-exp [inp1 inp2]
+      (cps-of-exps (list inp1 inp2)
+        (lambda (smps)
+          (tpf-setrefk-exp (car smps) (cadr smps)
+            (make-send-to-cont k-exp (smp-const-exp 23)))))]
+    ))
 
-;run-anf : String -> FinalAnswer
-(define (run-anf str)
-  (value-of-anfpgm
-    (scan&parse-inp str)))
-
-;value-of-anfpgm : InpPgm -> FinalAnswer
-(define (value-of-anfpgm pgm)
+;cps-of-pgm : InpPgm -> CpsPgm
+(define (cps-of-pgm pgm)
   (cases inppgm pgm
-    [a-inppgm [inp]
-      (value-of-inpexp (anf-of-inp inp) (init-env)
-        (lambda (val) val))]))
+    [a-inppgm [expr]
+      (a-outpgm 
+        (cps-of-exps (list expr)
+          (lambda (smps) (smpexp->tpfexp (car smps)))))]))
+
+;run-cps : String -> FinalAnswer
+(define (run-cps str)
+  (init-store!)
+  (value-of-outpgm
+    (cps-of-pgm
+      (scan&parse-inp str))))
+
+;display-cps : String -> Void
+(define (display-cps str)
+  (pretty-display
+    (cps-of-pgm
+      (scan&parse-inp str))))
+
+;make-send-to-cont : SmpExp x SmpExp -> TpfExp
+(define (make-send-to-cont k-exp smp)
+  (tpf-call-exp k-exp (list smp)))

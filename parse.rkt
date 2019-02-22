@@ -1,17 +1,5 @@
 (load "types.rkt")
 
-;InpPgm ::= InpExp
-;InpExp ::= Number
-;InpExp ::= -(InpExp, InpExp)
-;InpExp ::= zero?(InpExp)
-;InpExp ::= if InpExp then InpExp else InpExp
-;InpExp ::= Identifier
-;InpExp ::= let {Identifier = InpExp}* in InpExp
-;InpExp ::= letrec {Identifier ({Identifier}*) = InpExp}* in InpExp
-;InpExp ::= proc({Identifier}*) InpExp
-;InpExp ::= (InpExp {InpExp}*)
-;InpExp ::= +({InpExp}*(,))
-
 ;arbno | separated-list
 
 (define scanner-spec
@@ -32,7 +20,32 @@
     [inpexp ("proc" "(" (arbno identifier) ")" inpexp) inp-proc-exp]
     [inpexp ("(" inpexp (arbno inpexp) ")") inp-call-exp]
     [inpexp ("+" "(" (separated-list inpexp ",") ")") inp-sum-exp]
+    [inpexp ("newref" "(" inpexp ")") inp-newref-exp]
+    [inpexp ("deref" "(" inpexp ")") inp-deref-exp]
+    [inpexp ("setref" "(" inpexp "," inpexp ")") inp-setref-exp]
     ))
 
 (define scan&parse-inp
   (sllgen:make-string-parser scanner-spec grammar-spec-inp))
+
+(define grammar-spec-out
+  '([outpgm (tpfexp) a-outpgm]
+    [smpexp (number) smp-const-exp]
+    [smpexp (identifier) smp-var-exp]
+    [smpexp ("-" "(" smpexp "," smpexp ")") smp-diff-exp]
+    [smpexp ("zero?" "(" smpexp ")") smp-zero?-exp]
+    [smpexp ("proc" "(" (arbno identifier) ")" tpfexp) smp-proc-exp]
+    [smpexp ("+" "(" (separated-list smpexp ",") ")") smp-sum-exp]
+    [tpfexp (smpexp) smpexp->tpfexp]
+    [tpfexp ("if" smpexp "then" tpfexp "else" tpfexp) tpf-if-exp]
+    [tpfexp ("let" (arbno identifier "=" smpexp) "in" tpfexp) tpf-let-exp]
+    [tpfexp ("letrec" (arbno identifier "(" (arbno identifier) ")" "=" tpfexp)
+             "in" tpfexp) tpf-letrec-exp]
+    [tpfexp ("(" smpexp (arbno smpexp) ")") tpf-call-exp]
+    [tpfexp ("newrefk" "(" smpexp "," smpexp ")") tpf-newrefk-exp]
+    [tpfexp ("derefk" "(" smpexp "," smpexp ")") tpf-derefk-exp]
+    [tpfexp ("setrefk" "(" smpexp "," smpexp ")" ";" tpfexp) tpf-setrefk-exp]
+    ))
+
+(define scan&parse-out
+  (sllgen:make-string-parser scanner-spec grammar-spec-out))

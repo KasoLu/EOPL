@@ -12,29 +12,15 @@
   "let a = 1 b = 2 c = 3
    in +(a, -(c, 2), c)")
 
-;res = (num-val 55)
+;res = (num-val 2)
 (define p3
-  "letrec fib-anf(n) = 
-     if zero?(-(n, 1))
-     then 1
-     else 
-       if zero?(-(n, 2))
-       then 1
-       else 
-         let val1 = (fib-anf -(n, 1))
-         in let val2 = (fib-anf -(n, 2))
-            in +(val1, val2)
-   in (fib-anf 10)")
+  "let a = 0 b = 1
+   in let f = proc(x) +(x, 1)
+          g = proc(x) -(x, 1)
+      in +(a, (f a), b, (g b))")
 
-;res = (num-val 55)
+;res = (num-val 12)
 (define p4
-  "letrec fib(n) =
-     if zero?(-(n, 1))
-     then 1
-     else 
-       if zero?(-(n, 2))
-       then 1
-       else
-         +((fib -(n, 1)), (fib -(n, 2)))
-   in (fib 10)")
-
+  "let a = newref(1) b = newref(2)
+   in let c = setref(a, 10)
+      in +(deref(a), deref(b))")

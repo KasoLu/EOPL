@@ -24,9 +24,10 @@
   )
 
 (define-datatype expval expval?
-  [num-val  [num number?]]
-  [bool-val [bool boolean?]]
-  [proc-val [proc proc?]]
+  [num-val  [val number?]]
+  [bool-val [val boolean?]]
+  [proc-val [val proc?]]
+  [ref-val  [val reference?]]
   )
 
 (define-datatype inppgm inppgm?
@@ -64,4 +65,63 @@
     [rands (list-of inpexp?)]]
   [inp-sum-exp
     [exps (list-of inpexp?)]]
+  [inp-newref-exp
+    [inp1 inpexp?]]
+  [inp-deref-exp
+    [inp1 inpexp?]]
+  [inp-setref-exp
+    [inp1 inpexp?]
+    [inp2 inpexp?]]
+  )
+
+(define-datatype outpgm outpgm?
+  [a-outpgm
+    [exp1 tpfexp?]])
+
+(define-datatype smpexp smpexp?
+  [smp-const-exp
+    [num number?]]
+  [smp-var-exp
+    [var identifier?]]
+  [smp-diff-exp
+    [exp1 smpexp?]
+    [exp2 smpexp?]]
+  [smp-zero?-exp
+    [exp1 smpexp?]]
+  [smp-proc-exp
+    [vars (list-of identifier?)]
+    [body tpfexp?]]
+  [smp-sum-exp
+    [exps (list-of smpexp?)]]
+  )
+
+(define-datatype tpfexp tpfexp?
+  [smpexp->tpfexp
+    [smp1 smpexp?]]
+  [tpf-let-exp
+    [vars (list-of identifier?)]
+    [smps (list-of smpexp?)]
+    [body tpfexp?]]
+  [tpf-letrec-exp
+    [names (list-of identifier?)]
+    [varss (list-of (list-of identifier?))]
+    [procs (list-of tpfexp?)]
+    [rbody tpfexp?]]
+  [tpf-if-exp
+    [smp1 smpexp?]
+    [tpf2 tpfexp?]
+    [tpf3 tpfexp?]]
+  [tpf-call-exp
+    [rator smpexp?]
+    [rands (list-of smpexp?)]]
+  [tpf-newrefk-exp
+    [smp1 smpexp?]
+    [smp2 smpexp?]]
+  [tpf-derefk-exp
+    [smp1 smpexp?]
+    [smp2 smpexp?]]
+  [tpf-setrefk-exp
+    [smp1 smpexp?]
+    [smp2 smpexp?]
+    [tpf1 tpfexp?]]
   )

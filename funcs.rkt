@@ -40,6 +40,10 @@
   (cases expval val
     [proc-val [proc] proc]
     [else (report-expval-extractor-error 'proc val)]))
+(define (expval->ref val)
+  (cases expval val
+    [ref-val [ref] ref]
+    [else (report-expval-extractor-error 'ref val)]))
 
 ;list-index : Pred x List(SchemeVal) -> Int
 (define (list-index pred ls)
@@ -65,3 +69,29 @@
   (let ([id-str (symbol->string id)])
     (set! g-count (+ 1 g-count))
     (string->symbol (string-append id-str (number->string g-count)))))
+
+(define the-store 'uninit)
+;empty-store : () -> Store
+(define (empty-store) '())
+;get-store : () -> Store
+(define (get-store) the-store)
+;init-store! : () -> Unspecified
+(define (init-store!)
+  (set! the-store (empty-store)))
+;reference? : SchemeVal -> Bool
+(define (reference? v)
+  (integer? v))
+;newref : ExpVal -> Ref
+(define (newref val)
+  (let ([next-ref (length the-store)])
+    (begin (set! the-store (append the-store (list val))) next-ref)))
+;deref : Ref -> ExpVal
+(define (deref ref)
+  (list-ref the-store ref))
+;setref! : Ref x ExpVal -> Unspecified
+(define (setref! ref val)
+  (define (setref-inner store1 ref1)
+    (cond [(null? store1) (report-invalid-reference ref the-store)]
+          [(zero? ref1) (cons val (cdr store1))]
+          [else (cons (car store1) (setref-inner (cdr store1) (- ref1 1)))]))
+  (set! the-store (setref-inner the-store ref)))

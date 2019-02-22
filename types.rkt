@@ -65,13 +65,12 @@
     [rands (list-of inpexp?)]]
   [inp-sum-exp
     [exps (list-of inpexp?)]]
-  [inp-newref-exp
+  [inp-try-exp
+    [body inpexp?]
+    [var1 identifier?]
+    [excp inpexp?]]
+  [inp-raise-exp
     [inp1 inpexp?]]
-  [inp-deref-exp
-    [inp1 inpexp?]]
-  [inp-setref-exp
-    [inp1 inpexp?]
-    [inp2 inpexp?]]
   )
 
 (define-datatype outpgm outpgm?
@@ -114,14 +113,4 @@
   [tpf-call-exp
     [rator smpexp?]
     [rands (list-of smpexp?)]]
-  [tpf-newrefk-exp
-    [smp1 smpexp?]
-    [smp2 smpexp?]]
-  [tpf-derefk-exp
-    [smp1 smpexp?]
-    [smp2 smpexp?]]
-  [tpf-setrefk-exp
-    [smp1 smpexp?]
-    [smp2 smpexp?]
-    [tpf1 tpfexp?]]
   )

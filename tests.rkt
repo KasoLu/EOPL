@@ -24,3 +24,16 @@
   "let a = newref(1) b = newref(2)
    in let c = setref(a, 10)
       in +(deref(a), deref(b))")
+
+;res = (num-val 10)
+(define p5
+  "let a = 1 b = 2 in
+     try
+       let c = 3 d = 4 in
+         +(d, try
+                let e = 5 f = 6 in
+                  +(e, raise 10)
+              catch(e1)
+                raise e1)
+     catch(e2)
+       e2")

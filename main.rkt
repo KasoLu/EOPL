@@ -75,23 +75,23 @@
       (value-of-tpfexp body (extend-env vars args env) cont)]))
 
 ;cps-of-exps: Listof(InpExp) x (Listof(SmpExp) -> TpfExp) -> TpfExp
-(define (cps-of-exps exps builder)
-  ;cps-of-rest : Listof(InpExp) -> TpfExp
-  (let cps-of-rest ([exps exps])
-    (let ([pos (list-index (lambda (e) (not (inp-exp-simple? e))) exps)])
-      (if (not pos)
-        (builder (map cps-of-simple-exp exps))
-        (let ([var (fresh-identifier 'var)])
-          (cps-of-exp
-            (list-ref exps pos)
-            (smp-proc-exp (list var)
-              (cps-of-rest (list-set exps pos (inp-var-exp var))))))))))
+(define (cps-of-exps inps ctx)
+  (let cps-of-rest ([inps inps] [acc '()])
+    (cond [(null? inps)
+           (ctx (reverse acc))]
+          [(inp-exp-simple? (car inps))
+           (cps-of-rest (cdr inps) (cons (cps-of-simple-exp (car inps)) acc))]
+          [else
+           (let ([var (fresh-identifier 'val)])
+             (cps-of-exp (car inps)
+               (smp-proc-exp 
+                 (list var) 
+                 (cps-of-rest (cdr inps) (cons (smp-var-exp var) acc)))))])))
 
 ;inp-exp-simple? : InpExp -> Bool
 (define (inp-exp-simple? expr)
   (cases inpexp expr
     [inp-const-exp [num] #t]
-    [inp-var-exp [var] #t]
     [inp-diff-exp [exp1 exp2]
       (and (inp-exp-simple? exp1) (inp-exp-simple? exp2))]
     [inp-zero?-exp [exp1]
@@ -106,8 +106,6 @@
   (cases inpexp expr
     [inp-const-exp [num] 
       (smp-const-exp num)]
-    [inp-var-exp [var]
-      (smp-var-exp var)]
     [inp-diff-exp [exp1 exp2]
       (smp-diff-exp
         (cps-of-simple-exp exp1)
@@ -123,13 +121,22 @@
     [else
       (report-invalid-exp-to-cps-of-simple-exp expr)]))
 
+;ref-of-smps : List(SmpExp) x (List(SmpExp) -> TpfExp) -> TpfExp
+(define (ref-of-smps smps ctx)
+  (let loop ([smps smps] [acc '()])
+    (if (null? smps)
+      (ctx (reverse acc))
+      (let ([ref (fresh-identifier 'ref)])
+        (tpf-newrefk-exp (car smps)
+          (smp-proc-exp (list ref) (loop (cdr smps) (cons (smp-var-exp ref) acc))))))))
+
 ;cps-of-exp : InpExp x SmpExp -> TfsExp
 (define (cps-of-exp expr k-exp)
   (cases inpexp expr
     [inp-const-exp [num]
       (make-send-to-cont k-exp (smp-const-exp num))]
     [inp-var-exp [var]
-      (make-send-to-cont k-exp (smp-var-exp var))]
+      (tpf-derefk-exp (smp-var-exp var) k-exp)]
     [inp-proc-exp [vars body]
       (make-send-to-cont k-exp
         (smp-proc-exp 
@@ -149,10 +156,12 @@
           (tpf-if-exp (car smps)
             (cps-of-exp exp2 k-exp)
             (cps-of-exp exp3 k-exp))))]
-    [inp-let-exp [vars exps body]
-      (cps-of-exps exps
+    [inp-let-exp [vars inps body]
+      (cps-of-exps inps
         (lambda (smps)
-          (tpf-let-exp vars smps (cps-of-exp body k-exp))))]
+          (ref-of-smps smps
+            (lambda (refs)
+              (tpf-let-exp vars refs (cps-of-exp body k-exp))))))]
     [inp-letrec-exp [names varss procs rbody]
       (tpf-letrec-exp
         names
@@ -162,30 +171,24 @@
     [inp-call-exp [rator rands]
       (cps-of-exps (cons rator rands)
         (lambda (smps)
-          (tpf-call-exp
-            (car smps)
-            (append (cdr smps) (list k-exp)))))]
+          (ref-of-smps (cdr smps) 
+            (lambda (refs)
+              (tpf-call-exp
+                (car smps)
+                (append refs (list k-exp)))))))]
     [inp-sum-exp [exps]
       (cps-of-exps exps
         (lambda (smps)
           (make-send-to-cont k-exp (smp-sum-exp smps))))]
-    [inp-newref-exp [inp1]
-      (cps-of-exps (list inp1)
-        (lambda (smps)
-          (tpf-newrefk-exp (car smps) k-exp)))]
-    [inp-deref-exp [inp1]
-      (cps-of-exps (list inp1)
-        (lambda (smps)
-          (tpf-derefk-exp (car smps) k-exp)))]
-    [inp-setref-exp [inp1 inp2]
-      (cps-of-exps (list inp1 inp2)
-        (lambda (smps)
-          (tpf-setrefk-exp (car smps) (cadr smps)
-            (make-send-to-cont k-exp (smp-const-exp 23)))))]
     [inp-begin-exp [inp1 inps]
       (cps-of-exps (cons inp1 inps)
         (lambda (smps)
           (make-send-to-cont k-exp (last smps))))]
+    [inp-set-exp [var1 inp1]
+      (cps-of-exps (list inp1)
+        (lambda (smps)
+          (tpf-setrefk-exp (smp-var-exp var1) (car smps)
+            (make-send-to-cont k-exp (smp-const-exp 23)))))]
     ))
 
 ;cps-of-pgm : InpPgm -> CpsPgm

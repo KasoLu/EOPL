@@ -20,10 +20,8 @@
     [inpexp ("proc" "(" (arbno identifier) ")" inpexp) inp-proc-exp]
     [inpexp ("(" inpexp (arbno inpexp) ")") inp-call-exp]
     [inpexp ("+" "(" (separated-list inpexp ",") ")") inp-sum-exp]
-    [inpexp ("newref" "(" inpexp ")") inp-newref-exp]
-    [inpexp ("deref" "(" inpexp ")") inp-deref-exp]
-    [inpexp ("setref" "(" inpexp "," inpexp ")") inp-setref-exp]
     [inpexp ("begin" inpexp (arbno ";" inpexp) "end") inp-begin-exp]
+    [inpexp ("set" identifier "=" inpexp) inp-set-exp]
     ))
 
 (define scan&parse-inp

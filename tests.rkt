@@ -29,3 +29,9 @@
 (define p5
   "let a = newref(1) b = newref(2)
    in begin setref(a, 10); +(deref(a), deref(b)) end")
+   
+;res = (num-val 10)
+(define p6
+  "let a = 1 b = 2 c = 3 f = proc(x) -(x, 1)
+   in begin set a = 10; (f +(a, -(c, 2))) end")
+

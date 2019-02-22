@@ -22,6 +22,8 @@
     [inpexp ("+" "(" (separated-list inpexp ",") ")") inp-sum-exp]
     [inpexp ("begin" inpexp (arbno ";" inpexp) "end") inp-begin-exp]
     [inpexp ("set" identifier "=" inpexp) inp-set-exp]
+    [inpexp ("letcc" identifier "in" inpexp) inp-letcc-exp]
+    [inpexp ("throw" inpexp "to" inpexp) inp-throw-exp]
     ))
 
 (define scan&parse-inp

@@ -189,6 +189,15 @@
         (lambda (smps)
           (tpf-setrefk-exp (smp-var-exp var1) (car smps)
             (make-send-to-cont k-exp (smp-const-exp 23)))))]
+    [inp-letcc-exp [var1 body]
+      (ref-of-smps (list k-exp)
+        (lambda (refs)
+          (tpf-let-exp (list var1) refs 
+            (cps-of-exp body (smp-var-exp var1)))))]
+    [inp-throw-exp [inp1 inp2]
+      (cps-of-exps (list inp2 inp1)
+        (lambda (smps)
+          (tpf-call-exp (car smps) (cdr smps))))]
     ))
 
 ;cps-of-pgm : InpPgm -> CpsPgm

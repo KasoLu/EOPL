@@ -71,6 +71,12 @@
   [inp-set-exp
     [var1 identifier?]
     [inp1 inpexp?]]
+  [inp-letcc-exp
+    [var1 identifier?]
+    [body inpexp?]]
+  [inp-throw-exp
+    [inp1 inpexp?]
+    [inp2 inpexp?]]
   )
 
 (define-datatype outpgm outpgm?

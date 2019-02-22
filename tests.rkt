@@ -35,3 +35,8 @@
   "let a = 1 b = 2 c = 3 f = proc(x) -(x, 1)
    in begin set a = 10; (f +(a, -(c, 2))) end")
 
+;res = (num-val 10)
+(define p7
+  "let a = 1 b = 2
+   in letcc cont 
+      in +(a, throw 10 to cont)")

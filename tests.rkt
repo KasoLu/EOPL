@@ -12,5 +12,14 @@
               if zero?(x) 
               then 20 
               else (f -(x, 1) zero?(1)) in
-       b")
+       begin
+         set a = 10;
+         set b = 20;
+         b
+       end")
 
+;(Bool)
+(define p2
+  "let a = 10 b = 20 in
+     let c = begin set b = proc() zero?(0); zero?(1) end in
+       c")

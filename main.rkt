@@ -38,6 +38,7 @@
 
 ;type-of-prgm : Prgm -> Type
 (define (type-of-prgm p)
+  (init-store!)
   (cases prgm p
     [a-prgm [expr]
       (type-of-expr expr (init-tenv))]))
@@ -48,7 +49,7 @@
     [num-expr [num]
       (int-type)]
     [var-expr [var]
-      (apply-tenv tenv var)]
+      (deref (apply-tenv tenv var))]
     [diff-expr [exp1 exp2]
       (let ([ty1 (type-of-expr exp1 tenv)] [ty2 (type-of-expr exp2 tenv)])
         (check-equal-type! ty1 (int-type) exp1)
@@ -66,10 +67,10 @@
         (check-equal-type! ty2 ty3 e)
         ty2)]
     [let-expr [vars exps body]
-      (let ([exps-type (map (lambda (x) (type-of-expr x tenv)) exps)])
+      (let ([exps-type (map (lambda (x) (newref (type-of-expr x tenv))) exps)])
         (type-of-expr body (extend-tenv vars exps-type tenv)))]
     [proc-expr [vars vars-type body]
-      (let ([ret-type (type-of-expr body (extend-tenv vars vars-type tenv))])
+      (let ([ret-type (type-of-expr body (extend-tenv vars (map newref vars-type) tenv))])
         (proc-type vars-type ret-type))]
     [call-expr [rator rands]
       (let ([rator-type (type-of-expr rator tenv)]
@@ -85,7 +86,7 @@
           [else
             (report-rator-not-a-proc-type rator-type rator)]))]
     [letrec-expr [names varss varss-type pbody-type procs rbody]
-      (let ([proc-types (map (lambda (vst pbt) (proc-type vst pbt)) varss-type pbody-type)])
+      (let ([proc-types (map (lambda (vst pbt) (newref (proc-type vst pbt))) varss-type pbody-type)])
         (let ([rbody-tenv (extend-tenv names proc-types tenv)])
           (let ([procs-type 
                   (map (lambda (vs vst p) (type-of-expr p (extend-tenv vs vst rbody-tenv)))
@@ -93,4 +94,9 @@
             (map (lambda (pt opt p) (check-equal-type! pt opt p)) 
                  procs-type pbody-type procs)
             (type-of-expr rbody rbody-tenv))))]
+    [set-expr [var1 exp1]
+      (setref! (apply-tenv tenv var1) (type-of-expr exp1 tenv))
+      (int-type)]
+    [seq-expr [exp1 exps]
+      (foldl (lambda (e res) (type-of-expr e tenv)) (void) (cons exp1 exps))]
     ))

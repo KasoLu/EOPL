@@ -29,10 +29,8 @@
         (if (eqv? (car type-form) '->)
           (cons '() type-form)
           (cdr type-form)))]
-    [pair-type [ty1 ty2]
-      (list (type-to-external-form ty1)
-            '*
-            (type-to-external-form ty2))]
+    [list-type [elem-type]
+      (list 'listof (type-to-external-form elem-type))]
     ))
 
 ;run : String -> Type
@@ -98,14 +96,32 @@
             (map (lambda (pt opt p) (check-equal-type! pt opt p)) 
                  procs-type pbody-type procs)
             (type-of-expr rbody rbody-tenv))))]
-    [pair-expr [exp1 exp2]
-      (let ([ty1 (type-of-expr exp1 tenv)] [ty2 (type-of-expr exp2 tenv)])
-        (pair-type ty1 ty2))]
-    [unpair-expr [var1 var2 exp1 body]
+    [list-expr [exp1 exps]
+      (let ([exp1-type (type-of-expr exp1 tenv)])
+        (map (lambda (e) (check-equal-type! (type-of-expr e tenv) exp1-type e)) exps)
+        (list-type exp1-type))]
+    [cons-expr [exp1 exp2]
+      (let ([exp1-type (type-of-expr exp1 tenv)] [exp2-type (type-of-expr exp2 tenv)])
+        (cases type exp2-type
+          [list-type [elem-type] 
+            (begin (check-equal-type! exp1-type elem-type exp1) exp2-type)]
+          [else
+            (report-unequal-types exp2-type (list-type (any-type)) exp2)]))]
+    [null?-expr [exp1]
       (let ([exp1-type (type-of-expr exp1 tenv)])
         (cases type exp1-type
-          [pair-type [ty1 ty2]
-            (type-of-expr body (extend-tenv (list var1 var2) (list ty1 ty2) tenv))]
-          [else
-            (report-unequal-types exp1-type (pair-type (any-type) (any-type)) exp1)]))]
+          [list-type [elem-type] (bool-type)]
+          [else (report-unequal-types exp1-type (list-type (any-type)) exp1)]))]
+    [emptylist-expr [elem-type]
+      (list-type elem-type)]
+    [car-expr [exp1]
+      (let ([exp1-type (type-of-expr exp1 tenv)])
+        (cases type exp1-type
+          [list-type [elem-type] elem-type]
+          [else (report-unequal-types exp1-type (list-type (any-type)) exp1)]))]
+    [cdr-expr [exp1]
+      (let ([exp1-type (type-of-expr exp1 tenv)])
+        (cases type exp1-type
+          [list-type [elem-type] exp1-type]
+          [else (report-unequal-types exp1-type (list-type (any-type)) exp1)]))]
     ))

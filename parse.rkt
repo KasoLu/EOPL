@@ -18,12 +18,16 @@
            "in" expr) letrec-expr]
     [expr ("proc" "(" (arbno identifier ":" type) ")" expr) proc-expr]
     [expr ("(" expr (arbno expr) ")") call-expr]
-    [expr ("newpair" "(" expr "," expr ")") pair-expr]
-    [expr ("unpair" identifier identifier "=" expr "in" expr) unpair-expr]
+    [expr ("list" "(" expr (arbno "," expr) ")") list-expr]
+    [expr ("cons" "(" expr "," expr ")") cons-expr]
+    [expr ("null?" "(" expr ")") null?-expr]
+    [expr ("emptylist" type) emptylist-expr]
+    [expr ("car" "(" expr ")") car-expr]
+    [expr ("cdr" "(" expr ")") cdr-expr]
     [type ("Int") int-type]
     [type ("Bool") bool-type]
     [type ("(" (separated-list type "*") "->" type ")") proc-type]
-    [type ("pairof" type "*" type) pair-type (ty1 ty2)]
+    [type ("listof" type) list-type]
     ))
 
 (define scan&parse

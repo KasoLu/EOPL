@@ -14,9 +14,9 @@
               else (f -(x, 1) zero?(1)) in
        b")
 
-;Int
+;res = Bool
 (define p2
-  "let a = newpair(10, zero?(0)) x = 10 in
-     unpair b c = a in
-       if c then b else 20")
-
+  "let l = emptylist Int in
+     let a = car(l) b = cdr(l) in
+       let c = cons(0, b) in
+         null?(b)")

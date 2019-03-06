@@ -43,25 +43,3 @@
     [proc-val [proc] proc]
     [else (report-expval-extractor-error 'proc val)]))
 
-(define the-store 'uninit)
-;empty-store : () -> Store
-(define (empty-store) '())
-;get-store : () -> Store
-(define (get-store) the-store)
-;init-store! : () -> Unspecified
-(define (init-store!)
-  (set! the-store (empty-store)))
-;newref : ExpVal -> Ref
-(define (newref val)
-  (let ([next-ref (length the-store)])
-    (begin (set! the-store (append the-store (list val))) next-ref)))
-;deref : Ref -> ExpVal
-(define (deref ref)
-  (list-ref the-store ref))
-;setref! : Ref x ExpVal -> Void
-(define (setref! ref val)
-  (set! the-store
-    (let loop ([store the-store] [ref ref])
-      (cond [(null? store) (report-invalid-reference ref the-store)]
-            [(zero? ref) (cons val (cdr store))]
-            [else (cons (car store) (loop (cdr store) (- ref 1)))]))))

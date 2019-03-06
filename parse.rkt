@@ -18,8 +18,6 @@
            "in" expr) letrec-expr]
     [expr ("proc" "(" (arbno identifier ":" type) ")" expr) proc-expr]
     [expr ("(" expr (arbno expr) ")") call-expr]
-    [expr ("set" identifier "=" expr) set-expr]
-    [expr ("begin" expr (arbno ";" expr) "end") seq-expr]
     [type ("Int") int-type]
     [type ("Bool") bool-type]
     [type ("(" (separated-list type "*") "->" type ")") proc-type]

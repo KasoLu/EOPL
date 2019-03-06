@@ -71,11 +71,5 @@
   [call-expr
     [rator expr?]
     [rands (list-of expr?)]]
-  [set-expr
-    [var1 identifier?]
-    [exp1 expr?]]
-  [seq-expr
-    [exp1 expr?]
-    [exps (list-of expr?)]]
   )
 

@@ -33,7 +33,11 @@
   [bool-type]
   [proc-type
     [args-type (list-of type?)]
-    [ret-type type?]])
+    [ret-type type?]]
+  [pair-type
+    [type1 type?]
+    [type2 type?]]
+  )
 
 (define-datatype prgm prgm?
   [a-prgm
@@ -71,5 +75,13 @@
   [call-expr
     [rator expr?]
     [rands (list-of expr?)]]
+  [pair-expr
+    [exp1 expr?]
+    [exp2 expr?]]
+  [unpair-expr
+    [var1 identifier?]
+    [var2 identifier?]
+    [exp1 expr?]
+    [body expr?]]
   )
 

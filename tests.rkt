@@ -14,3 +14,9 @@
               else (f -(x, 1) zero?(1)) in
        b")
 
+;Int
+(define p2
+  "let a = newpair(10, zero?(0)) x = 10 in
+     unpair b c = a in
+       if c then b else 20")
+

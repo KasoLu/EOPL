@@ -28,7 +28,12 @@
                      args-type)])
         (if (eqv? (car type-form) '->)
           (cons '() type-form)
-          (cdr type-form)))]))
+          (cdr type-form)))]
+    [pair-type [ty1 ty2]
+      (list (type-to-external-form ty1)
+            '*
+            (type-to-external-form ty2))]
+    ))
 
 ;run : String -> Type
 (define (run str)
@@ -59,12 +64,12 @@
         (check-equal-type! ty1 (int-type) exp1)
         (bool-type))]
     [if-expr [exp1 exp2 exp3]
-      (let ([ty1 (type-of-expr exp1 tenv)])
+      (let ([ty1 (type-of-expr exp1 tenv)]
+            [ty2 (type-of-expr exp2 tenv)]
+            [ty3 (type-of-expr exp3 tenv)])
         (check-equal-type! ty1 (bool-type) exp1)
-        (let ([ty2 (type-of-expr exp2 tenv)]
-              [ty3 (type-of-expr exp3 tenv)])
-          (check-equal-type! ty2 ty2 e)
-          ty2))]
+        (check-equal-type! ty2 ty3 e)
+        ty2)]
     [let-expr [vars exps body]
       (let ([exps-type (map (lambda (x) (type-of-expr x tenv)) exps)])
         (type-of-expr body (extend-tenv vars exps-type tenv)))]
@@ -93,4 +98,14 @@
             (map (lambda (pt opt p) (check-equal-type! pt opt p)) 
                  procs-type pbody-type procs)
             (type-of-expr rbody rbody-tenv))))]
+    [pair-expr [exp1 exp2]
+      (let ([ty1 (type-of-expr exp1 tenv)] [ty2 (type-of-expr exp2 tenv)])
+        (pair-type ty1 ty2))]
+    [unpair-expr [var1 var2 exp1 body]
+      (let ([exp1-type (type-of-expr exp1 tenv)])
+        (cases type exp1-type
+          [pair-type [ty1 ty2]
+            (type-of-expr body (extend-tenv (list var1 var2) (list ty1 ty2) tenv))]
+          [else
+            (report-unequal-types exp1-type (pair-type (any-type) (any-type)) exp1)]))]
     ))

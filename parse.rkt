@@ -18,9 +18,12 @@
            "in" expr) letrec-expr]
     [expr ("proc" "(" (arbno identifier ":" type) ")" expr) proc-expr]
     [expr ("(" expr (arbno expr) ")") call-expr]
+    [expr ("newpair" "(" expr "," expr ")") pair-expr]
+    [expr ("unpair" identifier identifier "=" expr "in" expr) unpair-expr]
     [type ("Int") int-type]
     [type ("Bool") bool-type]
     [type ("(" (separated-list type "*") "->" type ")") proc-type]
+    [type ("pairof" type "*" type) pair-type (ty1 ty2)]
     ))
 
 (define scan&parse

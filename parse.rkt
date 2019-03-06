@@ -18,9 +18,16 @@
            "in" expr) letrec-expr]
     [expr ("proc" "(" (arbno identifier ":" type) ")" expr) proc-expr]
     [expr ("(" expr (arbno expr) ")") call-expr]
+    [expr ("pair" "(" expr "," expr ")") pair-expr]
+    [expr ("left" "(" expr ")") left-expr]
+    [expr ("right" "(" expr ")") right-expr]
+    [expr ("setleft" "(" expr "," expr ")") setleft-expr]
+    [expr ("setright" "(" expr "," expr ")") setright-expr]
+    [expr ("begin" expr (arbno ";" expr) "end") begin-expr]
     [type ("Int") int-type]
     [type ("Bool") bool-type]
     [type ("(" (separated-list type "*") "->" type ")") proc-type]
+    [type ("pairof" type "*" type) pair-type]
     ))
 
 (define scan&parse

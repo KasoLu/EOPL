@@ -21,6 +21,7 @@
     [any-type  [] 'T]
     [int-type  [] 'Int]
     [bool-type [] 'Bool]
+    [void-type [] 'Void]
     [proc-type [args-type ret-type]
       (let ([type-form 
               (foldr (lambda (at acc) (cons '* (cons (type-to-external-form at) acc))) 
@@ -28,7 +29,10 @@
                      args-type)])
         (if (eqv? (car type-form) '->)
           (cons '() type-form)
-          (cdr type-form)))]))
+          (cdr type-form)))]
+    [pair-type [left-type right-type]
+      (list (type-to-external-form left-type) '* (type-to-external-form right-type))]
+    ))
 
 ;run : String -> Type
 (define (run str)
@@ -93,4 +97,36 @@
             (map (lambda (pt opt p) (check-equal-type! pt opt p)) 
                  procs-type pbody-type procs)
             (type-of-expr rbody rbody-tenv))))]
+    [pair-expr [exp1 exp2]
+      (let ([exp1-type (type-of-expr exp1 tenv)] [exp2-type (type-of-expr exp2 tenv)])
+        (pair-type exp1-type exp2-type))]
+    [left-expr [exp1]
+      (let ([exp1-type (type-of-expr exp1 tenv)])
+        (cases type exp1-type
+          [pair-type [left-type right-type] left-type]
+          [else (report-unequal-types exp1-type (pair-type (any-type) (any-type)) exp1)]))]
+    [right-expr [exp1]
+      (let ([exp1-type (type-of-expr exp1 tenv)])
+        (cases type exp1-type
+          [pair-type [left-type right-type] right-type]
+          [else (report-unequal-types exp1-type (pair-type (any-type) (any-type)) exp1)]))]
+;    [expr ("setright" "(" expr "," expr ")") setright-expr]
+    [setleft-expr [exp1 exp2]
+      (let ([exp1-type (type-of-expr exp1 tenv)] [exp2-type (type-of-expr exp2 tenv)])
+        (cases type exp1-type
+          [pair-type [left-type right-type]
+            (check-equal-type! exp2-type left-type exp2)
+            (void-type)]
+          [else
+            (report-unequal-types exp1-type (pair-type (any-type) (any-type)) exp1)]))]
+    [setright-expr [exp1 exp2]
+      (let ([exp1-type (type-of-expr exp1 tenv)] [exp2-type (type-of-expr exp2 tenv)])
+        (cases type exp1-type
+          [pair-type [left-type right-type]
+            (check-equal-type! exp2-type right-type exp2)
+            (void-type)]
+          [else
+            (report-unequal-types exp1-type (pair-type (any-type) (any-type)) exp1)]))]
+    [begin-expr [exp1 exps]
+      (foldl (lambda (e _) (type-of-expr e tenv)) (type-of-expr exp1 tenv) exps)]
     ))

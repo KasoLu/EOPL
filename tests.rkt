@@ -14,3 +14,7 @@
               else (f -(x, 1) zero?(1)) in
        b")
 
+;res = Bool
+(define p2
+  "let a = pair(0, zero?(0)) in 
+     begin setleft(a, 1); setright(a, zero?(1)); right(a) end")

@@ -5,17 +5,15 @@
 ;check-equal-type! : Type x Type x Expr -> Void
 (define (check-equal-type! ty1 ty2 expr)
   (if (not (equal? ty1 ty2))
-    (eopl:error 
-      'check-equal-type! "Types didn't match: ~s != ~a in ~%~a"
-      (type-to-external-form ty1) (type-to-external-form ty2) expr)
+    (report-unequal-types ty1 ty2 expr)
     (void)))
 
-;check-void-type! : Type x Expr -> Void
-(define (check-void-type! ty1 expr)
-  (if (equal? ty1 (void-type))
-    (eopl:error 
-      'check-void-type! "Types shouldn't is Void: ~s~%" expr)
-    (void)))
+;report-unequal-types : Type x Type x Expr -> Void
+(define (report-unequal-types ty1 ty2 expr)
+  (eopl:error 'check-equal-type! "Types didn't match: ~s != ~a in ~%~a"
+              (type-to-external-form ty1)
+              (type-to-external-form ty2)
+              expr))
 
 ;type-to-external-form : Type -> List
 (define (type-to-external-form ty)
@@ -23,6 +21,7 @@
     [any-type  [] 'T]
     [int-type  [] 'Int]
     [bool-type [] 'Bool]
+    [void-type [] 'Void]
     [proc-type [args-type ret-type]
       (let ([type-form 
               (foldr (lambda (at acc) (cons '* (cons (type-to-external-form at) acc))) 
@@ -31,9 +30,8 @@
         (if (eqv? (car type-form) '->)
           (cons '() type-form)
           (cdr type-form)))]
-    [refto-type [ref-type]
-      (list 'refto (type-to-external-form ref-type))]
-    [void-type [] 'Void]
+    [pair-type [left-type right-type]
+      (list (type-to-external-form left-type) '* (type-to-external-form right-type))]
     ))
 
 ;run : String -> Type
@@ -99,22 +97,36 @@
             (map (lambda (pt opt p) (check-equal-type! pt opt p)) 
                  procs-type pbody-type procs)
             (type-of-expr rbody rbody-tenv))))]
-    [newref-expr [exp1]
-      (let ([exp1-type (type-of-expr exp1 tenv)])
-        (refto-type exp1-type))]
-    [deref-expr [exp1]
+    [pair-expr [exp1 exp2]
+      (let ([exp1-type (type-of-expr exp1 tenv)] [exp2-type (type-of-expr exp2 tenv)])
+        (pair-type exp1-type exp2-type))]
+    [left-expr [exp1]
       (let ([exp1-type (type-of-expr exp1 tenv)])
         (cases type exp1-type
-          [refto-type [ref-type] ref-type]
-          [else (report-unequal-types exp1-type (refto-type (any-type)) exp1)]))]
-    [setref-expr [exp1 exp2]
+          [pair-type [left-type right-type] left-type]
+          [else (report-unequal-types exp1-type (pair-type (any-type) (any-type)) exp1)]))]
+    [right-expr [exp1]
+      (let ([exp1-type (type-of-expr exp1 tenv)])
+        (cases type exp1-type
+          [pair-type [left-type right-type] right-type]
+          [else (report-unequal-types exp1-type (pair-type (any-type) (any-type)) exp1)]))]
+;    [expr ("setright" "(" expr "," expr ")") setright-expr]
+    [setleft-expr [exp1 exp2]
       (let ([exp1-type (type-of-expr exp1 tenv)] [exp2-type (type-of-expr exp2 tenv)])
         (cases type exp1-type
-          [refto-type [ref-type]
-            (check-equal-type! exp2-type ref-type exp2)
+          [pair-type [left-type right-type]
+            (check-equal-type! exp2-type left-type exp2)
             (void-type)]
-          [else (report-unequal-types exp1-type (refto-type (any-type)) exp1)]))]
+          [else
+            (report-unequal-types exp1-type (pair-type (any-type) (any-type)) exp1)]))]
+    [setright-expr [exp1 exp2]
+      (let ([exp1-type (type-of-expr exp1 tenv)] [exp2-type (type-of-expr exp2 tenv)])
+        (cases type exp1-type
+          [pair-type [left-type right-type]
+            (check-equal-type! exp2-type right-type exp2)
+            (void-type)]
+          [else
+            (report-unequal-types exp1-type (pair-type (any-type) (any-type)) exp1)]))]
     [begin-expr [exp1 exps]
-      (let ([expr-type (type-of-expr exp1 tenv)])
-        (foldl (lambda (e res) (type-of-expr e tenv)) expr-type exps))]
+      (foldl (lambda (e _) (type-of-expr e tenv)) (type-of-expr exp1 tenv) exps)]
     ))

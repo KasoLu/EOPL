@@ -31,12 +31,13 @@
   [any-type]
   [int-type]
   [bool-type]
+  [void-type]
   [proc-type
     [args-type (list-of type?)]
     [ret-type type?]]
-  [refto-type
-    [ref-type type?]]
-  [void-type]
+  [pair-type
+    [left-type type?]
+    [right-type type?]]
   )
 
 (define-datatype prgm prgm?
@@ -75,11 +76,17 @@
   [call-expr
     [rator expr?]
     [rands (list-of expr?)]]
-  [newref-expr
+  [pair-expr
+    [exp1 expr?]
+    [exp2 expr?]]
+  [left-expr
     [exp1 expr?]]
-  [deref-expr
+  [right-expr
     [exp1 expr?]]
-  [setref-expr
+  [setleft-expr
+    [exp1 expr?]
+    [exp2 expr?]]
+  [setright-expr
     [exp1 expr?]
     [exp2 expr?]]
   [begin-expr

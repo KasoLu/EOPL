@@ -16,5 +16,5 @@
 
 ;res = Bool
 (define p2
-  "let a = newref(zero?(1)) b = newref(20) in 
-     begin setref(a, zero?(0)); deref(a) end")
+  "let a = pair(0, zero?(0)) in 
+     begin setleft(a, 1); setright(a, zero?(1)); right(a) end")

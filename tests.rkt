@@ -16,7 +16,5 @@
 
 ;res = Bool
 (define p2
-  "let l = emptylist Int in
-     let a = car(l) b = cdr(l) in
-       let c = cons(0, b) in
-         null?(b)")
+  "let a = newref(zero?(1)) b = newref(20) in 
+     begin setref(a, zero?(0)); deref(a) end")

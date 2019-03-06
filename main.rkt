@@ -5,15 +5,17 @@
 ;check-equal-type! : Type x Type x Expr -> Void
 (define (check-equal-type! ty1 ty2 expr)
   (if (not (equal? ty1 ty2))
-    (report-unequal-types ty1 ty2 expr)
+    (eopl:error 
+      'check-equal-type! "Types didn't match: ~s != ~a in ~%~a"
+      (type-to-external-form ty1) (type-to-external-form ty2) expr)
     (void)))
 
-;report-unequal-types : Type x Type x Expr -> Void
-(define (report-unequal-types ty1 ty2 expr)
-  (eopl:error 'check-equal-type! "Types didn't match: ~s != ~a in ~%~a"
-              (type-to-external-form ty1)
-              (type-to-external-form ty2)
-              expr))
+;check-void-type! : Type x Expr -> Void
+(define (check-void-type! ty1 expr)
+  (if (equal? ty1 (void-type))
+    (eopl:error 
+      'check-void-type! "Types shouldn't is Void: ~s~%" expr)
+    (void)))
 
 ;type-to-external-form : Type -> List
 (define (type-to-external-form ty)
@@ -29,8 +31,9 @@
         (if (eqv? (car type-form) '->)
           (cons '() type-form)
           (cdr type-form)))]
-    [list-type [elem-type]
-      (list 'listof (type-to-external-form elem-type))]
+    [refto-type [ref-type]
+      (list 'refto (type-to-external-form ref-type))]
+    [void-type [] 'Void]
     ))
 
 ;run : String -> Type
@@ -96,32 +99,22 @@
             (map (lambda (pt opt p) (check-equal-type! pt opt p)) 
                  procs-type pbody-type procs)
             (type-of-expr rbody rbody-tenv))))]
-    [list-expr [exp1 exps]
+    [newref-expr [exp1]
       (let ([exp1-type (type-of-expr exp1 tenv)])
-        (map (lambda (e) (check-equal-type! (type-of-expr e tenv) exp1-type e)) exps)
-        (list-type exp1-type))]
-    [cons-expr [exp1 exp2]
+        (refto-type exp1-type))]
+    [deref-expr [exp1]
+      (let ([exp1-type (type-of-expr exp1 tenv)])
+        (cases type exp1-type
+          [refto-type [ref-type] ref-type]
+          [else (report-unequal-types exp1-type (refto-type (any-type)) exp1)]))]
+    [setref-expr [exp1 exp2]
       (let ([exp1-type (type-of-expr exp1 tenv)] [exp2-type (type-of-expr exp2 tenv)])
-        (cases type exp2-type
-          [list-type [elem-type] 
-            (begin (check-equal-type! exp1-type elem-type exp1) exp2-type)]
-          [else
-            (report-unequal-types exp2-type (list-type (any-type)) exp2)]))]
-    [null?-expr [exp1]
-      (let ([exp1-type (type-of-expr exp1 tenv)])
         (cases type exp1-type
-          [list-type [elem-type] (bool-type)]
-          [else (report-unequal-types exp1-type (list-type (any-type)) exp1)]))]
-    [emptylist-expr [elem-type]
-      (list-type elem-type)]
-    [car-expr [exp1]
-      (let ([exp1-type (type-of-expr exp1 tenv)])
-        (cases type exp1-type
-          [list-type [elem-type] elem-type]
-          [else (report-unequal-types exp1-type (list-type (any-type)) exp1)]))]
-    [cdr-expr [exp1]
-      (let ([exp1-type (type-of-expr exp1 tenv)])
-        (cases type exp1-type
-          [list-type [elem-type] exp1-type]
-          [else (report-unequal-types exp1-type (list-type (any-type)) exp1)]))]
+          [refto-type [ref-type]
+            (check-equal-type! exp2-type ref-type exp2)
+            (void-type)]
+          [else (report-unequal-types exp1-type (refto-type (any-type)) exp1)]))]
+    [begin-expr [exp1 exps]
+      (let ([expr-type (type-of-expr exp1 tenv)])
+        (foldl (lambda (e res) (type-of-expr e tenv)) expr-type exps))]
     ))

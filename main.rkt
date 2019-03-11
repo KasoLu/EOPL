@@ -33,6 +33,13 @@
         (string->symbol (string-append "ty" (number->string sn)))]
       )))
 
+(define empty-subst ; () -> Subst
+  (lambda () '()))
+
+(define extend-subst ; Subst x Tvar x Type -> Subst
+  (lambda (subst tvar ty)
+    (cons (cons tvar ty) subst)))
+
 (define apply-one-subst ; Type x Tvar x Type -> Type
   (lambda (ty0 tvar ty1)
     (cases type ty0
@@ -59,16 +66,8 @@
           (apply-subst-to-type ret-type subst))]
       [tvar-type [sn]
         (let ([tmp (assoc ty subst)])
-          (if tmp (cdr tmp) ty))]
+          (if tmp (apply-subst-to-type (cdr tmp) subst) ty))]
       )))
-
-(define empty-subst ; () -> Subst
-  (lambda () '()))
-
-(define extend-subst ; Subst x Tvar x Type -> Subst
-  (lambda (subst tvar ty)
-    (cons (cons tvar ty)
-          (map (lambda (p) (cons (car p) (apply-one-subst (cdr p) tvar ty))) subst))))
 
 (define unifier ; Type x Type x Subst x Expr -> Subst
   (lambda (ty1 ty2 subst expr)

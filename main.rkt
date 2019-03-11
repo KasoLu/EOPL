@@ -54,6 +54,7 @@
         (if (equal? ty0 tvar) ty1 ty0)]
       )))
 
+(define subst-cache '())
 (define apply-subst-to-type ; Type x Subst -> Type
   (lambda (ty subst)
     (cases type ty
@@ -65,8 +66,15 @@
           (map (lambda (t) (apply-subst-to-type t subst)) args-type)
           (apply-subst-to-type ret-type subst))]
       [tvar-type [sn]
-        (let ([tmp (assoc ty subst)])
-          (if tmp (apply-subst-to-type (cdr tmp) subst) ty))]
+        (let ([cache-tmp (assoc ty subst-cache)])
+          (if cache-tmp
+            (cdr cache-tmp)
+            (let ([tmp (assoc ty subst)])
+              (if tmp
+                (let ([tmp-type (apply-subst-to-type (cdr tmp) subst)])
+                  (let ([cache-tmp (cons (car tmp) tmp-type)])
+                    (begin (set! subst-cache (cons cache-tmp subst-cache)) tmp-type)))
+                ty))))]
       )))
 
 (define unifier ; Type x Type x Subst x Expr -> Subst

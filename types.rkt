@@ -1,5 +1,6 @@
 (define identifier? symbol?)
-(define any?        (lambda (_) #t))
+(define any? (lambda (_) #t))
+(define subst? list?)
 
 (define-datatype env env?
   [empty-env]
@@ -31,14 +32,22 @@
   [any-type]
   [int-type]
   [bool-type]
-  [void-type]
   [proc-type
     [args-type (list-of type?)]
     [ret-type type?]]
-  [pair-type
-    [left-type type?]
-    [right-type type?]]
+  [tvar-type
+    [sn number?]]
   )
+
+(define-datatype opty opty?
+  [no-type]
+  [an-type
+    [ty type?]])
+
+(define-datatype answer answer?
+  [an-answer
+    [ty type?]
+    [subst subst?]])
 
 (define-datatype prgm prgm?
   [a-prgm
@@ -65,32 +74,16 @@
   [letrec-expr
     [names (list-of identifier?)]
     [varss (list-of (list-of identifier?))]
-    [varss-type (list-of (list-of type?))]
-    [procs-type (list-of type?)]
+    [varss-type (list-of (list-of opty?))]
+    [procs-type (list-of opty?)]
     [procs (list-of expr?)]
     [rbody expr?]]
   [proc-expr
     [vars (list-of identifier?)]
-    [vars-type (list-of type?)]
+    [vars-type (list-of opty?)]
     [body expr?]]
   [call-expr
     [rator expr?]
     [rands (list-of expr?)]]
-  [pair-expr
-    [exp1 expr?]
-    [exp2 expr?]]
-  [left-expr
-    [exp1 expr?]]
-  [right-expr
-    [exp1 expr?]]
-  [setleft-expr
-    [exp1 expr?]
-    [exp2 expr?]]
-  [setright-expr
-    [exp1 expr?]
-    [exp2 expr?]]
-  [begin-expr
-    [exp1 expr?]
-    [exps (list-of expr?)]]
   )
 

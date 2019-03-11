@@ -43,3 +43,25 @@
     [proc-val [proc] proc]
     [else (report-expval-extractor-error 'proc val)]))
 
+(define (every? proc ls)
+  (let loop ([ls ls] [res #t])
+    (if (null? ls)
+      res
+      (loop (cdr ls) (and res (proc (car ls)))))))
+
+(define (tvar-type? t)
+  (cases type t
+    [tvar-type [sn] #t]
+    [else #f]))
+(define (proc-type? t)
+  (cases type t
+    [proc-type [args-type ret-type] #t]
+    [else #f]))
+(define (proc-type->args-type pt)
+  (cases type pt
+    [proc-type [args-type ret-type] args-type]
+    [else (report-invalid-type pt)]))
+(define (proc-type->ret-type pt)
+  (cases type pt
+    [proc-type [args-type ret-type] ret-type]
+    [else (report-invalid-type pt)]))

@@ -41,7 +41,9 @@
 
 (define-datatype opty opty?
   [no-type]
-  [an-type
+  [def-type
+    [ty type?]]
+  [ret-type
     [ty type?]])
 
 (define-datatype answer answer?

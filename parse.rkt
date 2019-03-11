@@ -14,15 +14,16 @@
     [expr ("zero?" "(" expr ")") zero?-expr]
     [expr ("if" expr "then" expr "else" expr) if-expr]
     [expr ("let" (arbno identifier "=" expr) "in" expr) let-expr]
-    [expr ("letrec" (arbno identifier "(" (arbno identifier ":" opty) ")" "->" opty "=" expr) 
+    [expr ("letrec" (arbno identifier "(" (arbno identifier opty) ")" opty "=" expr) 
            "in" expr) letrec-expr]
-    [expr ("proc" "(" (arbno identifier ":" opty) ")" expr) proc-expr]
+    [expr ("proc" "(" (arbno identifier opty) ")" expr) proc-expr]
     [expr ("(" expr (arbno expr) ")") call-expr]
     [type ("Int") int-type]
     [type ("Bool") bool-type]
-    [type ("(" (separated-list type "*") "->" type ")") proc-type]
-    [opty ("?") no-type]
-    [opty (type) an-type]
+    [type ("(" (separated-list type "*") opty ")") proc-type]
+    [opty () no-type]
+    [opty (":" type) def-type]
+    [opty ("->" type) ret-type]
     ))
 
 (define scan&parse

@@ -4,7 +4,7 @@
 (define p1
   "let a = proc(x : Int y : Bool) x 
        b = proc() 10 in
-     letrec f(x : Int y : Bool) -> Int = 
+     letrec f(x : ? y : ?) -> ? = 
               if zero?(x) 
               then 10 
               else (g -(x, 1) zero?(0)) 

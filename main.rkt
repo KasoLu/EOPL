@@ -38,7 +38,8 @@
 
 (define extend-subst ; Subst x Tvar x Type -> Subst
   (lambda (subst tvar ty)
-    (cons (cons tvar ty) subst)))
+    (cons (cons tvar ty)
+          (map (lambda (p) (cons (car p) (apply-one-subst (cdr p) tvar ty))) subst))))
 
 (define apply-one-subst ; Type x Tvar x Type -> Type
   (lambda (ty0 tvar ty1)
@@ -54,7 +55,6 @@
         (if (equal? ty0 tvar) ty1 ty0)]
       )))
 
-(define subst-cache '())
 (define apply-subst-to-type ; Type x Subst -> Type
   (lambda (ty subst)
     (cases type ty
@@ -66,15 +66,8 @@
           (map (lambda (t) (apply-subst-to-type t subst)) args-type)
           (apply-subst-to-type ret-type subst))]
       [tvar-type [sn]
-        (let ([cache-tmp (assoc ty subst-cache)])
-          (if cache-tmp
-            (cdr cache-tmp)
-            (let ([tmp (assoc ty subst)])
-              (if tmp
-                (let ([tmp-type (apply-subst-to-type (cdr tmp) subst)])
-                  (let ([cache-tmp (cons (car tmp) tmp-type)])
-                    (begin (set! subst-cache (cons cache-tmp subst-cache)) tmp-type)))
-                ty))))]
+        (let ([tmp (assoc ty subst)])
+          (if tmp (cdr tmp) ty))]
       )))
 
 (define unifier ; Type x Type x Subst x Expr -> Subst

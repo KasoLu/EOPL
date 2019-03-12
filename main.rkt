@@ -34,12 +34,11 @@
       )))
 
 (define empty-subst ; () -> Subst
-  (lambda () '()))
+  (lambda () (make-hash)))
 
 (define extend-subst ; Subst x Tvar x Type -> Subst
   (lambda (subst tvar ty)
-    (cons (cons tvar ty)
-          (map (lambda (p) (cons (car p) (apply-one-subst (cdr p) tvar ty))) subst))))
+    (begin (hash-set! subst tvar ty) subst)))
 
 (define apply-one-subst ; Type x Tvar x Type -> Type
   (lambda (ty0 tvar ty1)
@@ -66,8 +65,8 @@
           (map (lambda (t) (apply-subst-to-type t subst)) args-type)
           (apply-subst-to-type ret-type subst))]
       [tvar-type [sn]
-        (let ([tmp (assoc ty subst)])
-          (if tmp (cdr tmp) ty))]
+        (let ([tmp (hash-ref subst ty #f)])
+          (if tmp (apply-subst-to-type tmp subst) ty))]
       )))
 
 (define g-subst (empty-subst))

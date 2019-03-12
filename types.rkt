@@ -1,6 +1,6 @@
 (define identifier? symbol?)
 (define any? (lambda (_) #t))
-(define subst? list?)
+(define subst? hash?)
 
 (define-datatype env env?
   [empty-env]

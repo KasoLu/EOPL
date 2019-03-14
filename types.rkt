@@ -1,6 +1,7 @@
 (define identifier? symbol?)
 (define any? (lambda (_) #t))
 (define subst? list?)
+(define eqs? list?)
 
 (define-datatype env env?
   [empty-env]
@@ -32,12 +33,9 @@
   [any-type]
   [int-type]
   [bool-type]
-  [void-type]
   [proc-type
     [args-type (list-of type?)]
     [ret-type type?]]
-  [ref-type
-    [to-type type?]]
   [tvar-type
     [sn number?]]
   )
@@ -47,10 +45,16 @@
   [an-type
     [ty type?]])
 
+(define-datatype equation equation?
+  [an-equation
+    [tvar type?]
+    [type type?]
+    [expr expr?]])
+
 (define-datatype answer answer?
   [an-answer
     [ty type?]
-    [subst subst?]])
+    [eqs eqs?]])
 
 (define-datatype prgm prgm?
   [a-prgm
@@ -88,15 +92,5 @@
   [call-expr
     [rator expr?]
     [rands (list-of expr?)]]
-  [newref-expr
-    [exp1 expr?]]
-  [deref-expr
-    [exp1 expr?]]
-  [setref-expr
-    [exp1 expr?]
-    [exp2 expr?]]
-  [begin-expr
-    [exp1 expr?]
-    [exps (list-of expr?)]]
   )
 

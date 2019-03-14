@@ -21,7 +21,6 @@
       [any-type  [] 'T]
       [int-type  [] 'Int]
       [bool-type [] 'Bool]
-      [void-type [] 'Void]
       [proc-type [args-type ret-type]
         (let ([type-form 
                 (foldr (lambda (at acc) (cons '* (cons (type-to-external-form at) acc))) 
@@ -30,8 +29,6 @@
           (if (eqv? (car type-form) '->)
             (cons '() type-form)
             (cdr type-form)))]
-      [ref-type [to-type]
-        (list 'refto (type-to-external-form to-type))]
       [tvar-type [sn]
         (string->symbol (string-append "ty" (number->string sn)))]
       )))
@@ -42,13 +39,10 @@
       [any-type  [] (any-type)]
       [int-type  [] (int-type)]
       [bool-type [] (bool-type)]
-      [void-type [] (void-type)]
       [proc-type [args-type ret-type]
         (proc-type
           (map (lambda (t) (apply-one-subst t tvar ty1)) args-type)
           (apply-one-subst ret-type tvar ty1))]
-      [ref-type [to-type]
-        (ref-type (apply-one-subst to-type))]
       [tvar-type [sn]
         (if (equal? ty0 tvar) ty1 ty0)]
       )))
@@ -59,13 +53,10 @@
       [any-type  [] (any-type)]
       [int-type  [] (int-type)]
       [bool-type [] (bool-type)]
-      [void-type [] (void-type)]
       [proc-type [args-type ret-type]
         (proc-type
           (map (lambda (t) (apply-subst-to-type t subst)) args-type)
           (apply-subst-to-type ret-type subst))]
-      [ref-type [to-type]
-        (ref-type (apply-subst-to-type to-type subst))]
       [tvar-type [sn]
         (let ([tmp (assoc ty subst)])
           (if tmp (cdr tmp) ty))]
@@ -78,6 +69,22 @@
   (lambda (subst tvar ty)
     (cons (cons tvar ty)
           (map (lambda (p) (cons (car p) (apply-one-subst (cdr p) tvar ty))) subst))))
+
+(define empty-eqs ; () -> Eqs
+  (lambda () '()))
+
+(define extend-eqs ; Eqs x Tvar x Type -> Eqs
+  (lambda (eqs tvar ty exp1)
+    (cons (an-equation tvar ty exp1) eqs)))
+
+(define unify ; Eqs -> Subst
+  (lambda (eqs)
+    (let loop ([eqs eqs] [subst (empty-subst)])
+      (if (null? eqs)
+        subst
+        (cases equation (car eqs)
+          [an-equation [tvar type expr]
+            (loop (cdr eqs) (unifier tvar type subst expr))])))))
 
 (define unifier ; Type x Type x Subst x Expr -> Subst
   (lambda (ty1 ty2 subst expr)
@@ -99,10 +106,6 @@
                (let ([subst (foldl (lambda (t1 t2 res) (unifier t1 t2 res expr)) subst 
                                    ty1-args-type ty2-args-type)])
                  (unifier ty1-ret-type ty2-ret-type subst expr)))]
-            [(and (ref-type? ty1) (ref-type? ty2))
-             (let ([ty1-to-type (ref-type->to-type ty1)]
-                   [ty2-to-type (ref-type->to-type ty2)])
-               (unifier ty1-to-type ty2-to-type subst expr))]
             [else
               (report-unification-failure ty1 ty2 expr)]))))
 
@@ -112,12 +115,9 @@
       [any-type  [] #t]
       [int-type  [] #t]
       [bool-type [] #t]
-      [void-type [] #t]
       [proc-type [args-type ret-type]
         (and (every? (lambda (t) (no-occurrence? tvar t)) args-type)
              (no-occurrence? tvar res-type))]
-      [ref-type [to-type]
-        (no-occurrence? tvar to-type)]
       [tvar-type [sn]
         (not (equal? tvar ty))]
       )))
@@ -144,101 +144,76 @@
   (lambda (p)
     (cases prgm p
       [a-prgm [expr]
-        (cases answer (type-of-expr expr (init-tenv) (empty-subst))
-          [an-answer [ty subst]
-            (apply-subst-to-type ty subst)])])))
+        (cases answer (type-of-expr expr (init-tenv) (empty-eqs))
+          [an-answer [ty eqs]
+            (apply-subst-to-type ty (unify eqs))])])))
 
-(define type-of-expr ; Expr x Tenv x Subst -> Answer
-  (lambda (e tenv subst)
+(define type-of-expr ; Expr x Tenv x Eqs -> Answer
+  (lambda (e tenv eqs)
     (cases expr e
       [num-expr [num] 
-        (an-answer (int-type) subst)]
+        (an-answer (int-type) eqs)]
       [zero?-expr [exp1]
-        (cases answer (type-of-expr exp1 tenv subst)
-          [an-answer [ty1 subst1]
-            (let ([subst1 (unifier ty1 (int-type) subst1 exp1)])
-              (an-answer (bool-type) subst1))])]
+        (cases answer (type-of-expr exp1 tenv eqs)
+          [an-answer [ty1 eqs]
+            (an-answer (bool-type) (extend-eqs eqs ty1 (int-type) exp1))])]
       [diff-expr [exp1 exp2]
-        (cases answer (type-of-expr exp1 tenv subst)
-          [an-answer [ty1 subst1]
-            (let ([subst1 (unifier ty1 (int-type) subst1 exp1)])
-              (cases answer (type-of-expr exp2 tenv subst1)
-                [an-answer [ty2 subst2]
-                  (let ([subst2 (unifier ty2 (int-type) subst2 exp2)])
-                    (an-answer (int-type) subst2))]))])]
+        (cases answer (type-of-expr exp1 tenv eqs)
+          [an-answer [ty1 eqs]
+            (let ([eqs (extend-eqs eqs ty1 (int-type) exp1)])
+              (cases answer (type-of-expr exp2 tenv eqs)
+                [an-answer [ty2 eqs]
+                  (let ([eqs (extend-eqs eqs ty2 (int-type) exp2)])
+                    (an-answer (int-type) eqs))]))])]
       [if-expr [exp1 exp2 exp3]
-        (cases answer (type-of-expr exp1 tenv subst)
-          [an-answer [ty1 subst1]
-            (let ([subst1 (unifier ty1 (bool-type) subst1 exp1)])
-              (cases answer (type-of-expr exp2 tenv subst1)
-                [an-answer [ty2 subst2]
-                  (cases answer (type-of-expr exp3 tenv subst2)
-                    [an-answer [ty3 subst3]
-                      (let ([subst3 (unifier ty2 ty3 subst3 e)])
-                        (an-answer ty2 subst3))])]))])]
+        (cases answer (type-of-expr exp1 tenv eqs)
+          [an-answer [ty1 eqs]
+            (let ([eqs (extend-eqs eqs ty1 (bool-type) exp1)])
+              (cases answer (type-of-expr exp2 tenv eqs)
+                [an-answer [ty2 eqs]
+                  (cases answer (type-of-expr exp3 tenv eqs)
+                    [an-answer [ty3 eqs]
+                      (let ([eqs (extend-eqs eqs ty2 ty3 e)])
+                        (an-answer ty2 eqs))])]))])]
       [var-expr [var]
-        (an-answer (apply-tenv tenv var) subst)]
+        (an-answer (apply-tenv tenv var) eqs)]
       [let-expr [vars exps body]
-        (let loop ([exps exps] [types '()] [subst subst])
+        (let loop ([exps exps] [types '()] [eqs eqs])
           (if (null? exps)
-            (type-of-expr body (extend-tenv vars (reverse types) tenv) subst)
-            (cases answer (type-of-expr (car exps) tenv subst)
-              [an-answer [ty1 subst1]
-                (loop (cdr exps) (cons ty1 types) subst1)])))]
+            (type-of-expr body (extend-tenv vars (reverse types) tenv) eqs)
+            (cases answer (type-of-expr (car exps) tenv eqs)
+              [an-answer [ty1 eqs]
+                (loop (cdr exps) (cons ty1 types) eqs)])))]
       [proc-expr [vars vars-opty body]
         (let ([vars-type (map otype->type vars-opty)])
-          (cases answer (type-of-expr body (extend-tenv vars vars-type tenv) subst)
-            [an-answer [body-type body-subst]
-              (an-answer (proc-type vars-type body-type) body-subst)]))]
+          (cases answer (type-of-expr body (extend-tenv vars vars-type tenv) eqs)
+            [an-answer [body-type eqs]
+              (an-answer (proc-type vars-type body-type) eqs)]))]
       [call-expr [rator rands]
-        (let ([res-type (fresh-tvar-type)])
-          (cases answer (type-of-expr rator tenv subst)
-            [an-answer [rator-type rator-subst]
-              (let loop ([rands rands] [types '()] [subst subst])
+        (let ([ret-type (fresh-tvar-type)])
+          (cases answer (type-of-expr rator tenv eqs)
+            [an-answer [rator-type eqs]
+              (let loop ([rands rands] [types '()] [eqs eqs])
                 (if (null? rands)
-                  (let ([subst (unifier rator-type (proc-type (reverse types) res-type) subst e)])
-                    (an-answer res-type subst))
-                  (cases answer (type-of-expr (car rands) tenv subst)
-                    [an-answer [rand-type rand-subst]
-                      (loop (cdr rands) (cons rand-type types) rand-subst)])))]))]
-      [letrec-expr [names varss varss-opty prets-opty pbodies rbody]
-        (let ([prets-type (map otype->type prets-opty)]
-              [varss-type (map (lambda (vs) (map otype->type vs)) varss-opty)])
-          (let ([procs-type (map (lambda (vst pt) (proc-type vst pt)) varss-type prets-type)])
-            (let ([rbody-tenv (extend-tenv names procs-type tenv)])
-              (let loop ([pbodies pbodies] [varss varss] [varss-type varss-type] 
-                         [prets-type prets-type] [subst subst])
-                (if (null? pbodies)
-                  (type-of-expr rbody rbody-tenv subst)
-                  (cases answer (type-of-expr (car pbodies) (extend-tenv (car varss) (car varss-type) rbody-tenv) subst)
-                    [an-answer [pbody-type pbody-subst]
-                      (let ([pbody-subst (unifier pbody-type (car prets-type) pbody-subst e)])
-                        (loop (cdr pbodies) (cdr varss) (cdr varss-type) 
-                              (cdr prets-type) pbody-subst))]))))))]
-      [newref-expr [exp1]
-        (cases answer (type-of-expr exp1 tenv subst)
-          [an-answer [exp1-type subst]
-            (an-answer (ref-type exp1-type) subst)])]
-      [deref-expr [exp1]
-        (cases answer (type-of-expr exp1 tenv subst)
-          [an-answer [exp1-type subst]
-            (let ([to-type (fresh-tvar-type)])
-              (let ([subst (unifier exp1-type (ref-type to-type) subst exp1)])
-                (an-answer to-type subst)))])]
-      [setref-expr [exp1 exp2]
-        (cases answer (type-of-expr exp1 tenv subst)
-          [an-answer [exp1-type subst]
-            (cases answer (type-of-expr exp2 tenv subst)
-              [an-answer [exp2-type subst]
-                (let ([subst (unifier exp1-type (ref-type exp2-type) subst e)])
-                  (an-answer (void-type) subst))])])]
-      [begin-expr [exp1 exps]
-        (cases answer (type-of-expr exp1 tenv subst)
-          [an-answer [exp1-type subst]
-            (let loop ([exps exps] [curr-type exp1-type] [subst subst])
-              (if (null? exps)
-                (an-answer curr-type subst)
-                (cases answer (type-of-expr (car exps) tenv subst)
-                  [an-answer [expx-type subst]
-                    (loop (cdr exps) expx-type subst)])))])]
+                  (let* ([pt (proc-type (reverse types) ret-type)]
+                         [eqs (extend-eqs eqs rator-type pt rator)])
+                    (an-answer ret-type eqs))
+                  (cases answer (type-of-expr (car rands) tenv eqs)
+                    [an-answer [rand-type eqs]
+                      (loop (cdr rands) (cons rand-type types) eqs)])))]))]
+      [letrec-expr [names varss varss-opty prets-opty pbs rbody]
+        (let* ([prets-type (map otype->type prets-opty)]
+               [varss-type (map (lambda (vs) (map otype->type vs)) varss-opty)]
+               [procs-type (map (lambda (vst pt) (proc-type vst pt)) varss-type prets-type)]
+               [rbody-tenv (extend-tenv names procs-type tenv)])
+          (let loop ([pbs pbs] [varss varss] [varss-type varss-type] 
+                     [prets-type prets-type] [eqs eqs])
+            (if (null? pbs)
+              (type-of-expr rbody rbody-tenv eqs)
+              (let ([ext-tenv (extend-tenv (car varss) (car varss-type) rbody-tenv)])
+                (cases answer (type-of-expr (car pbs) ext-tenv eqs)
+                  [an-answer [pb-type eqs]
+                    (let ([eqs (extend-eqs eqs pb-type (car prets-type) (car pbs))])
+                      (loop (cdr pbs) (cdr varss) (cdr varss-type) 
+                            (cdr prets-type) eqs))])))))]
       )))

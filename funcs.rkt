@@ -65,12 +65,3 @@
   (cases type pt
     [proc-type [args-type ret-type] ret-type]
     [else (report-invalid-type pt)]))
-
-(define (ref-type? t)
-  (cases type t
-    [ref-type [to-type] #t]
-    [else #f]))
-(define (ref-type->to-type t)
-  (cases type t
-    [ref-type [to-type] to-type]
-    [else (report-invalid-type t)]))

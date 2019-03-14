@@ -1,6 +1,6 @@
 (define identifier? symbol?)
 (define any? (lambda (_) #t))
-(define subst? hash?)
+(define subst? list?)
 
 (define-datatype env env?
   [empty-env]
@@ -35,6 +35,9 @@
   [proc-type
     [args-type (list-of type?)]
     [ret-type type?]]
+  [pair-type
+    [type1 type?]
+    [type2 type?]]
   [tvar-type
     [sn number?]]
   )
@@ -85,5 +88,13 @@
   [call-expr
     [rator expr?]
     [rands (list-of expr?)]]
+  [pair-expr
+    [exp1 expr?]
+    [exp2 expr?]]
+  [unpair-expr
+    [var1 identifier?]
+    [var2 identifier?]
+    [exp1 expr?]
+    [body expr?]]
   )
 

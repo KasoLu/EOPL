@@ -66,7 +66,5 @@
     [proc-type [args-type ret-type] ret-type]
     [else (report-invalid-type pt)]))
 
-;display-ast : String -> String
-(define (display-ast str)
-  (pretty-display
-    (scan&parse str)))
+(define (report-invalid-type ty)
+  (eopl:error 'report-invalid-type "invalid type: ~a~%" ty))

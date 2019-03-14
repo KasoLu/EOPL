@@ -4,6 +4,8 @@
   (eopl:error 'report-no-binding-found "No binding for ~s" var))
 (define (report-expval-extractor-error type val)
   (eopl:error 'report-expval-extractor-error "invalid expval - ~a: ~a" type val))
+(define (report-unification-failure ty1 ty2 expr)
+  (eopl:error 'report-unification-failure "~a != ~a : ~a" ty1 ty2 expr))
 
 (define (init-env)
   (empty-env))
@@ -66,5 +68,11 @@
     [proc-type [args-type ret-type] ret-type]
     [else (report-invalid-type pt)]))
 
-(define (report-invalid-type ty)
-  (eopl:error 'report-invalid-type "invalid type: ~a~%" ty))
+(define (list-type? t)
+  (cases type t
+    [list-type [elem-type] #t]
+    [else #f]))
+(define (list-type->elem-type t)
+  (cases type t
+    [list-type [elem-type] elem-type]
+    [else (report-invalid-type t)]))

@@ -29,8 +29,8 @@
           (if (eqv? (car type-form) '->)
             (cons '() type-form)
             (cdr type-form)))]
-      [pair-type [ty1 ty2]
-        (list (type-to-external-form ty1) '* (type-to-external-form ty2))]
+      [list-type [elem-type]
+        (list 'listof (type-to-external-form elem-type))]
       [tvar-type [sn]
         (string->symbol (string-append "ty" (number->string sn)))]
       )))
@@ -45,10 +45,8 @@
         (proc-type
           (map (lambda (t) (apply-one-subst t tvar ty1)) args-type)
           (apply-one-subst ret-type tvar ty1))]
-      [pair-type [pt1 pt2]
-        (pair-type 
-          (apply-one-subst pt1 tvar ty1)
-          (apply-one-subst pt2 tvar ty1))]
+      [list-type [elem-type]
+        (list-type (apply-one-subst elem-type tvar ty1))]
       [tvar-type [sn]
         (if (equal? ty0 tvar) ty1 ty0)]
       )))
@@ -63,10 +61,8 @@
         (proc-type
           (map (lambda (t) (apply-subst-to-type t subst)) args-type)
           (apply-subst-to-type ret-type subst))]
-      [pair-type [pt1 pt2]
-        (pair-type
-          (apply-subst-to-type pt1 subst)
-          (apply-subst-to-type pt2 subst))]
+      [list-type [elem-type]
+        (list-type (apply-subst-to-type elem-type subst))]
       [tvar-type [sn]
         (let ([tmp (assoc ty subst)])
           (if tmp (cdr tmp) ty))]
@@ -100,6 +96,10 @@
                (let ([subst (foldl (lambda (t1 t2 res) (unifier t1 t2 res expr)) subst 
                                    ty1-args-type ty2-args-type)])
                  (unifier ty1-ret-type ty2-ret-type subst expr)))]
+            [(and (list-type? ty1) (list-type? ty2))
+             (let ([ty1-elem (list-type->elem-type ty1)]
+                   [ty2-elem (list-type->elem-type ty2)])
+               (unifier ty1-elem ty2-elem subst expr))]
             [else
               (report-unification-failure ty1 ty2 expr)]))))
 
@@ -112,8 +112,8 @@
       [proc-type [args-type ret-type]
         (and (every? (lambda (t) (no-occurrence? tvar t)) args-type)
              (no-occurrence? tvar res-type))]
-      [pair-type [pt1 pt2]
-        (and (no-occurrence? tvar pt1) (no-occurrence? tvar pt2))]
+      [list-type [elem-type]
+        (no-occurrence? tvar elem-type)]
       [tvar-type [sn]
         (not (equal? tvar ty))]
       )))
@@ -211,17 +211,29 @@
                       (let ([pbody-subst (unifier pbody-type (car prets-type) pbody-subst e)])
                         (loop (cdr pbodies) (cdr varss) (cdr varss-type) 
                               (cdr prets-type) pbody-subst))]))))))]
-      [pair-expr [exp1 exp2]
+      [list-expr [exp1 exps]
         (cases answer (type-of-expr exp1 tenv subst)
-          [an-answer [ty1 subst1]
-            (cases answer (type-of-expr exp2 tenv subst1)
-              [an-answer [ty2 subst2]
-                (an-answer (pair-type ty1 ty2) subst2)])])]
-      [unpair-expr [var1 var2 exp1 body]
+          [an-answer [exp1-type subst]
+            (let loop ([exps exps] [subst subst] [elem-type exp1-type])
+              (if (null? exps)
+                (an-answer (list-type elem-type) subst)
+                (cases answer (type-of-expr (car exps) tenv subst)
+                  [an-answer [expx-type subst]
+                    (let ([subst (unifier expx-type exp1-type subst (car exps))])
+                      (loop (cdr exps) subst expx-type))])))])]
+      [cons-expr [exp1 exp2]
         (cases answer (type-of-expr exp1 tenv subst)
-          [an-answer [exp1-type subst1]
-            (let ([pt1 (fresh-tvar-type)] [pt2 (fresh-tvar-type)])
-              (let ([subst1 (unifier exp1-type (pair-type pt1 pt2) subst1 exp1)])
-                (let ([ext-tenv (extend-tenv (list var1 var2) (list pt1 pt2) tenv)])
-                  (type-of-expr body ext-tenv subst1))))])]
+          [an-answer [exp1-type subst]
+            (cases answer (type-of-expr exp2 tenv subst)
+              [an-answer [exp2-type subst]
+                (let ([subst (unifier exp2-type (list-type exp1-type) subst exp2)])
+                  (an-answer exp2-type subst))])])]
+      [null-expr [exp1]
+        (cases answer (type-of-expr exp1 tenv subst)
+          [an-answer [exp1-type subst]
+            (let ([elem-type (fresh-tvar-type)])
+              (let ([subst (unifier exp1-type (list-type elem-type) subst exp1)])
+                (an-answer (bool-type) subst)))])]
+      [emptylist-expr [elem-type]
+        (an-answer (list-type elem-type) subst)]
       )))

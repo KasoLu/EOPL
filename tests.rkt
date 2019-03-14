@@ -13,5 +13,6 @@
               else (f -(x, 1) 0) in
        b")
 
-(define p2 ; ((listof Int) -> (listof Int))
-  "let f = proc(x: ?) if null?(x) then emptylist Int else cons(10, x) in f")
+(define p2 ; (refto Int)
+  "let a = newref(10) in
+     let b = newref(deref(a)) in b")

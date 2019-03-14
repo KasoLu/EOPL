@@ -32,11 +32,12 @@
   [any-type]
   [int-type]
   [bool-type]
+  [void-type]
   [proc-type
     [args-type (list-of type?)]
     [ret-type type?]]
-  [list-type
-    [elem-type type?]]
+  [ref-type
+    [to-type type?]]
   [tvar-type
     [sn number?]]
   )
@@ -87,15 +88,15 @@
   [call-expr
     [rator expr?]
     [rands (list-of expr?)]]
-  [list-expr
-    [exp1 expr?]
-    [exps (list-of expr?)]]
-  [cons-expr
+  [newref-expr
+    [exp1 expr?]]
+  [deref-expr
+    [exp1 expr?]]
+  [setref-expr
     [exp1 expr?]
     [exp2 expr?]]
-  [null-expr
-    [exp1 expr?]]
-  [emptylist-expr
-    [elem-type type?]]
+  [begin-expr
+    [exp1 expr?]
+    [exps (list-of expr?)]]
   )
 

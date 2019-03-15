@@ -1,7 +1,6 @@
 (define identifier? symbol?)
 (define any? (lambda (_) #t))
 (define subst? list?)
-(define eqs? list?)
 
 (define-datatype env env?
   [empty-env]
@@ -45,16 +44,10 @@
   [an-type
     [ty type?]])
 
-(define-datatype equation equation?
-  [an-equation
-    [tvar type?]
-    [type type?]
-    [expr expr?]])
-
 (define-datatype answer answer?
   [an-answer
     [ty type?]
-    [eqs eqs?]])
+    [subst subst?]])
 
 (define-datatype prgm prgm?
   [a-prgm

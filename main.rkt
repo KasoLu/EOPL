@@ -161,14 +161,17 @@
                       (let ([subst3 (unifier ty2 ty3 subst3 e)])
                         (an-answer ty2 subst3))])]))])]
       [var-expr [var]
-        (an-answer (apply-tenv tenv var) subst)]
+        (let ([var-type (apply-tenv tenv var)])
+          (if (type? var-type)
+            (an-answer var-type subst)
+            (an-answer (car var-type) (cdr var-type))))]
       [let-expr [vars exps body]
-        (let loop ([exps exps] [types '()] [subst subst])
+        (let loop ([exps exps] [types '()] [subst1 subst])
           (if (null? exps)
-            (type-of-expr body (extend-tenv vars (reverse types) tenv) subst)
-            (cases answer (type-of-expr (car exps) tenv subst)
+            (type-of-expr body (extend-tenv vars (reverse types) tenv) subst1)
+            (cases answer (type-of-expr (car exps) tenv subst1)
               [an-answer [ty1 subst1]
-                (loop (cdr exps) (cons ty1 types) subst1)])))]
+                (loop (cdr exps) (cons (cons ty1 subst) types) subst1)])))]
       [proc-expr [vars vars-opty body]
         (let ([vars-type (map otype->type vars-opty)])
           (cases answer (type-of-expr body (extend-tenv vars vars-type tenv) subst)
@@ -177,26 +180,28 @@
       [call-expr [rator rands]
         (let ([res-type (fresh-tvar-type)])
           (cases answer (type-of-expr rator tenv subst)
-            [an-answer [rator-type rator-subst]
+            [an-answer [rator-type subst]
               (let loop ([rands rands] [types '()] [subst subst])
                 (if (null? rands)
-                  (let ([subst (unifier rator-type (proc-type (reverse types) res-type) subst e)])
+                  (let* ([pt (proc-type (reverse types) res-type)]
+                         [subst (unifier rator-type pt subst e)])
                     (an-answer res-type subst))
                   (cases answer (type-of-expr (car rands) tenv subst)
                     [an-answer [rand-type rand-subst]
                       (loop (cdr rands) (cons rand-type types) rand-subst)])))]))]
       [letrec-expr [names varss varss-opty prets-opty pbodies rbody]
-        (let ([prets-type (map otype->type prets-opty)]
-              [varss-type (map (lambda (vs) (map otype->type vs)) varss-opty)])
-          (let ([procs-type (map (lambda (vst pt) (proc-type vst pt)) varss-type prets-type)])
-            (let ([rbody-tenv (extend-tenv names procs-type tenv)])
-              (let loop ([pbodies pbodies] [varss varss] [varss-type varss-type] 
-                         [prets-type prets-type] [subst subst])
-                (if (null? pbodies)
-                  (type-of-expr rbody rbody-tenv subst)
-                  (cases answer (type-of-expr (car pbodies) (extend-tenv (car varss) (car varss-type) rbody-tenv) subst)
-                    [an-answer [pbody-type pbody-subst]
-                      (let ([pbody-subst (unifier pbody-type (car prets-type) pbody-subst e)])
-                        (loop (cdr pbodies) (cdr varss) (cdr varss-type) 
-                              (cdr prets-type) pbody-subst))]))))))]
+        (let* ([prets-type (map otype->type prets-opty)]
+               [varss-type (map (lambda (vs) (map otype->type vs)) varss-opty)]
+               [procs-type (map (lambda (vst pt) (proc-type vst pt)) varss-type prets-type)]
+               [rbody-tenv (extend-tenv names procs-type tenv)])
+          (let loop ([pbodies pbodies] [varss varss] [varss-type varss-type] 
+                     [prets-type prets-type] [subst subst])
+            (if (null? pbodies)
+              (type-of-expr rbody rbody-tenv subst)
+              (let ([ext-tenv (extend-tenv (car varss) (car varss-type) rbody-tenv)])
+                (cases answer (type-of-expr (car pbodies) ext-tenv subst)
+                  [an-answer [pbody-type pbody-subst]
+                    (let ([pbody-subst (unifier pbody-type (car prets-type) pbody-subst e)])
+                      (loop (cdr pbodies) (cdr varss) (cdr varss-type) 
+                            (cdr prets-type) pbody-subst))])))))]
       )))

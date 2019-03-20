@@ -1,7 +1,6 @@
 (load "main.rkt")
 
-;res = (() -> Int)
-(define p1
+(define p1 ; (Int * T -> Int)
   "let a = proc(x: Int y: ?) x
        b = proc() 10 in
      letrec f(x: ? y: ?) -> ? =
@@ -12,4 +11,10 @@
               if zero?(x)
               then 20
               else (f -(x, 1) 0) in
-       b")
+       a")
+
+(define p2 ; (T -> T)
+  "let f = proc(x: ?) x in
+     if (f zero?(0))
+       then f
+       else f")

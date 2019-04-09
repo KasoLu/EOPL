@@ -24,6 +24,8 @@
                (proc-val (procedure (car varss) (car bodies) env1))]
               [else 
                (loop (cdr names) (cdr varss) (cdr bodies))]))]
+    [else
+      (report-invalid-env env1)]
     ))
 
 (define init-tenv init-env)
@@ -43,25 +45,40 @@
     [proc-val [proc] proc]
     [else (report-expval-extractor-error 'proc val)]))
 
-(define (every? proc ls)
-  (let loop ([ls ls] [res #t])
-    (if (null? ls)
-      res
-      (loop (cdr ls) (and res (proc (car ls)))))))
+(define (decl->name d)
+  (cases decl d
+    [val-decl [name type] name]
+    [else (report-decl-extractor-error 'name d)]))
+(define (decl->type d)
+  (cases decl d
+    [val-decl [name type] type]
+    [else (report-decl-extractor-error 'type d)]))
 
-(define (tvar-type? t)
-  (cases type t
-    [tvar-type [sn] #t]
-    [else #f]))
-(define (proc-type? t)
-  (cases type t
-    [proc-type [args-type ret-type] #t]
-    [else #f]))
-(define (proc-type->args-type pt)
-  (cases type pt
-    [proc-type [args-type ret-type] args-type]
-    [else (report-invalid-type pt)]))
-(define (proc-type->ret-type pt)
-  (cases type pt
-    [proc-type [args-type ret-type] ret-type]
-    [else (report-invalid-type pt)]))
+(define lookup-qualified-var-in-tenv
+  (lambda (m-name var-name tenv)
+    (let ([ifc (lookup-module-name-in-tenv tenv m-name)])
+      (cases iface ifc
+        [simple-iface [decls]
+          (lookup-variable-name-in-decls decls var-name)]))))
+
+(define lookup-module-name-in-tenv
+  (lambda (e n)
+    (cases env e
+      [empty-env []
+        (report-invalid-module-name e n)]
+      [extend-env [vars vals saved-env]
+        (lookup-module-name-in-tenv saved-env n)]
+      [extend-env-rec [names varss procs saved-env]
+        (lookup-module-name-in-tenv saved-env n)]
+      [extend-tenv-with-module [name m-iface saved-env]
+        (if (eqv? name n)
+          m-iface
+          (lookup-module-name-in-tenv saved-env n))]
+      [else
+        (report-invalid-env e)])))
+
+(define lookup-variable-name-in-decls
+  (lambda (decls var-name)
+    (cond [(null? decls) (report-invalid-decls)]
+          [(eqv? (decl->name (car decls)) var-name) (decl->type (car decls))]
+          [else (lookup-variable-name-in-decls (cdr decls) var-name)])))

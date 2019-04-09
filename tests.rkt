@@ -1,20 +1,21 @@
 (load "main.rkt")
 
-(define p1 ; (Int * T -> Int)
-  "let a = proc(x: Int y: ?) x
-       b = proc() 10 in
-     letrec f(x: ? y: ?) -> ? =
-              if zero?(x)
-              then 10
-              else (g -(x, 1) zero?(0)) 
-            g(x: Int y: ?) -> Int =
-              if zero?(x)
-              then 20
-              else (f -(x, 1) 0) in
-       a")
-
-(define p2 ; (T -> T)
-  "let f = proc(x: ?) x in
-     if (f zero?(0))
-       then f
-       else f")
+(define p2
+  "module m1
+     interface
+       [a : Int
+        b : Int
+        c : Int]
+     body
+       [a = 33
+        b = 44
+        c = 55]
+   module m2
+     interface
+       [a : Int
+        b : Int]
+     body
+       [a = 66
+        b = 77]
+   let z = 99 in
+     -(z, -(from m1 take a, from m2 take a))")

@@ -1,6 +1,5 @@
 (define identifier? symbol?)
-(define any? (lambda (_) #t))
-(define subst? list?)
+(define any?        (lambda (_) #t))
 
 (define-datatype env env?
   [empty-env]
@@ -13,6 +12,14 @@
     [varss (list-of (list-of identifier?))]
     [procs (list-of any?)]
     [env   env?]]
+  [extend-env-with-module
+    [m-name identifier?]
+    [m-val typed-module?]
+    [saved-env env?]]
+  [extend-tenv-with-module
+    [m-name identifier?]
+    [m-iface iface?]
+    [saved-env env?]]
   )
 
 (define-datatype proc proc?
@@ -34,23 +41,36 @@
   [bool-type]
   [proc-type
     [args-type (list-of type?)]
-    [ret-type type?]]
-  [tvar-type
-    [sn number?]]
-  )
+    [ret-type type?]])
 
-(define-datatype opty opty?
-  [no-type]
-  [an-type
-    [ty type?]])
-
-(define-datatype answer answer?
-  [an-answer
-    [ty type?]
-    [subst subst?]])
 
 (define-datatype prgm prgm?
   [a-prgm
+    [m-defs (list-of mod-def?)]
+    [exp1 expr?]])
+
+(define-datatype mod-def mod-def?
+  [a-mod-def
+    [m-name identifier?]
+    [expected-iface iface?]
+    [m-body mod-body?]])
+
+(define-datatype iface iface?
+  [simple-iface
+    [decls (list-of decl?)]])
+
+(define-datatype decl decl?
+  [val-decl
+    [var-name identifier?]
+    [ty type?]])
+
+(define-datatype mod-body mod-body?
+  [defs-mod-body
+    [defs (list-of def?)]])
+
+(define-datatype def def?
+  [val-def 
+    [var-name identifier?]
     [exp1 expr?]])
 
 (define-datatype expr expr?
@@ -74,16 +94,22 @@
   [letrec-expr
     [names (list-of identifier?)]
     [varss (list-of (list-of identifier?))]
-    [varss-type (list-of (list-of opty?))]
-    [procs-type (list-of opty?)]
+    [varss-type (list-of (list-of type?))]
+    [procs-type (list-of type?)]
     [procs (list-of expr?)]
     [rbody expr?]]
   [proc-expr
     [vars (list-of identifier?)]
-    [vars-type (list-of opty?)]
+    [vars-type (list-of type?)]
     [body expr?]]
   [call-expr
     [rator expr?]
     [rands (list-of expr?)]]
+  [qualified-var-expr
+    [m-name identifier?]
+    [var-name identifier?]]
   )
 
+(define-datatype typed-module typed-module?
+  [simple-module
+    [bindings env?]])

@@ -3,8 +3,7 @@
 (define scanner-spec
   '([whitespace (whitespace) skip]
     [identifier (letter (arbno (or letter digit "_" "-" "?"))) symbol]
-    [number ((or "-" "") digit (arbno digit)) number]
-    ))
+    [number ((or "-" "") digit (arbno digit)) number]))
 
 ;arbno | separated-list
 (define grammar-spec
@@ -12,10 +11,7 @@
     [mod-def ("module" identifier "interface" iface "body" mod-body) a-mod-def]
     [iface ("[" (arbno decl) "]") simple-iface]
     [decl (identifier ":" type) val-decl]
-    [mod-body ("[" (arbno def) "]") defs-mod-body]
-    [mod-body ("let" (arbno identifier "=" expr) "in" mod-body) let-mod-body]
-    [mod-body ("letrec" (arbno identifier "(" (arbno identifier ":" type) ")" "->" type "=" expr)
-               "in" mod-body) letrec-mod-body]
+    [mod-body ((arbno mod-def) "[" (arbno def) "]") defs-mod-body]
     [def (identifier "=" expr) val-def]
     [expr (number) num-expr]
     [expr (identifier) var-expr]

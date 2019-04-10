@@ -43,6 +43,7 @@
     [args-type (list-of type?)]
     [ret-type type?]])
 
+
 (define-datatype prgm prgm?
   [a-prgm
     [m-defs (list-of mod-def?)]
@@ -65,19 +66,8 @@
 
 (define-datatype mod-body mod-body?
   [defs-mod-body
-    [defs (list-of def?)]]
-  [let-mod-body
-    [vars (list-of identifier?)]
-    [exps (list-of expr?)]
-    [m-body mod-body?]]
-  [letrec-mod-body
-    [names (list-of identifier?)]
-    [varss (list-of (list-of identifier?))]
-    [varss-type (list-of (list-of type?))]
-    [procs-type (list-of type?)]
-    [procs (list-of expr?)]
-    [mbody mod-body?]]
-  )
+    [mod-defs (list-of mod-def?)]
+    [defs (list-of def?)]])
 
 (define-datatype def def?
   [val-def 

@@ -3,12 +3,14 @@
 (define scanner-spec
   '([whitespace (whitespace) skip]
     [identifier (letter (arbno (or letter digit "_" "-" "?"))) symbol]
-    [number ((or "-" "") digit (arbno digit)) number]))
+    [number ((or "-" "") digit (arbno digit)) number]
+    [module-name (letter (arbno (or letter digit "_" "-" "?"))) symbol]
+    ))
 
 ;arbno | separated-list
 (define grammar-spec
   '([prgm ((arbno mod-def) expr) a-prgm]
-    [mod-def ("module" identifier "interface" iface "body" mod-body) a-mod-def]
+    [mod-def ("module" module-name "interface" iface "body" mod-body) a-mod-def]
     [iface ("[" (arbno decl) "]") simple-iface]
     [decl (identifier ":" type) val-decl]
     [mod-body ("[" (arbno def) "]") defs-mod-body]
@@ -23,7 +25,7 @@
            "in" expr) letrec-expr]
     [expr ("proc" "(" (arbno identifier ":" type) ")" expr) proc-expr]
     [expr ("(" expr (arbno expr) ")") call-expr]
-    [expr ("from" identifier "take" identifier) qualified-var-expr]
+    [expr (module-name "." identifier) qualified-var-expr]
     [type ("Int") int-type]
     [type ("Bool") bool-type]
     [type ("(" (separated-list type "*") "->" type ")") proc-type]

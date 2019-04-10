@@ -1,5 +1,6 @@
 (define identifier? symbol?)
 (define any?        (lambda (_) #t))
+(define module-name? symbol?)
 
 (define-datatype env env?
   [empty-env]
@@ -51,7 +52,7 @@
 
 (define-datatype mod-def mod-def?
   [a-mod-def
-    [m-name identifier?]
+    [m-name module-name?]
     [expected-iface iface?]
     [m-body mod-body?]])
 
@@ -106,7 +107,7 @@
     [rator expr?]
     [rands (list-of expr?)]]
   [qualified-var-expr
-    [m-name identifier?]
+    [m-name module-name?]
     [var-name identifier?]]
   )
 

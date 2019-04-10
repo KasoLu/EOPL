@@ -18,4 +18,4 @@
        [a = 66
         b = 77]
    let z = 99 in
-     -(z, -(from m1 take a, from m2 take a))")
+     -(z, -(m1.a, m2.a))")

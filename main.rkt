@@ -105,13 +105,11 @@
       tenv
       (cases mod-def (car mod-defs)
         [a-mod-def [m-name expected-iface m-body]
-          (if (found-same-name-module (cdr mod-defs) m-name)
-            (report-module-redefined m-name)
-            (let ([actual-iface (interface-of m-body tenv)])
-              (if (<:-iface actual-iface expected-iface tenv)
-                (let ([new-tenv (extend-tenv-with-module m-name expected-iface tenv)])
-                  (add-mod-defs-to-tenv (cdr mod-defs) new-tenv))
-                (report-module-doesnt-satisfy-iface m-name expected-iface actual-iface))))]))))
+          (let ([actual-iface (interface-of m-body tenv)])
+            (if (<:-iface actual-iface expected-iface tenv)
+              (let ([new-tenv (extend-tenv-with-module m-name expected-iface tenv)])
+                (add-mod-defs-to-tenv (cdr mod-defs) new-tenv))
+              (report-module-doesnt-satisfy-iface m-name expected-iface actual-iface)))]))))
 
 (define interface-of
   (lambda (m-body tenv)
@@ -147,14 +145,3 @@
                (and (equal? (decl->type (car decls1)) (decl->type (car decls2)))
                     (<:-decls (cdr decls1) (cdr decls2) tenv))
                (<:-decls (cdr decls1) decls2 tenv)))])))
-
-(define found-same-name-module
-  (lambda (defs name)
-    (if (null? defs)
-      #f
-      (cases mod-def (car defs)
-        [a-mod-def [m-name expected-iface m-body]
-          (if (eqv? m-name name)
-            #t
-            (found-same-name-module (cdr defs) name))]))))
-

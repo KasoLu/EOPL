@@ -115,7 +115,19 @@
   (lambda (m-body tenv)
     (cases mod-body m-body
       [defs-mod-body [defs]
-        (simple-iface (defs-to-decls defs tenv))])))
+        (simple-iface (defs-to-decls defs tenv))]
+      [let-mod-body [vars exps m-body]
+        (let ([types (map (lambda (e) (type-of-expr e tenv)) exps)])
+          (interface-of m-body (extend-tenv vars types tenv)))]
+      [letrec-mod-body [names varss varss-type prets-type procs m-body]
+        (let ([procs-type (map (lambda (vst rt) (proc-type vst rt)) varss-type prets-type)])
+          (let ([m-body-tenv (extend-tenv names procs-type tenv)])
+            (let ([actual-rets-type 
+                    (map (lambda (vs vt p) (type-of-expr p (extend-tenv vs vt m-body-tenv))) 
+                         varss varss-type procs)])
+              (map (lambda (pt at p) (check-equal-type! pt at p)) 
+                   actual-rets-type prets-type procs)
+              (interface-of m-body m-body-tenv))))])))
 
 (define defs-to-decls
   (lambda (defs tenv)

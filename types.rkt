@@ -1,5 +1,6 @@
 (define identifier? symbol?)
 (define any?        (lambda (_) #t))
+(define module-name? symbol?)
 
 (define-datatype env env?
   [empty-env]
@@ -13,7 +14,7 @@
     [procs (list-of any?)]
     [env   env?]]
   [extend-env-with-module
-    [m-name identifier?]
+    [m-name module-name?]
     [m-val typed-module?]
     [saved-env env?]]
   [extend-tenv-with-module
@@ -51,7 +52,7 @@
 
 (define-datatype mod-def mod-def?
   [a-mod-def
-    [m-name identifier?]
+    [m-name module-name?]
     [expected-iface iface?]
     [m-body mod-body?]])
 
@@ -62,7 +63,13 @@
 (define-datatype decl decl?
   [val-decl
     [var-name identifier?]
-    [ty type?]])
+    [ty decl-type?]])
+
+(define-datatype decl-type decl-type?
+  [plain-decl-type
+    [ty type?]]
+  [iface-decl-type
+    [iface iface?]])
 
 (define-datatype mod-body mod-body?
   [defs-mod-body
@@ -72,7 +79,13 @@
 (define-datatype def def?
   [val-def 
     [var-name identifier?]
-    [exp1 expr?]])
+    [exp1 def-val?]])
+
+(define-datatype def-val def-val?
+  [expr-def-val
+    [exp1 expr?]]
+  [mod-def-val
+    [m-name identifier?]])
 
 (define-datatype expr expr?
   [num-expr
@@ -107,8 +120,9 @@
     [rator expr?]
     [rands (list-of expr?)]]
   [qualified-var-expr
-    [m-name identifier?]
-    [var-name identifier?]]
+    [m-name module-name?]
+    [var1-name identifier?]
+    [vars-name (list-of identifier?)]]
   )
 
 (define-datatype typed-module typed-module?

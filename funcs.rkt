@@ -51,7 +51,10 @@
     [else (report-decl-extractor-error 'name d)]))
 (define (decl->type d)
   (cases decl d
-    [val-decl [name type] type]
+    [val-decl [name type]
+      (cases decl-type type
+        [plain-decl-type [type] type]
+        [iface-decl-type [iface] iface])]
     [else (report-decl-extractor-error 'type d)]))
 
 (define lookup-qualified-var-in-tenv

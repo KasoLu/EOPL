@@ -32,3 +32,20 @@
        [u = 44
         v = -(from m2 take v, 1)]
    from m1 take v")
+
+(define p4
+  "module m1
+     interface
+       [u : Int
+        n : [v : Bool]]
+     body
+       module m2
+         interface 
+           [v : Bool
+            w : Int]
+         body
+           [v = zero?(0)
+            w = 10]
+       [u = 44
+        n = m2]
+   from m1 take n take v")

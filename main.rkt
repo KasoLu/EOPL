@@ -95,8 +95,16 @@
             (map (lambda (pt opt p) (check-equal-type! pt opt p)) 
                  procs-type pbody-type procs)
             (type-of-expr rbody rbody-tenv))))]
-    [qualified-var-expr [m-name var-name]
-      (lookup-qualified-var-in-tenv m-name var-name tenv)]
+    [qualified-var-expr [m-name var1-name vars-name]
+      (let ([var1-type (lookup-qualified-var-in-tenv m-name var1-name tenv)])
+        (let loop ([vars-name vars-name] [var1-type var1-type])
+          (if (type? var1-type)
+            (if (null? vars-name)
+              var1-type
+              (report-invalid-module-type m-name))
+            (cases iface var1-type
+              [simple-iface [decls]
+                (loop (cdr vars-name) (lookup-variable-name-in-decls decls (car vars-name)))]))))]
     ))
 
 (define add-mod-defs-to-tenv
@@ -123,10 +131,19 @@
     (if (null? defs)
       (list)
       (cases def (car defs)
-        [val-def [var-name expr]
-          (let ([ty (type-of-expr expr tenv)])
-            (cons (val-decl var-name ty)
-                  (defs-to-decls (cdr defs) (extend-tenv (list var-name) (list ty) tenv))))]))))
+        [val-def [var-name dv]
+          (cases def-val dv
+            [expr-def-val [expr]
+              (let ([ty (type-of-expr expr tenv)])
+                (cons 
+                  (val-decl var-name (plain-decl-type ty))
+                  (defs-to-decls (cdr defs) (extend-tenv (list var-name) (list ty) tenv))))]
+            [mod-def-val [m-name]
+              (let ([m-iface (lookup-module-name-in-tenv tenv m-name)])
+                (cons 
+                  (val-decl var-name (iface-decl-type m-iface))
+                  (defs-to-decls (cdr defs) (extend-tenv (list var-name) (list m-iface) tenv))))]
+            )]))))
 
 (define <:-iface
   (lambda (iface1 iface2 tenv)
@@ -143,7 +160,11 @@
           [else
            (let ([name1 (decl->name (car decls1))] [name2 (decl->name (car decls2))])
              (if (eqv? name1 name2)
-               (and (equal? (decl->type (car decls1)) (decl->type (car decls2)))
-                    (<:-decls (cdr decls1) (cdr decls2) tenv))
+               (and 
+                 (let ([type1 (decl->type (car decls1))] [type2 (decl->type (car decls2))])
+                   (cond [(and (type? type1) (type? type2)) (equal? type1 type2)]
+                         [(or  (type? type1) (type? type2)) #f]
+                         [else (<:-iface type1 type2 tenv)]))
+                 (<:-decls (cdr decls1) (cdr decls2) tenv))
                (<:-decls (cdr decls1) decls2 tenv)))])))
 

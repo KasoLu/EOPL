@@ -8,13 +8,14 @@
 
 ;arbno | separated-list
 (define grammar-spec
-  '([prgm ((arbno mod-def) mod-dep expr) a-prgm]
+  '([prgm ((arbno mod-def) import expr) a-prgm]
     [mod-def ("module" module-name "interface" iface "body" mod-body) a-mod-def]
     [iface ("[" (arbno decl) "]") simple-iface]
     [decl (identifier ":" type) val-decl]
-    [mod-body (mod-dep "[" (arbno def) "]") defs-mod-body]
+    [mod-body (import "[" (arbno def) "]") defs-mod-body]
     [def (identifier "=" expr) val-def]
-    [mod-dep ("depends-on" (separated-list module-name ",")) a-mod-dep]
+    [import () null-import]
+    [import ("import" (separated-list module-name ",")) mods-import]
     [expr (number) num-expr]
     [expr (identifier) var-expr]
     [expr ("-" "(" expr "," expr ")") diff-expr]
@@ -26,6 +27,7 @@
     [expr ("proc" "(" (arbno identifier ":" type) ")" expr) proc-expr]
     [expr ("(" expr (arbno expr) ")") call-expr]
     [expr ("from" module-name "take" identifier) qualified-var-expr]
+    [expr ("print" "(" number ")") print-expr]
     [type ("Int") int-type]
     [type ("Bool") bool-type]
     [type ("(" (separated-list type "*") "->" type ")") proc-type]

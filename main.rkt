@@ -40,13 +40,9 @@
 (define type-of-prgm
   (lambda (p)
     (cases prgm p
-      [a-prgm [mod-defs m-dep body]
-        (cases mod-dep m-dep
-          [a-mod-dep [m-names]
-            (type-of-expr body
-              (extend-tenv-with-mod-dep
-                m-names
-                (add-mod-defs-to-tenv mod-defs (init-tenv))))])])))
+      [a-prgm [mod-defs mod-import body]
+        (let ([new-tenv (import-mod-defs-to-tenv mod-defs mod-import (init-tenv))])
+          (type-of-expr body new-tenv))])))
 
 ;type-of-expr : Expr x Tenv -> Type
 (define (type-of-expr e tenv)
@@ -101,27 +97,37 @@
             (type-of-expr rbody rbody-tenv))))]
     [qualified-var-expr [m-name var-name]
       (lookup-qualified-var-in-tenv m-name var-name tenv)]
+    [print-expr [num1]
+      (begin (printf "~a~n" num1) (int-type))]
     ))
 
-(define add-mod-defs-to-tenv
-  (lambda (mod-defs tenv)
-    (if (null? mod-defs)
-      tenv
-      (cases mod-def (car mod-defs)
-        [a-mod-def [m-name expected-iface m-body]
-          (let ([actual-iface (interface-of m-body tenv)])
-            (if (<:-iface actual-iface expected-iface tenv)
-              (let ([new-tenv (extend-tenv-with-module m-name expected-iface tenv)])
-                (add-mod-defs-to-tenv (cdr mod-defs) new-tenv))
-              (report-module-doesnt-satisfy-iface m-name expected-iface actual-iface)))]))))
+(define import-mod-defs-to-tenv
+  (lambda (mod-defs-arg mod-import tenv)
+    (cases import mod-import
+      [null-import [] tenv]
+      [mods-import [m-names]
+        (let loop1 ([m-names m-names] [tenv tenv])
+          (if (null? m-names)
+            tenv
+            (let loop2 ([mod-defs mod-defs-arg])
+              (if (null? mod-defs)
+                (report-not-found-module (car m-names))
+                (cases mod-def (car mod-defs)
+                  [a-mod-def [m-name expected-iface m-body]
+                    (if (eqv? (car m-names) m-name)
+                      (let ([actual-iface (interface-of m-body mod-defs-arg tenv)])
+                        (if (<:-iface actual-iface expected-iface tenv)
+                          (let ([new-tenv (extend-tenv-with-module m-name expected-iface tenv)])
+                            (loop1 (cdr m-names) new-tenv))
+                          (report-module-doesnt-satisfy-iface m-name expected-iface actual-iface)))
+                      (loop2 (cdr mod-defs)))])))))])))
 
 (define interface-of
-  (lambda (m-body tenv)
+  (lambda (m-body mod-defs-arg tenv)
     (cases mod-body m-body
-      [defs-mod-body [m-dep defs]
-        (cases mod-dep m-dep
-          [a-mod-dep [m-names]
-            (simple-iface (defs-to-decls defs (extend-tenv-with-mod-dep m-names tenv)))])])))
+      [defs-mod-body [m-import defs]
+        (let ([new-tenv (import-mod-defs-to-tenv mod-defs-arg m-import tenv)])
+          (simple-iface (defs-to-decls defs tenv)))])))
 
 (define defs-to-decls
   (lambda (defs tenv)

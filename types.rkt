@@ -21,9 +21,6 @@
     [m-name identifier?]
     [m-iface iface?]
     [saved-env env?]]
-  [extend-tenv-with-mod-dep
-    [m-dep-names (list-of module-name?)]
-    [saved-tenv env?]]
   )
 
 (define-datatype proc proc?
@@ -64,22 +61,23 @@
 
 (define-datatype mod-body mod-body?
   [defs-mod-body
-    [m-dep mod-dep?]
-    [defs (list-of def?)]])
+    [m-imps import?]
+    [m-defs (list-of def?)]])
 
 (define-datatype def def?
   [val-def 
     [var-name identifier?]
     [exp1 expr?]])
 
-(define-datatype mod-dep mod-dep?
-  [a-mod-dep
+(define-datatype import import?
+  [null-import]
+  [mods-import
     [m-names (list-of module-name?)]])
 
 (define-datatype prgm prgm?
   [a-prgm
     [m-defs (list-of mod-def?)]
-    [m-dep mod-dep?]
+    [m-imps import?]
     [exp1 expr?]])
 
 (define-datatype expr expr?
@@ -117,6 +115,8 @@
   [qualified-var-expr
     [m-name identifier?]
     [var-name identifier?]]
+  [print-expr
+    [num1 number?]]
   )
 
 (define-datatype typed-module typed-module?

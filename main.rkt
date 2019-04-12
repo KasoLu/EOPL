@@ -40,9 +40,13 @@
 (define type-of-prgm
   (lambda (p)
     (cases prgm p
-      [a-prgm [mod-defs body]
-        (type-of-expr body
-          (add-mod-defs-to-tenv mod-defs (init-tenv)))])))
+      [a-prgm [mod-defs m-dep body]
+        (cases mod-dep m-dep
+          [a-mod-dep [m-names]
+            (type-of-expr body
+              (extend-tenv-with-mod-dep
+                m-names
+                (add-mod-defs-to-tenv mod-defs (init-tenv))))])])))
 
 ;type-of-expr : Expr x Tenv -> Type
 (define (type-of-expr e tenv)
@@ -114,8 +118,10 @@
 (define interface-of
   (lambda (m-body tenv)
     (cases mod-body m-body
-      [defs-mod-body [defs]
-        (simple-iface (defs-to-decls defs tenv))])))
+      [defs-mod-body [m-dep defs]
+        (cases mod-dep m-dep
+          [a-mod-dep [m-names]
+            (simple-iface (defs-to-decls defs (extend-tenv-with-mod-dep m-names tenv)))])])))
 
 (define defs-to-decls
   (lambda (defs tenv)
@@ -137,15 +143,12 @@
 
 (define <:-decls
   (lambda (decls1 decls2 tenv)
-    (let loop1 ([decls2 decls2] [res #t])
-      (cond [(null? decls2) res]
-            [(not res) res]
-            [else
-             (let loop2 ([decls1 decls1])
-               (cond [(null? decls1) res]
-                     [(eqv? (decl->name (car decls2)) (decl->name (car decls1)))
-                      (loop1 (cdr decls2)
-                             (equal? (decl->type (car decls2)) (decl->type (car decls1))))]
-                     [else
-                      (loop2 (cdr decls1))]))]))))
+    (cond [(null? decls2) #t]
+          [(null? decls1) #f]
+          [else
+           (let ([name1 (decl->name (car decls1))] [name2 (decl->name (car decls2))])
+             (if (eqv? name1 name2)
+               (and (equal? (decl->type (car decls1)) (decl->type (car decls2)))
+                    (<:-decls (cdr decls1) (cdr decls2) tenv))
+               (<:-decls (cdr decls1) decls2 tenv)))])))
 

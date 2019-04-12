@@ -56,24 +56,28 @@
 
 (define lookup-qualified-var-in-tenv
   (lambda (m-name var-name tenv)
-    (let ([ifc (lookup-module-name-in-tenv tenv m-name)])
+    (let ([ifc (lookup-module-name-in-tenv tenv m-name '())])
       (cases iface ifc
         [simple-iface [decls]
           (lookup-variable-name-in-decls decls var-name)]))))
 
 (define lookup-module-name-in-tenv
-  (lambda (e n)
+  (lambda (e n m-dep-names)
     (cases env e
       [empty-env []
-        (report-invalid-module-name e n)]
+        (report-invalid-module-name e n m-dep-names)]
       [extend-env [vars vals saved-env]
-        (lookup-module-name-in-tenv saved-env n)]
+        (lookup-module-name-in-tenv saved-env n m-dep-names)]
       [extend-env-rec [names varss procs saved-env]
-        (lookup-module-name-in-tenv saved-env n)]
+        (lookup-module-name-in-tenv saved-env n m-dep-names)]
       [extend-tenv-with-module [name m-iface saved-env]
-        (if (eqv? name n)
-          m-iface
-          (lookup-module-name-in-tenv saved-env n))]
+        (if (eqv? name n) 
+          (if (memv n m-dep-names)
+            m-iface
+            (report-uninvalid-module-ref n)) 
+          (lookup-module-name-in-tenv saved-env n m-dep-names))]
+      [extend-tenv-with-mod-dep [m-dep-names1 saved-tenv]
+        (lookup-module-name-in-tenv saved-tenv n m-dep-names1)]
       [else
         (report-invalid-env e)])))
 

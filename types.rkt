@@ -1,6 +1,5 @@
 (define identifier? symbol?)
 (define any?        (lambda (_) #t))
-(define module-name? symbol?)
 
 (define-datatype env env?
   [empty-env]
@@ -20,6 +19,10 @@
   [extend-tenv-with-module
     [m-name identifier?]
     [m-iface iface?]
+    [saved-env env?]]
+  [extend-tenv-with-type
+    [t-name identifier?]
+    [t-type type?]
     [saved-env env?]]
   )
 
@@ -42,11 +45,22 @@
   [bool-type]
   [proc-type
     [args-type (list-of type?)]
-    [ret-type type?]])
+    [ret-type type?]]
+  [named-type
+    [name identifier?]]
+  [qualified-type 
+    [m-name identifier?]
+    [t-name identifier?]])
+
+
+(define-datatype prgm prgm?
+  [a-prgm
+    [m-defs (list-of mod-def?)]
+    [exp1 expr?]])
 
 (define-datatype mod-def mod-def?
   [a-mod-def
-    [m-name module-name?]
+    [m-name identifier?]
     [expected-iface iface?]
     [m-body mod-body?]])
 
@@ -57,28 +71,24 @@
 (define-datatype decl decl?
   [val-decl
     [var-name identifier?]
-    [ty type?]])
+    [var-type type?]]
+  [opaque-type-decl
+    [t-name identifier?]]
+  [transparent-type-decl
+    [t-name identifier?]
+    [t-type type?]])
 
 (define-datatype mod-body mod-body?
   [defs-mod-body
-    [m-imps import?]
-    [m-defs (list-of def?)]])
+    [defs (list-of def?)]])
 
 (define-datatype def def?
   [val-def 
     [var-name identifier?]
-    [exp1 expr?]])
-
-(define-datatype import import?
-  [null-import]
-  [mods-import
-    [m-names (list-of module-name?)]])
-
-(define-datatype prgm prgm?
-  [a-prgm
-    [m-defs (list-of mod-def?)]
-    [m-imps import?]
-    [exp1 expr?]])
+    [exp1 expr?]]
+  [type-def
+    [t-name identifier?]
+    [type type?]])
 
 (define-datatype expr expr?
   [num-expr
@@ -115,8 +125,6 @@
   [qualified-var-expr
     [m-name identifier?]
     [var-name identifier?]]
-  [print-expr
-    [num1 number?]]
   )
 
 (define-datatype typed-module typed-module?

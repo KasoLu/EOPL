@@ -28,7 +28,11 @@
                        args-type)])
           (if (eqv? (car type-form) '->)
             (cons '() type-form)
-            (cdr type-form)))])))
+            (cdr type-form)))]
+      [named-type [name] name]
+      [qualified-type [m-name t-name]
+        (list 'from m-name 'take t-name)]
+      )))
 
 ;run : String -> Type
 (define (run str)
@@ -40,9 +44,9 @@
 (define type-of-prgm
   (lambda (p)
     (cases prgm p
-      [a-prgm [mod-defs mod-import body]
-        (let ([new-tenv (import-mod-defs-to-tenv mod-defs mod-import (init-tenv))])
-          (type-of-expr body new-tenv))])))
+      [a-prgm [mod-defs body]
+        (type-of-expr body
+          (add-mod-defs-to-tenv mod-defs (init-tenv)))])))
 
 ;type-of-expr : Expr x Tenv -> Type
 (define (type-of-expr e tenv)
@@ -69,9 +73,9 @@
         ty2)]
     [let-expr [vars exps body]
       (let ([exps-type (map (lambda (x) (type-of-expr x tenv)) exps)])
-        (type-of-expr body (extend-tenv vars exps-type tenv)))]
+        (type-of-expr body (extend-tenv vars (expand-types exps-type tenv) tenv)))]
     [proc-expr [vars vars-type body]
-      (let ([ret-type (type-of-expr body (extend-tenv vars vars-type tenv))])
+      (let ([ret-type (type-of-expr body (extend-tenv vars (expand-types vars-type tenv) tenv))])
         (proc-type vars-type ret-type))]
     [call-expr [rator rands]
       (let ([rator-type (type-of-expr rator tenv)]
@@ -88,46 +92,37 @@
             (report-rator-not-a-proc-type rator-type rator)]))]
     [letrec-expr [names varss varss-type pbody-type procs rbody]
       (let ([proc-types (map (lambda (vst pbt) (proc-type vst pbt)) varss-type pbody-type)])
-        (let ([rbody-tenv (extend-tenv names proc-types tenv)])
+        (let ([rbody-tenv (extend-tenv names (expand-types proc-types tenv) tenv)])
           (let ([procs-type 
-                  (map (lambda (vs vst p) (type-of-expr p (extend-tenv vs vst rbody-tenv)))
+                  (map (lambda (vs vst p) 
+                         (type-of-expr p (extend-tenv vs (expand-types vst tenv) rbody-tenv)))
                        varss varss-type procs)])
             (map (lambda (pt opt p) (check-equal-type! pt opt p)) 
                  procs-type pbody-type procs)
             (type-of-expr rbody rbody-tenv))))]
     [qualified-var-expr [m-name var-name]
       (lookup-qualified-var-in-tenv m-name var-name tenv)]
-    [print-expr [num1]
-      (begin (printf "~a~n" num1) (int-type))]
     ))
 
-(define import-mod-defs-to-tenv
-  (lambda (mod-defs-arg mod-import tenv)
-    (cases import mod-import
-      [null-import [] tenv]
-      [mods-import [m-names]
-        (let loop1 ([m-names m-names] [tenv tenv])
-          (if (null? m-names)
-            tenv
-            (let loop2 ([mod-defs mod-defs-arg])
-              (if (null? mod-defs)
-                (report-not-found-module (car m-names))
-                (cases mod-def (car mod-defs)
-                  [a-mod-def [m-name expected-iface m-body]
-                    (if (eqv? (car m-names) m-name)
-                      (let ([actual-iface (interface-of m-body mod-defs-arg tenv)])
-                        (if (<:-iface actual-iface expected-iface tenv)
-                          (let ([new-tenv (extend-tenv-with-module m-name expected-iface tenv)])
-                            (loop1 (cdr m-names) new-tenv))
-                          (report-module-doesnt-satisfy-iface m-name expected-iface actual-iface)))
-                      (loop2 (cdr mod-defs)))])))))])))
+(define add-mod-defs-to-tenv
+  (lambda (mod-defs tenv)
+    (if (null? mod-defs)
+      tenv
+      (cases mod-def (car mod-defs)
+        [a-mod-def [m-name expected-iface m-body]
+          (let ([actual-iface (interface-of m-body tenv)])
+            (if (<:-iface actual-iface expected-iface tenv)
+              (let ([new-tenv 
+                      (extend-tenv-with-module 
+                         m-name (expand-iface m-name expected-iface tenv) tenv)])
+                (add-mod-defs-to-tenv (cdr mod-defs) new-tenv))
+              (report-module-doesnt-satisfy-iface m-name expected-iface actual-iface)))]))))
 
 (define interface-of
-  (lambda (m-body mod-defs-arg tenv)
+  (lambda (m-body tenv)
     (cases mod-body m-body
-      [defs-mod-body [m-import defs]
-        (let ([new-tenv (import-mod-defs-to-tenv mod-defs-arg m-import tenv)])
-          (simple-iface (defs-to-decls defs tenv)))])))
+      [defs-mod-body [defs]
+        (simple-iface (defs-to-decls defs tenv))])))
 
 (define defs-to-decls
   (lambda (defs tenv)
@@ -135,9 +130,15 @@
       (list)
       (cases def (car defs)
         [val-def [var-name expr]
-          (let ([ty (type-of-expr expr tenv)])
-            (cons (val-decl var-name ty)
-                  (defs-to-decls (cdr defs) (extend-tenv (list var-name) (list ty) tenv))))]))))
+          (let ([type (type-of-expr expr tenv)])
+            (cons (val-decl var-name type)
+                  (defs-to-decls 
+                    (cdr defs) 
+                    (extend-tenv (list var-name) (list type) tenv))))]
+        [type-def [t-name t-type]
+          (let ([new-tenv (extend-tenv-with-type t-name (expand-type t-type tenv) tenv)])
+            (cons (transparent-type-decl t-name t-type)
+                  (defs-to-decls (cdr defs) new-tenv)))]))))
 
 (define <:-iface
   (lambda (iface1 iface2 tenv)
@@ -154,7 +155,69 @@
           [else
            (let ([name1 (decl->name (car decls1))] [name2 (decl->name (car decls2))])
              (if (eqv? name1 name2)
-               (and (equal? (decl->type (car decls1)) (decl->type (car decls2)))
-                    (<:-decls (cdr decls1) (cdr decls2) tenv))
-               (<:-decls (cdr decls1) decls2 tenv)))])))
+               (and
+                 (<:-decl (car decls1) (car decls2) tenv)
+                 (<:-decls (cdr decls1) (cdr decls2) (extend-tenv-with-decl (car decls1) tenv)))
+               (<:-decls (cdr decls1) decls2 (extend-tenv-with-decl (car decls1) tenv))))])))
+
+(define expand-iface
+  (lambda (m-name iface1 tenv)
+    (cases iface iface1
+      [simple-iface [decls]
+        (simple-iface (expand-decls m-name decls tenv))])))
+
+(define expand-decls
+  (lambda (m-name decls internal-tenv)
+    (if (null? decls)
+      (list)
+      (cases decl (car decls)
+        [opaque-type-decl [t-name]
+          (let ([expanded-type (qualified-type m-name t-name)])
+            (let ([new-tenv (extend-tenv-with-type t-name expanded-type internal-tenv)])
+              (cons (transparent-type-decl t-name expanded-type)
+                    (expand-decls m-name (cdr decls) new-tenv))))]
+        [transparent-type-decl [t-name t-type]
+          (let ([expanded-type (expand-type t-type internal-tenv)])
+            (let ([new-tenv (extend-tenv-with-type t-name expanded-type internal-tenv)])
+              (cons (transparent-type-decl t-name expanded-type)
+                    (expand-decls m-name (cdr decls) new-tenv))))]
+        [val-decl [var-name var-type]
+          (let ([expanded-type (expand-type var-type internal-tenv)])
+            (cons (val-decl var-name expanded-type)
+                  (expand-decls m-name (cdr decls) internal-tenv)))]))))
+
+(define extend-tenv-with-decl
+  (lambda (decl1 tenv)
+    (cases decl decl1
+      [val-decl [name type] tenv]
+      [transparent-type-decl [name type]
+        (extend-tenv-with-type name (expand-type type tenv) tenv)]
+      [opaque-type-decl [name]
+        (extend-tenv-with-type name (qualified-type (fresh-module-name '%unknown) name) tenv)])))
+
+(define <:-decl
+  (lambda (decl1 decl2 tenv)
+    (or
+      (and
+        (val-decl? decl1)
+        (val-decl? decl2)
+        (equiv-type? (decl->type decl1) (decl->type decl2) tenv))
+      (and
+        (transparent-type-decl? decl1)
+        (transparent-type-decl? decl2)
+        (equiv-type? (decl->type decl1) (decl->type decl2) tenv))
+      (and
+        (transparent-type-decl? decl1)
+        (opaque-type-decl? decl2))
+      (and
+        (opaque-type-decl? decl1)
+        (opaque-type-decl? decl2)))))
+
+(define equiv-type?
+  (lambda (ty1 ty2 tenv)
+    (equal? (expand-type ty1 tenv) (expand-type ty2 tenv))))
+
+(define expand-types
+  (lambda (types tenv)
+    (map (lambda (t) (expand-type t tenv)) types)))
 

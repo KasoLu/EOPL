@@ -150,3 +150,35 @@
                            then x
                            else (loop (plus x x) (pred y))
                   in loop]")
+
+(define p8
+  "module two-times-ints
+     interface
+       ((ints : [opaque t
+                 zero : t
+                 succ : (t -> t)
+                 pred : (t -> t)
+                 is-zero : (t -> Bool)
+                 to-int : (t -> Int)])
+        => [zero : from ints take t
+            succ : (from ints take t -> from ints take t)
+            pred : (from ints take t -> from ints take t)
+            is-zero : (from ints take t -> Bool)
+            to-int : (from ints take t -> Int)])
+     body
+       module-proc(ints : [opaque t
+                           zero : t
+                           succ : (t -> t)
+                           pred : (t -> t)
+                           is-zero : (t -> Bool)])
+         [zero = from ints take zero
+          succ = letrec loop(x : from ints take t times : Int) -> from ints take t =
+                          if zero?(times) then x else (loop (succ x) -(times, 1))]
+                 in let entry = proc(x : from ints take t) -> from ints take t
+                                  (loop x (from ints take to-int x))
+          pred = letrec loop(x : from ints take t times : Int) -> from ints take t =
+                          if zero?(times) then x else (loop (pred x) -(times, 1))
+                 in let entry = proc(x : from ints take t) -> from ints take t
+                                  (loop x (from ints take to-int x))
+          is-zero = from ints take is-zero
+          to-int = from ints take to-int")

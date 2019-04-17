@@ -217,3 +217,28 @@
                                               (from ints take pred y-pred)
                                               (from ints take pred x-pred)
                                               (from ints take succ x-succ))]")
+
+(define p10
+  "module table-of
+     interface
+       ((mod : [opaque t])
+        => [opaque table
+            empty : table
+            add-to-table : (int -> 
+                             (from mod take t ->
+                               (table -> table)))
+            lookup-in-table : (int -> 
+                                (table ->
+                                  from mod take t))]
+     body
+       [type table = pair int * from mod take t
+        empty = let empty = proc(t : table) null?(t) in empty
+        add-to-table = let add-to-table = proc(k : int v : from mod take t t : table) -> table
+                                            cons(pair(k, v), t) in add-to-table
+        lookup-in-table = letrec lookup-in-table(k : int t : table) -> from mod take t =
+                                   if null?(t)
+                                   then error()
+                                   else if zero?(-(left(car(t)), k))
+                                        then right(car(t))
+                                        else (lookup-in-table k cdr(t))
+                          in lookup-in-table])")

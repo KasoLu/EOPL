@@ -182,3 +182,38 @@
                                   (loop x (from ints take to-int x))
           is-zero = from ints take is-zero
           to-int = from ints take to-int")
+
+(define p9
+  "module equality-maker
+     interface
+       ((ints : [opaque t
+                 zero : t
+                 succ : (t -> t)
+                 pred : (t -> t)
+                 is-zero : (t -> Bool)])
+        => [equal : (from ints take t ->
+                      (from ints take t ->
+                        Bool))])
+     body
+       module-proc(ints : [opaque t
+                           zero : t
+                           succ : (t -> t)
+                           pred : (t -> t)
+                           is-zero : (t -> Bool)])
+         [equal = let is-zero = from ints take is-zero
+                  in letrec loop(x-succ : from ints take t 
+                                 y-pred : from ints take t
+                                 x-pred : from ints take t
+                                 y-succ : from ints take t) -> Bool
+                              if (is-zero x-succ)
+                              then if (is-zero y-succ)
+                                   then zero?(0)
+                                   else zero?(1)
+                              else if (is-zero x-pred)
+                                   then if (is-zero y-pred)
+                                        then zero?(0)
+                                        else zero?(1)
+                                   else (loop (from ints take succ x-succ)
+                                              (from ints take pred y-pred)
+                                              (from ints take pred x-pred)
+                                              (from ints take succ x-succ))]")

@@ -3,8 +3,8 @@
 (load "funcs.rkt")
 
 (define check-equal-type! ; Type x Type x Expr -> Void
-  (lambda (ty1 ty2 expr)
-    (if (not (equal? ty1 ty2))
+  (lambda (ty1 ty2 expr tenv)
+    (if (not (equiv-type? ty1 ty2 tenv))
       (report-unequal-types ty1 ty2 expr)
       (void))))
 
@@ -57,25 +57,25 @@
       (apply-tenv tenv var)]
     [diff-expr [exp1 exp2]
       (let ([ty1 (type-of-expr exp1 tenv)] [ty2 (type-of-expr exp2 tenv)])
-        (check-equal-type! ty1 (int-type) exp1)
-        (check-equal-type! ty2 (int-type) exp2)
+        (check-equal-type! ty1 (int-type) exp1 tenv)
+        (check-equal-type! ty2 (int-type) exp2 tenv)
         (int-type))]
     [zero?-expr [exp1]
       (let ([ty1 (type-of-expr exp1 tenv)])
-        (check-equal-type! ty1 (int-type) exp1)
+        (check-equal-type! ty1 (int-type) exp1 tenv)
         (bool-type))]
     [if-expr [exp1 exp2 exp3]
       (let ([ty1 (type-of-expr exp1 tenv)]
             [ty2 (type-of-expr exp2 tenv)]
             [ty3 (type-of-expr exp3 tenv)])
-        (check-equal-type! ty1 (bool-type) exp1)
-        (check-equal-type! ty2 ty3 e)
+        (check-equal-type! ty1 (bool-type) exp1 tenv)
+        (check-equal-type! ty2 ty3 e tenv)
         ty2)]
     [let-expr [vars exps body]
       (let ([exps-type (map (lambda (x) (type-of-expr x tenv)) exps)])
-        (type-of-expr body (extend-tenv vars (expand-types exps-type tenv) tenv)))]
+        (type-of-expr body (extend-tenv vars exps-type tenv)))]
     [proc-expr [vars vars-type body]
-      (let ([ret-type (type-of-expr body (extend-tenv vars (expand-types vars-type tenv) tenv))])
+      (let ([ret-type (type-of-expr body (extend-tenv vars vars-type tenv))])
         (proc-type vars-type ret-type))]
     [call-expr [rator rands]
       (let ([rator-type (type-of-expr rator tenv)]
@@ -85,19 +85,19 @@
             (let loop ([args-type args-type] [rands-type rands-type] [rands rands])
               (if (null? args-type)
                 (void)
-                (begin (check-equal-type! (car args-type) (car rands-type) (car rands))
+                (begin (check-equal-type! (car args-type) (car rands-type) (car rands) tenv)
                        (loop (cdr args-type) (cdr rands-type) (cdr rands))))
               ret-type)]
           [else
             (report-rator-not-a-proc-type rator-type rator)]))]
     [letrec-expr [names varss varss-type pbody-type procs rbody]
       (let ([proc-types (map (lambda (vst pbt) (proc-type vst pbt)) varss-type pbody-type)])
-        (let ([rbody-tenv (extend-tenv names (expand-types proc-types tenv) tenv)])
+        (let ([rbody-tenv (extend-tenv names proc-types tenv)])
           (let ([procs-type 
                   (map (lambda (vs vst p) 
-                         (type-of-expr p (extend-tenv vs (expand-types vst tenv) rbody-tenv)))
+                         (type-of-expr p (extend-tenv vs vst rbody-tenv)))
                        varss varss-type procs)])
-            (map (lambda (pt opt p) (check-equal-type! pt opt p)) 
+            (map (lambda (pt opt p) (check-equal-type! pt opt p tenv)) 
                  procs-type pbody-type procs)
             (type-of-expr rbody rbody-tenv))))]
     [qualified-var-expr [m-name var-name]
@@ -150,49 +150,15 @@
 
 (define <:-decls
   (lambda (decls1 decls2 tenv)
-    (if (null? decls2)
-      #t
-      (let ([tenv (check-decls decls1 tenv)])
-        (check-decls decls2 tenv)
-        (let loop ([decls2 decls2])
-          (if (null? decls2)
-            #t
-            (begin (check-<:-decl decls1 (car decls2) tenv)
-                   (loop (cdr decls2)))))))))
-
-(define check-decls
-  (lambda (decls tenv)
-    (if (null? decls)
-      tenv
-      (cases decl (car decls)
-        [val-decl [var-name var-type]
-          (check-type var-type tenv)
-          (check-decls (cdr decls) tenv)]
-        [opaque-type-decl [t-name]
-          (check-decls
-            (cdr decls)
-            (extend-tenv-with-type t-name (qualified-type 'module-x t-name) tenv))]
-        [transparent-type-decl [t-name t-type]
-          (check-decls
-            (cdr decls)
-            (extend-tenv-with-type t-name t-type tenv))]))))
-
-(define check-<:-decl
-  (lambda (decls d tenv)
-    (let loop ([decls decls])
-      (cond [(null? decls) (report-no-check-decl d)]
-            [(<:-decl (car decls) d tenv) #t]
-            [else (check-<:-decl (cdr decls) d tenv)]))))
-
-(define check-type
-  (lambda (t tenv)
-    (cases type t
-      [named-type [t-name] 
-        (lookup-type-name-in-tenv tenv t-name)]
-      [proc-type [vars-type ret-type]
-        (proc-type (map (lambda (vt) (check-type vt tenv)) vars-type)
-                   (check-type ret-type tenv))]
-      [else t])))
+    (cond [(null? decls2) #t]
+          [(null? decls1) #f]
+          [else
+           (let ([name1 (decl->name (car decls1))] [name2 (decl->name (car decls2))])
+             (if (eqv? name1 name2)
+               (and
+                 (<:-decl (car decls1) (car decls2) tenv)
+                 (<:-decls (cdr decls1) (cdr decls2) (extend-tenv-with-decl (car decls1) tenv)))
+               (<:-decls (cdr decls1) decls2 (extend-tenv-with-decl (car decls1) tenv))))])))
 
 (define expand-iface
   (lambda (m-name iface1 tenv)

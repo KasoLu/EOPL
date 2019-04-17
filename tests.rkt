@@ -47,7 +47,7 @@
 (define p4
   "module mybool
      interface
-       [transparent t = Int
+       [opaque t
         true : t
         false : t
         and : (t -> (t -> t))
@@ -55,12 +55,12 @@
         to-bool : (t -> Bool)]
      body
        [type t = Int
-        true = 1
         false = 0
-        and = proc(x : t) proc(y : t)
-          if zero?(x) then false else y
+        true  = 1
         not = proc(x : t)
           if zero?(x) then true else false
+        and = proc(x : t) proc(y : t)
+          if zero?(x) then false else y
         to-bool = proc(x : t)
           if zero?(x) then zero?(1) else zero?(0)]
    let true = from mybool take true

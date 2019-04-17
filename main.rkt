@@ -150,15 +150,49 @@
 
 (define <:-decls
   (lambda (decls1 decls2 tenv)
-    (cond [(null? decls2) #t]
-          [(null? decls1) #f]
-          [else
-           (let ([name1 (decl->name (car decls1))] [name2 (decl->name (car decls2))])
-             (if (eqv? name1 name2)
-               (and
-                 (<:-decl (car decls1) (car decls2) tenv)
-                 (<:-decls (cdr decls1) (cdr decls2) (extend-tenv-with-decl (car decls1) tenv)))
-               (<:-decls (cdr decls1) decls2 (extend-tenv-with-decl (car decls1) tenv))))])))
+    (if (null? decls2)
+      #t
+      (let ([tenv (check-decls decls1 tenv)])
+        (check-decls decls2 tenv)
+        (let loop ([decls2 decls2])
+          (if (null? decls2)
+            #t
+            (begin (check-<:-decl decls1 (car decls2) tenv)
+                   (loop (cdr decls2)))))))))
+
+(define check-decls
+  (lambda (decls tenv)
+    (if (null? decls)
+      tenv
+      (cases decl (car decls)
+        [val-decl [var-name var-type]
+          (check-type var-type tenv)
+          (check-decls (cdr decls) tenv)]
+        [opaque-type-decl [t-name]
+          (check-decls
+            (cdr decls)
+            (extend-tenv-with-type t-name (qualified-type 'module-x t-name) tenv))]
+        [transparent-type-decl [t-name t-type]
+          (check-decls
+            (cdr decls)
+            (extend-tenv-with-type t-name t-type tenv))]))))
+
+(define check-<:-decl
+  (lambda (decls d tenv)
+    (let loop ([decls decls])
+      (cond [(null? decls) (report-no-check-decl d)]
+            [(<:-decl (car decls) d tenv) #t]
+            [else (check-<:-decl (cdr decls) d tenv)]))))
+
+(define check-type
+  (lambda (t tenv)
+    (cases type t
+      [named-type [t-name] 
+        (lookup-type-name-in-tenv tenv t-name)]
+      [proc-type [vars-type ret-type]
+        (proc-type (map (lambda (vt) (check-type vt tenv)) vars-type)
+                   (check-type ret-type tenv))]
+      [else t])))
 
 (define expand-iface
   (lambda (m-name iface1 tenv)

@@ -96,21 +96,57 @@
         pred : (t -> t)
         is-zero : (t -> Bool)]
      body
-       [type t = Int
-        zero = 0
-        succ = let succ = proc(x : t) -(x, -1) in succ
-        pred = let pred = proc(x : t) -(x,  1) in pred
-        is-zero = let is-zero = proc(x : t) if zero?(x) then zero?(0) else zero?(1) in is-zero]
-   module to-int1
-     interface
-       [opaque t
-        zero : t
-        succ : (t -> t)
-        pred : (t -> t)
-        is-zero : (t -> Bool)]
-     body
-       (to-int-maker ints1)
-   let z = from to-int1 take zero
-       a = (from to-int1 take succ z)
-   in a")
+       module-proc (ints : [opaque t
+                            zero : t
+                            succ : (t -> t)
+                            pred : (t -> t)
+                            is-zero : (t -> Bool)])
+         [from-int = letrec loop(x : Int y : from ints take t) -> from ints take t =
+                              if zero?(x) then y else (loop -(x, 1) (succ y))
+                     in let func = proc(x : Int y : from ints take t) -> from ints take t
+                                     (loop x from ints take zero)
+                        in func]
+   module from-int-to-ints1
+     interface [from-int : (Int -> from ints1 take t)]
+     body (from-int-maker ints1)
+   module from-int-to-ints2
+     interface [from-int : (Int -> from ints2 take t)]
+     body (from-int-maker ints2)
+   let to-ints1 = from from-int-to-ints1 take from-int
+   in let to-ints2 = from from-int-to-ints2 take from-int
+      in let ints1-to-int = from ints1 take to-int
+         in let ints2-to-int = from ints2 take to-int
+            in let two1 = (to-ints1 2)
+               in let two2 = (to-ints2 2)
+                  in -((ints1-to-int two1), (ints2-to-int two2))")
 
+(define p7
+  "module sum-prod-maker
+     interface
+       ((ints : [opaque t
+                 zero : t
+                 succ : (t -> t)
+                 pred : (t -> t)
+                 is-zero : (t -> Bool)])
+        => [plus : (from ints take t ->
+                     (from ints take t ->
+                       from ints take t))
+            times : (from ints take t ->
+                      (from ints take t ->
+                        from ints take t))])
+     body
+       module-proc(ints : [opaque t
+                           zero : t
+                           succ : (t -> t)
+                           pred : (t -> t)
+                           is-zero : (t -> Bool)])
+         [plus = letrec loop(x : from ints take t y : from ints take t) -> from ints take t =
+                          if (from ints take is-zero y)
+                          then x
+                          else (loop (succ x) (pred y))
+                 in loop
+          times = letrec loop(x : from ints take t y : from ints take t) -> from ints take t =
+                           if (from ints take is-zero y)
+                           then x
+                           else (loop (plus x x) (pred y))
+                  in loop]")

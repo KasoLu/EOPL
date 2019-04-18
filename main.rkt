@@ -121,8 +121,28 @@
 (define interface-of
   (lambda (m-body tenv)
     (cases mod-body m-body
+      [var-mod-body [m-name]
+        (lookup-module-name-in-tenv tenv m-name)]
       [defs-mod-body [defs]
-        (simple-iface (defs-to-decls defs tenv))])))
+        (simple-iface (defs-to-decls defs tenv))]
+      [app-mod-body [rator-id rand-id]
+        (let ([rator-iface (lookup-module-name-in-tenv tenv rator-id)]
+              [rand-iface (lookup-module-name-in-tenv tenv rand-id)])
+          (cases iface rator-iface
+            [simple-iface [decls]
+              (report-attemp-to-apply-simple-module rator-id)]
+            [proc-iface [param-name param-iface result-iface]
+              (if (<:-iface rand-iface param-iface tenv)
+                (rename-in-iface result-iface param-name rand-id)
+                (report-bad-module-application-error param-iface rand-iface m-body))]))]
+      [proc-mod-body [rand-name rand-iface m-body]
+        (let ([body-iface
+                (interface-of m-body
+                  (extend-tenv-with-module
+                    rand-name
+                    (expand-iface rand-name rand-iface tenv)
+                    tenv))])
+          (proc-iface rand-name rand-iface body-iface))])))
 
 (define defs-to-decls
   (lambda (defs tenv)
@@ -146,7 +166,23 @@
       [simple-iface [decls1]
         (cases iface iface2
           [simple-iface [decls2]
-            (<:-decls decls1 decls2 tenv)])])))
+            (<:-decls decls1 decls2 tenv)]
+          [proc-iface [param-name2 param-iface2 result-iface2]
+            #f])]
+      [proc-iface [param-name1 param-iface1 result-iface1]
+        (cases iface iface2
+          [simple-iface [decls2] #f]
+          [proc-iface [param-name2 param-iface2 result-iface2]
+            (let ([new-name (fresh-module-name param-name1)])
+              (let ([result-iface1 (rename-in-iface result-iface1 param-name1 new-name)]
+                    [result-iface2 (rename-in-iface result-iface2 param-name2 new-name)])
+                (and
+                  (<:-iface param-iface2 param-iface1 tenv)
+                  (<:-iface result-iface1 result-iface2
+                    (extend-tenv-with-module
+                      new-name
+                      (expand-iface new-name param-iface1 tenv)
+                      tenv)))))])])))
 
 (define <:-decls
   (lambda (decls1 decls2 tenv)
@@ -164,7 +200,9 @@
   (lambda (m-name iface1 tenv)
     (cases iface iface1
       [simple-iface [decls]
-        (simple-iface (expand-decls m-name decls tenv))])))
+        (simple-iface (expand-decls m-name decls tenv))]
+      [proc-iface [param-name param-iface result-iface]
+        iface1])))
 
 (define expand-decls
   (lambda (m-name decls internal-tenv)

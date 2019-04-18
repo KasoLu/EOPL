@@ -66,7 +66,11 @@
 
 (define-datatype iface iface?
   [simple-iface
-    [decls (list-of decl?)]])
+    [decls (list-of decl?)]]
+  [proc-iface
+    [param-name identifier?]
+    [param-iface iface?]
+    [result-iface iface?]])
 
 (define-datatype decl decl?
   [val-decl
@@ -80,7 +84,16 @@
 
 (define-datatype mod-body mod-body?
   [defs-mod-body
-    [defs (list-of def?)]])
+    [defs (list-of def?)]]
+  [proc-mod-body
+    [m-name identifier?]
+    [m-type iface?]
+    [m-body mod-body?]]
+  [var-mod-body
+    [m-name identifier?]]
+  [app-mod-body
+    [rator identifier?]
+    [rand identifier?]])
 
 (define-datatype def def?
   [val-def 

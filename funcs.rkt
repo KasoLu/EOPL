@@ -63,7 +63,9 @@
     (let ([ifc (lookup-module-name-in-tenv tenv m-name)])
       (cases iface ifc
         [simple-iface [decls]
-          (lookup-variable-name-in-decls decls var-name)]))))
+          (lookup-variable-name-in-decls decls var-name)]
+        [proc-iface [param-name param-iface result-iface]
+          (report-invalid-iface ifc m-name var-name)]))))
 
 (define lookup-module-name-in-tenv
   (lambda (e n)
@@ -138,7 +140,9 @@
                 [transparent-type-decl [name type]
                   (if (eqv? name t-name)
                     type
-                    (loop (cdr decls)))])))]))))
+                    (loop (cdr decls)))])))]
+        [proc-iface [param-name param-iface result-iface]
+          (report-invalid-iface)]))))
 
 (define val-decl?
   (lambda (d)
@@ -156,3 +160,8 @@
       [opaque-type-decl [t-name] #t]
       [else #f])))
 
+(define g-seed 0)
+(define fresh-module-name
+  (lambda (name)
+    (let ([seed (begin (set! g-seed (+ g-seed 1)) g-seed)])
+      (string->symbol (string-append (symbol->string name) (number->string seed))))))

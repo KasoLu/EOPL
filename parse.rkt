@@ -8,12 +8,15 @@
 ;arbno | separated-list
 (define grammar-spec
   '([prgm ((arbno mod-def) expr) a-prgm]
-    [mod-def ("module" identifier "interface" iface "body" mod-body) a-mod-def]
-    [iface ("[" (arbno decl) "]") simple-iface]
+    [mod-def ("module" identifier "interface" iface "body" mod-body) a-mod-def] [iface ("[" (arbno decl) "]") simple-iface]
+    [iface ("(" "(" identifier ":" iface ")" "=>" iface ")") proc-iface]
     [decl (identifier ":" type) val-decl]
     [decl ("opaque" identifier) opaque-type-decl]
     [decl ("transparent" identifier "=" type) transparent-type-decl]
     [mod-body ("[" (arbno def) "]") defs-mod-body]
+    [mod-body ("module-proc" "(" identifier ":" iface ")" mod-body) proc-mod-body]
+    [mod-body (identifier) var-mod-body]
+    [mod-body ("(" identifier identifier ")") app-mod-body]
     [def (identifier "=" expr) val-def]
     [def ("type" identifier "=" type) type-def]
     [expr (number) num-expr]

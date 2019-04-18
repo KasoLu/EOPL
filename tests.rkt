@@ -67,3 +67,50 @@
        false = from mybool take false
        and = from mybool take and
    in and")
+
+(define p5
+  "module to-int-maker
+     interface
+       ((ints : [opaque t
+                 zero : t
+                 succ : (t -> t)
+                 pred : (t -> t)
+                 is-zero : (t -> Bool)]) =>
+        [to-int : (from ints take t -> Int)])
+       body
+         module-proc (ints : [opaque t
+                              zero : t
+                              succ : (t -> t)
+                              pred : (t -> t)
+                              is-zero : (t -> Bool)])
+           [to-int = let z? = from ints take is-zero
+                     in let p = from ints take pred
+                        in letrec to-int(x : from ints take t) -> Int =
+                             if (z? x) then 0 else -((to-int (p x)), -1)
+                           in to-int]
+   module ints1
+     interface
+       [opaque t
+        zero : t
+        succ : (t -> t)
+        pred : (t -> t)
+        is-zero : (t -> Bool)]
+     body
+       [type t = Int
+        zero = 0
+        succ = let succ = proc(x : t) -(x, -1) in succ
+        pred = let pred = proc(x : t) -(x,  1) in pred
+        is-zero = let is-zero = proc(x : t) if zero?(x) then zero?(0) else zero?(1) in is-zero]
+   module to-int1
+     interface
+       [opaque t
+        zero : t
+        succ : (t -> t)
+        pred : (t -> t)
+        is-zero : (t -> Bool)]
+     body
+       (to-int-maker ints1)
+   let z = from to-int1 take zero
+       a = (from to-int1 take succ z)
+   in a")
+

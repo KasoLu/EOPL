@@ -59,7 +59,7 @@
   [a-method
     [vars (list-of identifier?)]
     [body expression?]
-    [class-name identifier?]
+    [super-name identifier?]
     [field-names (list-of identifier?)]])
 
 (define-datatype class class?
@@ -121,5 +121,8 @@
     [method-name identifier?]
     [rands (list-of expression?)]]
   [self-expr]
+  [instanceof-expr
+    [exp1 expression?]
+    [cls-name identifier?]]
   )
 

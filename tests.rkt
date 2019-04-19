@@ -60,3 +60,20 @@
    let o3 = new c3()
    in begin print(100); send o3 m1(7, 8) end")
 
+(define p2
+  "class c1 extends object
+     method init() 1
+   class c2 extends object
+     method init() 2
+   class s1 extends c1
+     method init() 11
+   class s2 extends c2
+     method init() 21
+   let oc1 = new c1(), oc2 = new c2(), os1 = new s1(), os2 = new s2()
+   in begin 
+        print(instanceof oc1 c1);
+        print(instanceof oc1 c2);
+        print(instanceof os2 c1);
+        print(instanceof os1 c1)
+      end")
+

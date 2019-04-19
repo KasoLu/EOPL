@@ -60,3 +60,53 @@
    let o3 = new c3()
    in begin print(100); send o3 m1(7, 8) end")
 
+(define p2
+  "class queue extends object
+   field buf
+   field cnt
+   method init(c)
+     begin
+       set buf = list();
+       set cnt = c
+     end
+   method empty?()
+     begin
+       send self count();
+       if null?(buf) then zero?(0) else zero?(1)
+     end
+   method enqueue(x)
+     begin
+       send self count();
+       letrec loop(buf, x) = 
+         if null?(buf) then list(x) else cons(car(buf), (loop cdr(buf) x))
+       in set buf = (loop buf x)
+     end
+   method dequeue()
+     begin
+       send self count();
+       if send self empty?()
+       then 0
+       else let elem = car(buf) in begin set buf = cdr(buf); elem end
+     end
+   method count()
+     set cnt = +(cnt, 1)
+   method get-count()
+     cnt
+   let q = new queue(0)
+   in begin 
+        print(send q enqueue(1));
+        print(send q enqueue(2));
+        print(send q dequeue());
+        print(send q dequeue());
+        print(send q dequeue());
+        print(send q get-count());
+        let p = new queue(send q get-count())
+        in begin
+             print(send p enqueue(1));
+             print(send p enqueue(2));
+             print(send p dequeue());
+             print(send p dequeue());
+             print(send p dequeue());
+             print(send p get-count())
+           end
+      end")

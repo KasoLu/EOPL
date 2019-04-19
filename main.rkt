@@ -62,6 +62,18 @@
     [list-exp [exps]
       (let ([vals (map (lambda (e) (value-of e env)) exps)])
         (list-val vals))]
+    [null?-exp [exp1]
+      (let ([val1 (value-of exp1 env)])
+        (bool-val (null? (expval->list val1))))]
+    [cons-exp [exp1 exp2]
+      (let ([val1 (value-of exp1 env)] [vals (value-of exp2 env)])
+        (list-val (cons val1 (expval->list vals))))]
+    [car-exp [exp1]
+      (let ([val1 (value-of exp1 env)])
+        (car (expval->list val1)))]
+    [cdr-exp [exp1]
+      (let ([vals (value-of exp1 env)])
+        (list-val (cdr (expval->list vals))))]
     [print-exp [exp1]
       (let ([val1 (value-of exp1 env)])
         (begin (printf "~a~n" val1) val1))]

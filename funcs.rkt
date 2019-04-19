@@ -42,6 +42,10 @@
   (cases expval val
     [proc-val [proc] proc]
     [else (report-expval-extractor-error 'proc val)]))
+(define (expval->list v)
+  (cases expval v
+    [list-val [val] val]
+    [else (report-expval-extractor-error 'list v)]))
 
 (define the-store 'uninit)
 ; empty-store : () -> Store

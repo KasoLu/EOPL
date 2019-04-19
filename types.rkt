@@ -52,7 +52,7 @@
 
 (define-datatype object object?
   [an-object
-    [class-name identifier?]
+    [cls class?]
     [fields (list-of reference?)]])
 
 (define-datatype method method?
@@ -108,15 +108,6 @@
     [exp2 expression?]]
   [list-exp
     [exps (list-of expression?)]]
-  [null?-exp
-    [exp1 expression?]]
-  [cons-exp
-    [exp1 expression?]
-    [exp2 expression?]]
-  [car-exp
-    [exp1 expression?]]
-  [cdr-exp
-    [exp1 expression?]]
   [print-exp
     [exp1 expression?]]
   [new-object-expr

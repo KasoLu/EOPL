@@ -62,18 +62,6 @@
     [list-exp [exps]
       (let ([vals (map (lambda (e) (value-of e env)) exps)])
         (list-val vals))]
-    [null?-exp [exp1]
-      (let ([val1 (value-of exp1 env)])
-        (bool-val (null? (expval->list val1))))]
-    [cons-exp [exp1 exp2]
-      (let ([val1 (value-of exp1 env)] [vals (value-of exp2 env)])
-        (list-val (cons val1 (expval->list vals))))]
-    [car-exp [exp1]
-      (let ([val1 (value-of exp1 env)])
-        (car (expval->list val1)))]
-    [cdr-exp [exp1]
-      (let ([vals (value-of exp1 env)])
-        (list-val (cdr (expval->list vals))))]
     [print-exp [exp1]
       (let ([val1 (value-of exp1 env)])
         (begin (printf "~a~n" val1) val1))]
@@ -83,21 +71,21 @@
       (let ([args (map (lambda (e) (value-of e env)) rands)]
             [obj (value-of obj-exp env)])
         (apply-method
-          (find-method (object->class-name obj) method-name)
+          (find-method (object->class obj) method-name)
           obj
           args))]
     [super-call-expr [method-name rands]
       (let ([args (map (lambda (e) (value-of e env)) rands)]
             [obj (apply-env env '%self)])
         (apply-method
-          (find-method (apply-env env '%super) method-name)
+          (find-method (lookup-class (apply-env env '%super)) method-name)
           obj
           args))]
     [new-object-expr [class-name rands]
       (let ([args (map (lambda (e) (value-of e env)) rands)]
             [obj (new-object class-name)])
         (apply-method
-          (find-method class-name 'init)
+          (find-method (object->class obj) 'init)
           obj
           args)
         obj)]

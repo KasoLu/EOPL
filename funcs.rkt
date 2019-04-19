@@ -42,10 +42,6 @@
   (cases expval val
     [proc-val [proc] proc]
     [else (report-expval-extractor-error 'proc val)]))
-(define (expval->list v)
-  (cases expval v
-    [list-val [val] val]
-    [else (report-expval-extractor-error 'list v)]))
 
 (define the-store 'uninit)
 ; empty-store : () -> Store
@@ -126,12 +122,12 @@
                  (append-field-names (cdr super-fields) new-fields))])))
 
 (define find-method
-  (lambda (c-name name)
-    (let ([m-env (class->method-env (lookup-class c-name))])
-      (let ([maybe-pair (assq name m-env)])
+  (lambda (cls m-name)
+    (let ([m-env (class->method-env cls)])
+      (let ([maybe-pair (assq m-name m-env)])
         (if (pair? maybe-pair)
           (cadr maybe-pair)
-          (report-method-not-found name))))))
+          (report-method-not-found m-name))))))
 
 (define method-decls->method-env
   (lambda (m-decls super-name field-names)
@@ -170,9 +166,9 @@
     [an-object [class-name fields] fields]
     [else (report-invalid-extract 'object o)]))
 
-(define (object->class-name o)
+(define (object->class o)
   (cases object o
-    [an-object [class-name fields] class-name]
+    [an-object [cls fields] cls]
     [else (report-invalid-extract 'object o)]))
 
 (define new-object

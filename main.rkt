@@ -89,11 +89,6 @@
           obj
           args)
         obj)]
-    [instanceof-expr [exp1 class-name]
-      (let loop ([obj-class-name (object->class-name (value-of exp1 env))])
-        (cond [(not obj-class-name) #f]
-              [(eqv? obj-class-name class-name) #t]
-              [else (loop (class->super-name (lookup-class obj-class-name)))]))]
     [else
       (report-invalid-expression expr)]
     ))

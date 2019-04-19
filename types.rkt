@@ -121,8 +121,5 @@
     [method-name identifier?]
     [rands (list-of expression?)]]
   [self-expr]
-  [instanceof-expr
-    [exp1 expression?]
-    [cls-name identifier?]]
   )
 

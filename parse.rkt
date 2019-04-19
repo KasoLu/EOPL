@@ -34,7 +34,6 @@
                  "(" (separated-list expression ",") ")") method-call-expr]
     [expression ("super" identifier "(" (separated-list expression ",") ")") super-call-expr]
     [expression ("self") self-expr]
-    [expression ("instanceof" expression identifier) instanceof-expr]
     ))
 
 (define scan&parse

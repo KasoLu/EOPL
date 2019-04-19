@@ -108,9 +108,7 @@
           (add-to-class-env!
             c-name
             (a-class s-name f-names
-              (merge-method-envs
-                (class->method-env (lookup-class s-name))
-                (method-decls->method-env m-decls s-name f-names)))))])))
+              (method-decls->method-env m-decls s-name f-names))))])))
 
 (define append-field-names
   (lambda (super-fields new-fields)
@@ -123,11 +121,13 @@
 
 (define find-method
   (lambda (c-name name)
-    (let ([m-env (class->method-env (lookup-class c-name))])
-      (let ([maybe-pair (assq name m-env)])
-        (if (pair? maybe-pair)
-          (cadr maybe-pair)
-          (report-method-not-found name))))))
+    (let loop ([c-name c-name])
+      (if (not c-name)
+        (report-method-not-found name)
+        (let* ([cls (lookup-class c-name)] [maybe-pair (assq name (class->method-env cls))])
+          (if (pair? maybe-pair)
+            (cadr maybe-pair)
+            (loop (class->super-name cls))))))))
 
 (define method-decls->method-env
   (lambda (m-decls super-name field-names)
@@ -136,10 +136,6 @@
              [a-method-decl [method-name vars body]
                (list method-name (a-method vars body super-name field-names))])) 
          m-decls)))
-
-(define merge-method-envs
-  (lambda (super-m-env new-m-env)
-    (append new-m-env super-m-env)))
 
 (define (class->super-name c)
   (cases class c

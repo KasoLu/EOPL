@@ -1,42 +1,40 @@
 (load "types.rkt")
 
+; Expression ::= set Identifier = Expression
+
 (define scanner-spec
   '([whitespace (whitespace) skip]
     [identifier (letter (arbno (or letter digit "_" "-" "?"))) symbol]
     [number ((or "-" "") digit (arbno digit)) number]))
 
-;arbno | separated-list
+;arbno | separated-list 
 (define grammar-spec
-  '([prgm ((arbno mod-def) expr) a-prgm]
-    [mod-def ("module" identifier "interface" iface "body" mod-body) a-mod-def] [iface ("[" (arbno decl) "]") simple-iface]
-    [iface ("(" "(" identifier ":" iface ")" "=>" iface ")") proc-iface]
-    [decl (identifier ":" type) val-decl]
-    [decl ("opaque" identifier) opaque-type-decl]
-    [decl ("transparent" identifier "=" type) transparent-type-decl]
-    [mod-body ("[" (arbno def) "]") defs-mod-body]
-    [mod-body ("module-proc" "(" identifier ":" iface ")" mod-body) proc-mod-body]
-    [mod-body (identifier) var-mod-body]
-    [mod-body ("(" identifier identifier ")") app-mod-body]
-    [def (identifier "=" expr) val-def]
-    [def ("type" identifier "=" type) type-def]
-    [expr (number) num-expr]
-    [expr (identifier) var-expr]
-    [expr ("-" "(" expr "," expr ")") diff-expr]
-    [expr ("zero?" "(" expr ")") zero?-expr]
-    [expr ("if" expr "then" expr "else" expr) if-expr]
-    [expr ("let" (arbno identifier "=" expr) "in" expr) let-expr]
-    [expr ("letrec" (arbno identifier "(" (arbno identifier ":" type) ")" "->" type "=" expr) 
-           "in" expr) letrec-expr]
-    [expr ("proc" "(" (arbno identifier ":" type) ")" expr) proc-expr]
-    [expr ("(" expr (arbno expr) ")") call-expr]
-    [expr ("from" identifier "take" identifier) qualified-var-expr]
-    [type ("Int") int-type]
-    [type ("Bool") bool-type]
-    [type ("(" (separated-list type "*") "->" type ")") proc-type]
-    [type (identifier) named-type]
-    [type ("from" identifier "take" identifier) qualified-type]
+  '([program ((arbno class-decl) expression) a-program]
+    [class-decl ("class" identifier "extends" identifier
+                 (arbno "field" identifier) (arbno method-decl)) a-class-decl]
+    [method-decl ("method" identifier "(" (separated-list identifier ",") ")" 
+                  expression) a-method-decl]
+    [expression (number) const-exp]
+    [expression ("-" "(" expression "," expression ")") diff-exp]
+    [expression ("zero?" "(" expression ")") zero?-exp]
+    [expression ("if" expression "then" expression "else" expression) if-exp]
+    [expression (identifier) var-exp]
+    [expression ("let" (separated-list identifier "=" expression ",") "in" expression) let-exp]
+    [expression ("proc" "(" (separated-list identifier ",") ")" expression) proc-exp]
+    [expression ("(" expression (arbno expression) ")") call-exp]
+    [expression ("letrec" (arbno identifier "(" (separated-list identifier ",") ")" 
+                 "=" expression) "in" expression) letrec-exp]
+    [expression ("begin" expression (arbno ";" expression) "end") begin-exp]
+    [expression ("set" identifier "=" expression) assign-exp]
+    [expression ("+" "(" expression "," expression ")") plus-exp]
+    [expression ("list" "(" (separated-list expression ",") ")") list-exp]
+    [expression ("print" "(" expression ")") print-exp]
+    [expression ("new" identifier "(" (separated-list expression ",") ")") new-object-expr]
+    [expression ("send" expression identifier 
+                 "(" (separated-list expression ",") ")") method-call-expr]
+    [expression ("super" identifier "(" (separated-list expression ",") ")") super-call-expr]
+    [expression ("self") self-expr]
     ))
 
 (define scan&parse
   (sllgen:make-string-parser scanner-spec grammar-spec))
-

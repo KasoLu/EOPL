@@ -2,6 +2,8 @@
 
 (define (report-no-binding-found var)
   (eopl:error 'report-no-binding-found "No binding for ~s" var))
+(define (report-invalid-concrete-syntax datum)
+  (eopl:error 'report-invalid-concrete-syntax "invalid concrete syntax: ~a" datum))
 (define (report-expval-extractor-error type val)
   (eopl:error 'report-expval-extractor-error "invalid expval - ~a: ~a" type val))
 
@@ -12,25 +14,21 @@
     [empty-env []
       (report-no-binding-found var)]
     [extend-env [saved-vars saved-vals saved-env]
-      (let loop([vars saved-vars] [vals saved-vals])
+      (define (found vars vals)
         (cond [(null? vars) (apply-env saved-env var)]
               [(eqv? (car vars) var) (car vals)]
-              [else (loop (cdr vars) (cdr vals))]))]
+              [else (found (cdr vars) (cdr vals))]))
+      (found saved-vars saved-vals)]
     [extend-env-rec [names varss bodies saved-env]
-      (let loop([names names] [varss varss] [bodies bodies])
+      (define (found names varss bodies)
         (cond [(null? names) 
                (apply-env saved-env var)]
               [(eqv? (car names) var) 
-               (proc-val (procedure (car varss) (car bodies) env1))]
+               (newref (proc-val (procedure (car varss) (car bodies) env1)))]
               [else 
-               (loop (cdr names) (cdr varss) (cdr bodies))]))]
-    [else
-      (report-invalid-env env1)]
+               (found (cdr names) (cdr varss) (cdr bodies))]))
+      (found names varss bodies)]
     ))
-
-(define init-tenv init-env)
-(define apply-tenv apply-env)
-(define extend-tenv extend-env)
 
 (define (expval->num val)
   (cases expval val
@@ -45,123 +43,137 @@
     [proc-val [proc] proc]
     [else (report-expval-extractor-error 'proc val)]))
 
-(define (decl->name d)
-  (cases decl d
-    [val-decl [name type] name]
-    [opaque-type-decl [t-name] 'type-decl]
-    [transparent-type-decl [t-name t-type] 'type-decl]
-    [else (report-decl-extractor-error 'name d)]))
-(define (decl->type d)
-  (cases decl d
-    [val-decl [name type] type]
-    [opaque-type-decl [t-name] (qualified-type 'module-x t-name)]
-    [transparent-type-decl [t-name t-type] t-type]
-    [else (report-decl-extractor-error 'type d)]))
+(define the-store 'uninit)
+; empty-store : () -> Store
+(define (empty-store) '())
+; get-store : () -> Store
+(define (get-store) the-store)
+; init-store! : () -> Unspecified
+(define (init-store!)
+  (set! the-store (empty-store)))
+; newref : ExpVal -> Ref
+(define (newref val)
+  (let ([next-ref (length the-store)])
+    (set! the-store (append the-store (list val)))
+    next-ref))
+; deref : Ref -> ExpVal
+(define (deref ref)
+  (list-ref the-store ref))
+; setref! : Ref x ExpVal -> Unspecified
+(define (setref! ref val)
+  (define (setref-inner store1 ref1)
+    (cond [(null? store1) (report-invalid-reference ref the-store)]
+          [(zero? ref1) (cons val (cdr store1))]
+          [else (cons (car store1) (setref-inner (cdr store1) (- ref1 1)))]))
+  (set! the-store (setref-inner the-store ref)))
 
-(define lookup-qualified-var-in-tenv
-  (lambda (m-name var-name tenv)
-    (let ([ifc (lookup-module-name-in-tenv tenv m-name)])
-      (cases iface ifc
-        [simple-iface [decls]
-          (lookup-variable-name-in-decls decls var-name)]
-        [proc-iface [param-name param-iface result-iface]
-          (report-invalid-iface ifc m-name var-name)]))))
+(define apply-method
+  (lambda (m self args)
+    (cases method m
+      [a-method [vars body super-name field-names]
+        (value-of body
+          (extend-env vars (map newref args)
+            (extend-env-with-self-and-super self super-name
+              (extend-env field-names (object->fields self)
+                (empty-env)))))])))
 
-(define lookup-module-name-in-tenv
-  (lambda (e n)
-    (cases env e
-      [empty-env []
-        (report-invalid-module-name e n)]
-      [extend-env [vars vals saved-env]
-        (lookup-module-name-in-tenv saved-env n)]
-      [extend-env-rec [names varss procs saved-env]
-        (lookup-module-name-in-tenv saved-env n)]
-      [extend-tenv-with-module [name m-iface saved-env]
-        (if (eqv? name n)
-          m-iface
-          (lookup-module-name-in-tenv saved-env n))]
-      [extend-tenv-with-type [t-name t-type saved-tenv]
-        (lookup-module-name-in-tenv saved-tenv n)]
-      [else
-        (report-invalid-env e)])))
+(define extend-env-with-self-and-super
+  (lambda (self super-name env)
+    (extend-env (list '%self '%super) (list self super-name) env)))
 
-(define lookup-variable-name-in-decls
-  (lambda (decls var-name)
-    (cond [(null? decls) (report-invalid-decls)]
-          [(eqv? (decl->name (car decls)) var-name) (decl->type (car decls))]
-          [else (lookup-variable-name-in-decls (cdr decls) var-name)])))
+(define the-class-env '())
+(define add-to-class-env!
+  (lambda (class-name cls)
+    (set! the-class-env
+      (cons (list class-name cls) the-class-env))))
+(define lookup-class
+  (lambda (name)
+    (let ([maybe-pair (assq name the-class-env)])
+      (if maybe-pair
+        (cadr maybe-pair)
+        (report-unknown-class name)))))
 
-(define expand-type
-  (lambda (ty tenv)
-    (cases type ty
-      [any-type [] (any-type)]
-      [int-type [] (int-type)]
-      [bool-type [] (bool-type)]
-      [proc-type [args-type ret-type]
-        (proc-type
-          (map (lambda (at) (expand-type at tenv)) args-type)
-          (expand-type ret-type tenv))]
-      [named-type [name]
-        (lookup-type-name-in-tenv tenv name)]
-      [qualified-type [m-name t-name]
-        (lookup-qualified-type-in-tenv tenv m-name t-name)])))
+(define init-class-env!
+  (lambda (c-decls)
+    (set! the-class-env
+      (list
+        (list 'object (a-class #f '() '()))))
+    (for-each init-class-decl! c-decls)))
 
-(define lookup-type-name-in-tenv
-  (lambda (tenv name)
-    (cases env tenv
-      [empty-env []
-        (report-type-name-not-found name)]
-      [extend-tenv-with-type [t-name t-type saved-tenv]
-        (if (eqv? t-name name)
-          t-type
-          (lookup-type-name-in-tenv saved-tenv name))]
-      [extend-env [vars vals saved-env]
-        (lookup-type-name-in-tenv saved-env name)]
-      [else
-        (report-invalid-tenv tenv)])))
+(define init-class-decl!
+  (lambda (c-decl)
+    (cases class-decl c-decl
+      [a-class-decl [c-name s-name f-names m-decls]
+        (let ([f-names (append-field-names (class->field-names (lookup-class s-name)) f-names)])
+          (add-to-class-env!
+            c-name
+            (a-class s-name f-names
+              (merge-method-envs
+                (class->method-env (lookup-class s-name))
+                (method-decls->method-env m-decls s-name f-names)))))])))
 
-(define lookup-qualified-type-in-tenv
-  (lambda (tenv m-name t-name)
-    (let ([m-iface (lookup-module-name-in-tenv tenv m-name)])
-      (cases iface m-iface
-        [simple-iface [decls]
-          (let loop ([decls decls])
-            (if (null? decls)
-              (report-not-found-type t-name)
-              (cases decl (car decls)
-                [val-decl [var-name var-type]
-                  (if (eqv? var-name t-name)
-                    var-type
-                    (loop (cdr decls)))]
-                [opaque-type-decl [name]
-                  (if (eqv? name t-name)
-                    (named-type name)
-                    (loop (cdr decls)))]
-                [transparent-type-decl [name type]
-                  (if (eqv? name t-name)
-                    type
-                    (loop (cdr decls)))])))]
-        [proc-iface [param-name param-iface result-iface]
-          (report-invalid-iface)]))))
+(define append-field-names
+  (lambda (super-fields new-fields)
+    (cond [(null? super-fields) new-fields]
+          [else
+           (cons (if (memq (car super-fields) new-fields)
+                   (fresh-identifier (car super-fields))
+                   (car super-fields))
+                 (append-field-names (cdr super-fields) new-fields))])))
 
-(define val-decl?
-  (lambda (d)
-    (cases decl d
-      [val-decl [var-name var-type] #t]
-      [else #f])))
-(define transparent-type-decl?
-  (lambda (d)
-    (cases decl d
-      [transparent-type-decl [t-name t-type] #t]
-      [else #f])))
-(define opaque-type-decl?
-  (lambda (d)
-    (cases decl d
-      [opaque-type-decl [t-name] #t]
-      [else #f])))
+(define find-method
+  (lambda (c-name name)
+    (let ([m-env (class->method-env (lookup-class c-name))])
+      (let ([maybe-pair (assq name m-env)])
+        (if (pair? maybe-pair)
+          (cadr maybe-pair)
+          (report-method-not-found name))))))
+
+(define method-decls->method-env
+  (lambda (m-decls super-name field-names)
+    (map (lambda (m-decl)
+           (cases method-decl m-decl
+             [a-method-decl [method-name vars body]
+               (list method-name (a-method vars body super-name field-names))])) 
+         m-decls)))
+
+(define merge-method-envs
+  (lambda (super-m-env new-m-env)
+    (append new-m-env super-m-env)))
+
+(define (class->super-name c)
+  (cases class c
+    [a-class [super-name field-names method-env] super-name]
+    [else (report-invalid-extract 'class c)]))
+
+(define (class->field-names c)
+  (cases class c
+    [a-class [super-name field-names method-env] field-names]
+    [else (report-invalid-extract 'class c)]))
+
+(define (class->method-env c)
+  (cases class c
+    [a-class [super-name field-names method-env] method-env]
+    [else (report-invalid-extract 'class c)]))
 
 (define g-seed 0)
-(define fresh-module-name
-  (lambda (name)
-    (let ([seed (begin (set! g-seed (+ g-seed 1)) g-seed)])
-      (string->symbol (string-append (symbol->string name) (number->string seed))))))
+(define (fresh-identifier id)
+  (set! g-seed (+ g-seed 1))
+  (string->symbol (string-append (symbol->string id) (number->string g-seed))))
+
+(define (object->fields o)
+  (cases object o
+    [an-object [class-name fields] fields]
+    [else (report-invalid-extract 'object o)]))
+
+(define (object->class-name o)
+  (cases object o
+    [an-object [class-name fields] class-name]
+    [else (report-invalid-extract 'object o)]))
+
+(define new-object
+  (lambda (class-name)
+    (an-object
+      class-name
+      (map (lambda (field-name) (newref (list 'uninit-field field-name))) 
+           (class->field-names (lookup-class class-name))))))

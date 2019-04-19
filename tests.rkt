@@ -110,3 +110,21 @@
              print(send p get-count())
            end
       end")
+
+(define p3
+  "class oddeven extends object
+     method init()
+       1
+     method even(n)
+       if zero?(n) then 1 else send self odd(-(n, 1))
+     method odd(n)
+       if zero?(n) then 0 else send self even(-(n, 1))
+   class bogus-oddeven extends oddeven
+     method init()
+       super init()
+     method even(n)
+       if zero?(n) then 0 else send self odd(-(n, 1))
+     method odd(n)
+       if zero?(n) then 1 else send self even(-(n, 1))
+   let o1 = new bogus-oddeven()
+   in send o1 odd(13)")

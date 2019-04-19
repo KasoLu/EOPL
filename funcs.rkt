@@ -70,12 +70,13 @@
 (define apply-method
   (lambda (m self args)
     (cases method m
-      [a-method [vars body super-name field-names]
-        (value-of body
-          (extend-env vars (map newref args)
-            (extend-env-with-self-and-super self super-name
-              (extend-env field-names (object->fields self)
-                (empty-env)))))])))
+      [a-method [vars body class-name field-names]
+        (let ([super-class (class->superclass-name (lookup-class class-name))])
+          (value-of body
+            (extend-env vars (map newref args)
+              (extend-env-with-self-and-super self super-class
+                (extend-env field-names (object->fields self)
+                  (empty-env))))))])))
 
 (define extend-env-with-self-and-super
   (lambda (self super-name env)
@@ -104,13 +105,14 @@
   (lambda (c-decl)
     (cases class-decl c-decl
       [a-class-decl [c-name s-name f-names m-decls]
-        (let ([f-names (append-field-names (class->field-names (lookup-class s-name)) f-names)])
-          (add-to-class-env!
-            c-name
-            (a-class s-name f-names
-              (merge-method-envs
-                (class->method-env (lookup-class s-name))
-                (method-decls->method-env m-decls s-name f-names)))))])))
+        (let ([s-cls (lookup-class s-name)])
+          (let ([f-names (append-field-names (class->field-names s-cls) f-names)])
+            (add-to-class-env!
+              c-name
+              (a-class s-name f-names
+                (merge-method-envs
+                  (class->method-env s-cls)
+                  (method-decls->method-env m-decls c-name f-names))))))])))
 
 (define append-field-names
   (lambda (super-fields new-fields)
@@ -122,19 +124,19 @@
                  (append-field-names (cdr super-fields) new-fields))])))
 
 (define find-method
-  (lambda (cls m-name)
-    (let ([m-env (class->method-env cls)])
-      (let ([maybe-pair (assq m-name m-env)])
+  (lambda (c-name name)
+    (let ([m-env (class->method-env (lookup-class c-name))])
+      (let ([maybe-pair (assq name m-env)])
         (if (pair? maybe-pair)
           (cadr maybe-pair)
-          (report-method-not-found m-name))))))
+          (report-method-not-found name))))))
 
 (define method-decls->method-env
-  (lambda (m-decls super-name field-names)
+  (lambda (m-decls class-name field-names)
     (map (lambda (m-decl)
            (cases method-decl m-decl
              [a-method-decl [method-name vars body]
-               (list method-name (a-method vars body super-name field-names))])) 
+               (list method-name (a-method vars body class-name field-names))])) 
          m-decls)))
 
 (define merge-method-envs
@@ -156,6 +158,11 @@
     [a-class [super-name field-names method-env] method-env]
     [else (report-invalid-extract 'class c)]))
 
+(define (class->superclass-name c)
+  (cases class c
+    [a-class [super-name field-names method-env] super-name]
+    [else (report-invalid-extract 'class c)]))
+
 (define g-seed 0)
 (define (fresh-identifier id)
   (set! g-seed (+ g-seed 1))
@@ -166,9 +173,9 @@
     [an-object [class-name fields] fields]
     [else (report-invalid-extract 'object o)]))
 
-(define (object->class o)
+(define (object->class-name o)
   (cases object o
-    [an-object [cls fields] cls]
+    [an-object [class-name fields] class-name]
     [else (report-invalid-extract 'object o)]))
 
 (define new-object

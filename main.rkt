@@ -71,21 +71,21 @@
       (let ([args (map (lambda (e) (value-of e env)) rands)]
             [obj (value-of obj-exp env)])
         (apply-method
-          (find-method (object->class obj) method-name)
+          (find-method (object->class-name obj) method-name)
           obj
           args))]
     [super-call-expr [method-name rands]
       (let ([args (map (lambda (e) (value-of e env)) rands)]
             [obj (apply-env env '%self)])
         (apply-method
-          (find-method (lookup-class (apply-env env '%super)) method-name)
+          (find-method (apply-env env '%super) method-name)
           obj
           args))]
     [new-object-expr [class-name rands]
       (let ([args (map (lambda (e) (value-of e env)) rands)]
             [obj (new-object class-name)])
         (apply-method
-          (find-method (object->class obj) 'init)
+          (find-method class-name 'init)
           obj
           args)
         obj)]

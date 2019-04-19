@@ -52,14 +52,14 @@
 
 (define-datatype object object?
   [an-object
-    [cls class?]
+    [class-name identifier?]
     [fields (list-of reference?)]])
 
 (define-datatype method method?
   [a-method
     [vars (list-of identifier?)]
     [body expression?]
-    [super-name identifier?]
+    [class-name identifier?]
     [field-names (list-of identifier?)]])
 
 (define-datatype class class?

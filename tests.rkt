@@ -62,39 +62,24 @@
 
 (define p2
   "class c1 extends object
-     field c1-field
-     method init()
-       set c1-field = 10
-   
+     field num
+     method init() set num = 1
+     method m1() print(10)
    class s1 extends c1
-     field c1-field
-     method init()
-       set c1-field = 20
-     method m1()
-       begin
-         superfieldset c1-field = 100;
-         superfieldref c1-field
-       end 
-     method m2()
-       c1-field
-     method m3()
-       superfieldref c1-field
-
+     field num
+     method init() set num = 2
+     method m1() print(20)
    class s2 extends s1
-     field c1-field
-     method init()
-       set c1-field = 30
-     method m1()
-       super m1()
-     method m2()
-       c1-field
-     method m3()
-       super m3()
-     
+     field num
+     method init() set num = 3
+     method m1() print(30)
    let o = new s2()
    in begin
-        print(send o m2());
-        print(send o m1());
-        print(send o m3())
+        named-send c1 o m1();
+        named-send s1 o m1();
+        named-send s2 o m1();
+        print(named-fieldref s1 o num);
+        named-fieldset s1 o num = 30;
+        print(named-fieldref s1 o num)
       end")
 

@@ -34,8 +34,11 @@
                  "(" (separated-list expression ",") ")") method-call-expr]
     [expression ("super" identifier "(" (separated-list expression ",") ")") super-call-expr]
     [expression ("self") self-expr]
-    [expression ("superfieldref" identifier) superfieldref-expr]
-    [expression ("superfieldset" identifier "=" expression) superfieldset-expr]
+    [expression ("named-send" identifier expression 
+                 identifier "(" (separated-list expression ",") ")") named-send-expr]
+    [expression ("named-fieldref" identifier expression identifier) named-fieldref-expr]
+    [expression ("named-fieldset" identifier expression identifier 
+                 "=" expression) named-fieldset-expr]
     ))
 
 (define scan&parse

@@ -121,9 +121,18 @@
     [method-name identifier?]
     [rands (list-of expression?)]]
   [self-expr]
-  [superfieldref-expr
+  [named-send-expr
+    [class-name identifier?]
+    [obj-exp expression?]
+    [method-name identifier?]
+    [rands (list-of expression?)]]
+  [named-fieldref-expr
+    [class-name identifier?]
+    [obj-exp expression?]
     [field-name identifier?]]
-  [superfieldset-expr
+  [named-fieldset-expr
+    [class-name identifier?]
+    [obj-exp expression?]
     [field-name identifier?]
     [val-exp expression?]]
   )

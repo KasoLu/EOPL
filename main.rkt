@@ -89,19 +89,24 @@
           obj
           args)
         obj)]
-    [superfieldref-expr [field-name]
-      (let ([super-class (lookup-class (apply-env env '%super))])
-        (let loop ([field-names (class->field-names super-class)]
-                   [field-refs (object->fields (apply-env env '%self))])
+    [named-send-expr [class-name obj-exp method-name rands]
+      (let ([obj (value-of obj-exp env)]
+            [rands-val (map (lambda (e) (value-of e env)) rands)]
+            [method (find-method class-name method-name)])
+        (apply-method method obj rands))]
+    [named-fieldref-expr [class-name obj-exp field-name]
+      (let ([obj (value-of obj-exp env)])
+        (let loop ([field-names (class->field-names (lookup-class class-name))]
+                   [field-refs (object->fields obj)])
           (cond [(null? field-names) (report-field-not-found)]
                 [(eqv? (car field-names) field-name) (deref (car field-refs))]
                 [else (loop (cdr field-names) (cdr field-refs))])))]
-    [superfieldset-expr [field-name val-exp]
-      (let ([super-class (lookup-class (apply-env env '%super))] [val (value-of val-exp env)])
-        (let loop ([field-names (class->field-names super-class)]
-                   [field-refs (object->fields (apply-env env '%self))])
+    [named-fieldset-expr [class-name obj-exp field-name val-exp]
+      (let ([obj (value-of obj-exp env)] [val (value-of val-exp env)])
+        (let loop ([field-names (class->field-names (lookup-class class-name))]
+                   [field-refs (object->fields obj)])
           (cond [(null? field-names) (report-field-not-found)]
-                [(eqv? (car field-names) field-name) (setref! (car field-refs) val)]
+                [(eqv? (car field-names) field-name) (setref! (car field-refs) val-exp)]
                 [else (loop (cdr field-names) (cdr field-refs))])))]
     [else
       (report-invalid-expression expr)]

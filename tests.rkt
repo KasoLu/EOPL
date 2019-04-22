@@ -62,14 +62,39 @@
 
 (define p2
   "class c1 extends object
-     field age
+     field c1-field
      method init()
-       set age = 10
-     method get-age()
-       age
-   let o = new c1()
-   in begin 
-        print(fieldref o age);
-        fieldset o age = 20;
-        print(fieldref o age)
+       set c1-field = 10
+   
+   class s1 extends c1
+     field c1-field
+     method init()
+       set c1-field = 20
+     method m1()
+       begin
+         superfieldset c1-field = 100;
+         superfieldref c1-field
+       end 
+     method m2()
+       c1-field
+     method m3()
+       superfieldref c1-field
+
+   class s2 extends s1
+     field c1-field
+     method init()
+       set c1-field = 30
+     method m1()
+       super m1()
+     method m2()
+       c1-field
+     method m3()
+       super m3()
+     
+   let o = new s2()
+   in begin
+        print(send o m2());
+        print(send o m1());
+        print(send o m3())
       end")
+

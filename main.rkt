@@ -89,17 +89,17 @@
           obj
           args)
         obj)]
-    [fieldref-expr [obj-exp field-name]
-      (let ([obj (value-of obj-exp env)])
-        (let loop ([field-names (class->field-names (lookup-class (object->class-name obj)))]
-                   [field-refs (object->fields obj)])
+    [superfieldref-expr [field-name]
+      (let ([super-class (lookup-class (apply-env env '%super))])
+        (let loop ([field-names (class->field-names super-class)]
+                   [field-refs (object->fields (apply-env env '%self))])
           (cond [(null? field-names) (report-field-not-found)]
                 [(eqv? (car field-names) field-name) (deref (car field-refs))]
                 [else (loop (cdr field-names) (cdr field-refs))])))]
-    [fieldset-expr [obj-exp field-name exp1]
-      (let ([obj (value-of obj-exp env)] [val (value-of exp1 env)])
-        (let loop ([field-names (class->field-names (lookup-class (object->class-name obj)))]
-                   [field-refs (object->fields obj)])
+    [superfieldset-expr [field-name val-exp]
+      (let ([super-class (lookup-class (apply-env env '%super))] [val (value-of val-exp env)])
+        (let loop ([field-names (class->field-names super-class)]
+                   [field-refs (object->fields (apply-env env '%self))])
           (cond [(null? field-names) (report-field-not-found)]
                 [(eqv? (car field-names) field-name) (setref! (car field-refs) val)]
                 [else (loop (cdr field-names) (cdr field-refs))])))]

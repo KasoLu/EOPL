@@ -34,6 +34,8 @@
                  "(" (separated-list expression ",") ")") method-call-expr]
     [expression ("super" identifier "(" (separated-list expression ",") ")") super-call-expr]
     [expression ("self") self-expr]
+    [expression ("fieldref" expression identifier) fieldref-expr]
+    [expression ("fieldset" expression identifier "=" expression) fieldset-expr]
     ))
 
 (define scan&parse

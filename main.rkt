@@ -89,6 +89,20 @@
           obj
           args)
         obj)]
+    [fieldref-expr [obj-exp field-name]
+      (let ([obj (value-of obj-exp env)])
+        (let loop ([field-names (class->field-names (lookup-class (object->class-name obj)))]
+                   [field-refs (object->fields obj)])
+          (cond [(null? field-names) (report-field-not-found)]
+                [(eqv? (car field-names) field-name) (deref (car field-refs))]
+                [else (loop (cdr field-names) (cdr field-refs))])))]
+    [fieldset-expr [obj-exp field-name exp1]
+      (let ([obj (value-of obj-exp env)] [val (value-of exp1 env)])
+        (let loop ([field-names (class->field-names (lookup-class (object->class-name obj)))]
+                   [field-refs (object->fields obj)])
+          (cond [(null? field-names) (report-field-not-found)]
+                [(eqv? (car field-names) field-name) (setref! (car field-refs) val)]
+                [else (loop (cdr field-names) (cdr field-refs))])))]
     [else
       (report-invalid-expression expr)]
     ))

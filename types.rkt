@@ -121,5 +121,12 @@
     [method-name identifier?]
     [rands (list-of expression?)]]
   [self-expr]
+  [fieldref-expr
+    [obj expression?]
+    [field-name identifier?]]
+  [fieldset-expr
+    [obj expression?]
+    [field-name identifier?]
+    [exp1 expression?]]
   )
 

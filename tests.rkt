@@ -60,3 +60,16 @@
    let o3 = new c3()
    in begin print(100); send o3 m1(7, 8) end")
 
+(define p2
+  "class c1 extends object
+     field age
+     method init()
+       set age = 10
+     method get-age()
+       age
+   let o = new c1()
+   in begin 
+        print(fieldref o age);
+        fieldset o age = 20;
+        print(fieldref o age)
+      end")

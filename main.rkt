@@ -12,7 +12,7 @@
     (cases program pgm
       [a-program [class-decls body]
         (init-class-env! class-decls)
-        (value-of body (init-env))])))
+        (value-of body (extend-env-class-scope #f (init-env)))])))
 
 (define (value-of expr env)
   (cases expression expr
@@ -68,46 +68,23 @@
     [self-expr []
       (apply-env env '%self)]
     [method-call-expr [obj-exp method-name rands]
-      (let ([args (map (lambda (e) (value-of e env)) rands)]
-            [obj (value-of obj-exp env)])
-        (apply-method
-          (find-method (object->class-name obj) method-name)
-          obj
-          args))]
+      (let* ([args (map (lambda (e) (value-of e env)) rands)]
+             [obj (value-of obj-exp env)]
+             [method (find-method (object->class-name obj) method-name)]
+             [class-scope (curr-class-scope env)])
+        (apply-method method obj args class-scope))]
     [super-call-expr [method-name rands]
-      (let ([args (map (lambda (e) (value-of e env)) rands)]
-            [obj (apply-env env '%self)])
-        (apply-method
-          (find-method (apply-env env '%super) method-name)
-          obj
-          args))]
+      (let* ([args (map (lambda (e) (value-of e env)) rands)]
+             [self (apply-env env '%self)]
+             [method (find-method (apply-env env '%super) method-name)])
+        (apply-method method self args (object->class-name self)))]
     [new-object-expr [class-name rands]
       (let ([args (map (lambda (e) (value-of e env)) rands)]
-            [obj (new-object class-name)])
-        (apply-method
-          (find-method class-name 'init)
-          obj
-          args)
+            [obj (new-object class-name)]
+            [method (find-method class-name 'init)]
+            [class-scope (curr-class-scope env)])
+        (apply-method method obj args class-scope)
         obj)]
-    [named-send-expr [class-name obj-exp method-name rands]
-      (let ([obj (value-of obj-exp env)]
-            [rands-val (map (lambda (e) (value-of e env)) rands)]
-            [method (find-method class-name method-name)])
-        (apply-method method obj rands))]
-    [named-fieldref-expr [class-name obj-exp field-name]
-      (let ([obj (value-of obj-exp env)])
-        (let loop ([field-names (class->field-names (lookup-class class-name))]
-                   [field-refs (object->fields obj)])
-          (cond [(null? field-names) (report-field-not-found)]
-                [(eqv? (car field-names) field-name) (deref (car field-refs))]
-                [else (loop (cdr field-names) (cdr field-refs))])))]
-    [named-fieldset-expr [class-name obj-exp field-name val-exp]
-      (let ([obj (value-of obj-exp env)] [val (value-of val-exp env)])
-        (let loop ([field-names (class->field-names (lookup-class class-name))]
-                   [field-refs (object->fields obj)])
-          (cond [(null? field-names) (report-field-not-found)]
-                [(eqv? (car field-names) field-name) (setref! (car field-refs) val-exp)]
-                [else (loop (cdr field-names) (cdr field-refs))])))]
     [else
       (report-invalid-expression expr)]
     ))

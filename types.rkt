@@ -15,6 +15,9 @@
     [varss  (list-of (list-of identifier?))]
     [bodies (list-of expression?)]
     [env    env?]]
+  [extend-env-class-scope
+    [class-name (maybe identifier?)]
+    [env env?]]
   )
 
 (define-datatype proc proc?
@@ -46,9 +49,15 @@
 
 (define-datatype method-decl method-decl?
   [a-method-decl
+    [method-permission method-permission?]
     [method-name identifier?]
     [vars (list-of identifier?)]
     [body expression?]])
+
+(define-datatype method-permission method-permission?
+  [private-method-permission]
+  [protected-method-permission]
+  [public-method-permission])
 
 (define-datatype object object?
   [an-object
@@ -59,8 +68,8 @@
   [a-method
     [vars (list-of identifier?)]
     [body expression?]
-    [super-name identifier?]
-    [field-names (list-of identifier?)]])
+    [permission method-permission?]
+    [class-name identifier?]])
 
 (define-datatype class class?
   [a-class
@@ -121,19 +130,5 @@
     [method-name identifier?]
     [rands (list-of expression?)]]
   [self-expr]
-  [named-send-expr
-    [class-name identifier?]
-    [obj-exp expression?]
-    [method-name identifier?]
-    [rands (list-of expression?)]]
-  [named-fieldref-expr
-    [class-name identifier?]
-    [obj-exp expression?]
-    [field-name identifier?]]
-  [named-fieldset-expr
-    [class-name identifier?]
-    [obj-exp expression?]
-    [field-name identifier?]
-    [val-exp expression?]]
   )
 

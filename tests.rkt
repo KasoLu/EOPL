@@ -62,24 +62,34 @@
 
 (define p2
   "class c1 extends object
-     field num
-     method init() set num = 1
-     method m1() print(10)
+     public method init()
+       print(10)
+     private method m1()
+       print(11)
+     protected method m2()
+       begin
+         print(12);
+         send self m1()
+       end
+     public method m3() 
+       begin
+         print(13);
+         send self m2()
+       end
    class s1 extends c1
-     field num
-     method init() set num = 2
-     method m1() print(20)
-   class s2 extends s1
-     field num
-     method init() set num = 3
-     method m1() print(30)
-   let o = new s2()
+     public method init()
+       print(20)
+     public method m1()
+       begin
+         print(21)
+       end
+     private method m3()
+       begin
+         print(23);
+         send self m2()
+       end
+   let oc1 = new c1(), os1 = new s1()
    in begin
-        named-send c1 o m1();
-        named-send s1 o m1();
-        named-send s2 o m1();
-        print(named-fieldref s1 o num);
-        named-fieldset s1 o num = 30;
-        print(named-fieldref s1 o num)
+        send oc1 m3();
+        send os1 m1()
       end")
-

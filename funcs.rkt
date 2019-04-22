@@ -28,6 +28,8 @@
               [else 
                (found (cdr names) (cdr varss) (cdr bodies))]))
       (found names varss bodies)]
+    [extend-env-class-scope [class-name saved-env]
+      (apply-env saved-env var)]
     ))
 
 (define (expval->num val)
@@ -68,14 +70,25 @@
   (set! the-store (setref-inner the-store ref)))
 
 (define apply-method
-  (lambda (m self args)
+  (lambda (m self args curr-class-name)
     (cases method m
-      [a-method [vars body super-name field-names]
-        (value-of body
-          (extend-env vars (map newref args)
-            (extend-env-with-self-and-super self super-name
-              (extend-env field-names (object->fields self)
-                (empty-env)))))])))
+      [a-method [vars body permission class-name]
+        (let* ([cls (lookup-class class-name)]
+               [ext-env (extend-env (class->field-names cls) (object->fields self) (empty-env))]
+               [ext-env (extend-env-with-self-and-super self (class->super-name cls) ext-env)]
+               [ext-env (extend-env vars (map newref args) ext-env)]
+               [ext-env (extend-env-class-scope (object->class-name self) ext-env)])
+          (cases method-permission permission
+            [private-method-permission []
+              (if (eqv? curr-class-name class-name)
+                (value-of body ext-env)
+                (report-method-permission-error m))]
+            [protected-method-permission []
+              (if (is-subclass-of-class curr-class-name class-name)
+                (value-of body ext-env)
+                (report-method-permission-error m))]
+            [public-method-permission []
+              (value-of body ext-env)]))])))
 
 (define extend-env-with-self-and-super
   (lambda (self super-name env)
@@ -110,7 +123,7 @@
             (a-class s-name f-names
               (merge-method-envs
                 (class->method-env (lookup-class s-name))
-                (method-decls->method-env m-decls s-name f-names)))))])))
+                (method-decls->method-env m-decls c-name f-names)))))])))
 
 (define append-field-names
   (lambda (super-fields new-fields)
@@ -130,11 +143,11 @@
           (report-method-not-found name))))))
 
 (define method-decls->method-env
-  (lambda (m-decls super-name field-names)
+  (lambda (m-decls class-name field-names)
     (map (lambda (m-decl)
            (cases method-decl m-decl
-             [a-method-decl [method-name vars body]
-               (list method-name (a-method vars body super-name field-names))])) 
+             [a-method-decl [method-permission method-name vars body]
+               (list method-name (a-method vars body method-permission class-name))])) 
          m-decls)))
 
 (define merge-method-envs
@@ -156,6 +169,11 @@
     [a-class [super-name field-names method-env] method-env]
     [else (report-invalid-extract 'class c)]))
 
+(define (class->super-name c)
+  (cases class c
+    [a-class [super-name field-names method-env] super-name]
+    [else (report-invalid-extract 'class c)]))
+
 (define g-seed 0)
 (define (fresh-identifier id)
   (set! g-seed (+ g-seed 1))
@@ -171,9 +189,29 @@
     [an-object [class-name fields] class-name]
     [else (report-invalid-extract 'object o)]))
 
+(define is-subclass-of-class
+  (lambda (class-name target-class-name)
+    (let loop ([class-name class-name])
+      (cond [(not class-name) #f]
+            [(eqv? class-name target-class-name) #t]
+            [else (loop (class->super-name (lookup-class class-name)))]))))
+
+(define curr-class-scope
+  (lambda (e)
+    (cases env e
+      [empty-env []
+        (report-invalid-env)]
+      [extend-env [vars vals saved-env]
+        (curr-class-scope saved-env)]
+      [extend-env-rec [names varss procs saved-env]
+        (curr-class-scope saved-env)]
+      [extend-env-class-scope [class-name saved-env]
+        class-name])))
+
 (define new-object
   (lambda (class-name)
     (an-object
       class-name
       (map (lambda (field-name) (newref (list 'uninit-field field-name))) 
            (class->field-names (lookup-class class-name))))))
+

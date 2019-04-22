@@ -12,8 +12,11 @@
   '([program ((arbno class-decl) expression) a-program]
     [class-decl ("class" identifier "extends" identifier
                  (arbno "field" identifier) (arbno method-decl)) a-class-decl]
-    [method-decl ("method" identifier "(" (separated-list identifier ",") ")" 
+    [method-decl (method-permission "method" identifier "(" (separated-list identifier ",") ")" 
                   expression) a-method-decl]
+    [method-permission ("private") private-method-permission]
+    [method-permission ("protected") protected-method-permission]
+    [method-permission ("public") public-method-permission]
     [expression (number) const-exp]
     [expression ("-" "(" expression "," expression ")") diff-exp]
     [expression ("zero?" "(" expression ")") zero?-exp]
@@ -34,11 +37,6 @@
                  "(" (separated-list expression ",") ")") method-call-expr]
     [expression ("super" identifier "(" (separated-list expression ",") ")") super-call-expr]
     [expression ("self") self-expr]
-    [expression ("named-send" identifier expression 
-                 identifier "(" (separated-list expression ",") ")") named-send-expr]
-    [expression ("named-fieldref" identifier expression identifier) named-fieldref-expr]
-    [expression ("named-fieldset" identifier expression identifier 
-                 "=" expression) named-fieldset-expr]
     ))
 
 (define scan&parse

@@ -15,6 +15,9 @@
     [varss  (list-of (list-of identifier?))]
     [bodies (list-of expression?)]
     [env    env?]]
+  [extend-env-current-scope
+    [class-name (maybe identifier?)]
+    [env env?]]
   )
 
 (define-datatype proc proc?
@@ -46,14 +49,9 @@
 
 (define-datatype method-decl method-decl?
   [a-method-decl
-    [modifier modifier?]
     [method-name identifier?]
     [vars (list-of identifier?)]
     [body expression?]])
-
-(define-datatype modifier modifier?
-  [a-final-modifier]
-  [a-default-modifier])
 
 (define-datatype object object?
   [an-object
@@ -64,8 +62,7 @@
   [a-method
     [vars (list-of identifier?)]
     [body expression?]
-    [modifier modifier?]
-    [super-name identifier?]
+    [class-name identifier?]
     [field-names (list-of identifier?)]])
 
 (define-datatype class class?

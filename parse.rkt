@@ -12,10 +12,8 @@
   '([program ((arbno class-decl) expression) a-program]
     [class-decl ("class" identifier "extends" identifier
                  (arbno "field" identifier) (arbno method-decl)) a-class-decl]
-    [method-decl (modifier "method" identifier "(" (separated-list identifier ",") ")" 
+    [method-decl ("method" identifier "(" (separated-list identifier ",") ")" 
                   expression) a-method-decl]
-    [modifier ("final") a-final-modifier]
-    [modifier () a-default-modifier]
     [expression (number) const-exp]
     [expression ("-" "(" expression "," expression ")") diff-exp]
     [expression ("zero?" "(" expression ")") zero?-exp]

@@ -8,7 +8,7 @@
   (eopl:error 'report-expval-extractor-error "invalid expval - ~a: ~a" type val))
 
 (define (init-env)
-  (empty-env))
+  (extend-env-current-scope #f (empty-env)))
 (define (apply-env env1 var)
   (cases env env1
     [empty-env []
@@ -28,6 +28,8 @@
               [else 
                (found (cdr names) (cdr varss) (cdr bodies))]))
       (found names varss bodies)]
+    [extend-env-current-scope [class-name saved-env]
+      (apply-env saved-env var)]
     ))
 
 (define (expval->num val)
@@ -70,12 +72,13 @@
 (define apply-method
   (lambda (m self args)
     (cases method m
-      [a-method [vars body modifier super-name field-names]
+      [a-method [vars body class-name field-names]
         (value-of body
-          (extend-env vars (map newref args)
-            (extend-env-with-self-and-super self super-name
-              (extend-env field-names (object->fields self)
-                (empty-env)))))])))
+          (extend-env-current-scope class-name
+            (extend-env vars (map newref args)
+              (extend-env-with-self-and-super self (class->super-name (lookup-class class-name))
+                (extend-env field-names (object->fields self)
+                  (empty-env))))))])))
 
 (define extend-env-with-self-and-super
   (lambda (self super-name env)
@@ -110,7 +113,7 @@
             (a-class s-name f-names
               (merge-method-envs
                 (class->method-env (lookup-class s-name))
-                (method-decls->method-env m-decls s-name f-names)))))])))
+                (method-decls->method-env m-decls c-name f-names)))))])))
 
 (define append-field-names
   (lambda (super-fields new-fields)
@@ -130,28 +133,16 @@
           (report-method-not-found name))))))
 
 (define method-decls->method-env
-  (lambda (m-decls super-name field-names)
+  (lambda (m-decls class-name field-names)
     (map (lambda (m-decl)
            (cases method-decl m-decl
-             [a-method-decl [modifier method-name vars body]
-               (list method-name (a-method vars body modifier super-name field-names))])) 
+             [a-method-decl [method-name vars body]
+               (list method-name (a-method vars body class-name field-names))])) 
          m-decls)))
 
 (define merge-method-envs
   (lambda (super-m-env new-m-env)
-    (if (null? super-m-env)
-      new-m-env
-      (let loop ([new-m-env new-m-env] [m-env '()])
-        (cond [(null? new-m-env) (append (reverse m-env) super-m-env)]
-              [(assq (caar new-m-env) super-m-env) =>
-               (lambda (m-pair)
-                 (cases method (cadr m-pair)
-                   [a-method [vars body method-modifier super-name field-names]
-                     (cases modifier method-modifier
-                       [a-final-modifier []
-                         (report-override-final-method)]
-                       [a-default-modifier []
-                         (loop (cdr new-m-env) (cons (car new-m-env) m-env))])]))])))))
+    (append new-m-env super-m-env)))
 
 (define (class->super-name c)
   (cases class c
@@ -166,6 +157,11 @@
 (define (class->method-env c)
   (cases class c
     [a-class [super-name field-names method-env] method-env]
+    [else (report-invalid-extract 'class c)]))
+
+(define (class->super-name c)
+  (cases class c
+    [a-class [super-name field-names method-env] super-name]
     [else (report-invalid-extract 'class c)]))
 
 (define g-seed 0)
@@ -183,10 +179,20 @@
     [an-object [class-name fields] class-name]
     [else (report-invalid-extract 'object o)]))
 
+(define (get-current-scope e)
+  (cases env e
+    [empty-env []
+      (report-invalid-get-current-scope)]
+    [extend-env [vars vals saved-env]
+      (get-current-scope saved-env)]
+    [extend-env-rec [names varss procs saved-env]
+      (get-current-scope saved-env)]
+    [extend-env-current-scope [class-name saved-env]
+      class-name]))
+
 (define new-object
   (lambda (class-name)
     (an-object
       class-name
       (map (lambda (field-name) (newref (list 'uninit-field field-name))) 
            (class->field-names (lookup-class class-name))))))
-

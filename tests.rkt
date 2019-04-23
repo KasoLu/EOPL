@@ -63,10 +63,10 @@
 (define p2
   "class c1 extends object
      method init() print(10)
-     final method m1() print(11)
-     method m2() print(12)
+     method m1(x) begin print(101); if zero?(x) then print(11) else send self m2(-(x, 1)) end
+     method m2(x) begin print(102); if zero?(x) then print(12) else send self m1(-(x, 1)) end
    class s1 extends c1
      method init() print(20)
-     method m2() print(22)
+     method m1(x) begin print(202); send self m2(-(x, 1)) end
    let oc1 = new c1(), os1 = new s1()
-   in begin send oc1 m2(); send os1 m2() end")
+   in begin send os1 m1(5) end")

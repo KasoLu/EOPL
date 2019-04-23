@@ -62,34 +62,38 @@
 
 (define p2
   "class c1 extends object
+     pri field cf1
+     pro field cf2
+     pub field cf3
      public method init()
-       print(10)
-     private method m1()
-       print(11)
-     protected method m2()
        begin
-         print(12);
-         send self m1()
+         print(10);
+         set cf1 = 11;
+         set cf2 = 12;
+         set cf3 = 13
        end
-     public method m3() 
-       begin
-         print(13);
-         send self m2()
-       end
-   class s1 extends c1
-     public method init()
-       print(20)
      public method m1()
        begin
-         print(21)
+         print(cf1);
+         print(cf2);
+         print(cf3)
        end
-     private method m3()
+   class s1 extends c1
+     pri field cf1
+     public method init()
        begin
-         print(23);
-         send self m2()
+         super init();
+         print(20);
+         set cf1 = 21;
+         set cf2 = 22;
+         set cf3 = 23
+       end
+     public method m1()
+       begin
+         super m1();
+         print(cf1);
+         print(cf2);
+         print(cf3)
        end
    let oc1 = new c1(), os1 = new s1()
-   in begin
-        send oc1 m3();
-        send os1 m1()
-      end")
+   in begin send oc1 m1(); send os1 m1() end")

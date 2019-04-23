@@ -74,7 +74,8 @@
     (cases method m
       [a-method [vars body permission class-name]
         (let* ([cls (lookup-class class-name)]
-               [ext-env (extend-env (class->field-names cls) (object->fields self) (empty-env))]
+               [fields-names (generate-field-names class-name (class->field-env cls))]
+               [ext-env (extend-env fields-names (object->fields self) (empty-env))]
                [ext-env (extend-env-with-self-and-super self (class->super-name cls) ext-env)]
                [ext-env (extend-env vars (map newref args) ext-env)]
                [ext-env (extend-env-class-scope (object->class-name self) ext-env)])
@@ -89,6 +90,25 @@
                 (report-method-permission-error m))]
             [public-method-permission []
               (value-of body ext-env)]))])))
+
+(define generate-field-names
+  (lambda (curr-class-scope fields)
+    (let loop ([fields fields] [field-names '()])
+      (if (null? fields)
+        (reverse field-names)
+        (cases field (cadar fields)
+          [a-field [name permission class-name]
+            (cases field-permission permission
+              [private-field-permission []
+                (if (eqv? class-name curr-class-scope)
+                  (loop (cdr fields) (cons name field-names))
+                  (loop (cdr fields) (cons (fresh-identifier name) field-names)))]
+              [protected-field-permission []
+                (if (is-subclass-of-class curr-class-scope class-name)
+                  (loop (cdr fields) (cons name field-names))
+                  (loop (cdr fields) (cons (fresh-identifier name) field-names)))]
+              [public-field-permission []
+                (loop (cdr fields) (cons name field-names))])])))))
 
 (define extend-env-with-self-and-super
   (lambda (self super-name env)
@@ -116,23 +136,14 @@
 (define init-class-decl!
   (lambda (c-decl)
     (cases class-decl c-decl
-      [a-class-decl [c-name s-name f-names m-decls]
-        (let ([f-names (append-field-names (class->field-names (lookup-class s-name)) f-names)])
-          (add-to-class-env!
-            c-name
-            (a-class s-name f-names
-              (merge-method-envs
-                (class->method-env (lookup-class s-name))
-                (method-decls->method-env m-decls c-name f-names)))))])))
-
-(define append-field-names
-  (lambda (super-fields new-fields)
-    (cond [(null? super-fields) new-fields]
-          [else
-           (cons (if (memq (car super-fields) new-fields)
-                   (fresh-identifier (car super-fields))
-                   (car super-fields))
-                 (append-field-names (cdr super-fields) new-fields))])))
+      [a-class-decl [c-name s-name f-decls m-decls]
+        (let* ([super-class (lookup-class s-name)]
+               [super-fields (class->field-env super-class)]
+               [class-fields (field-decls->field-env f-decls c-name)]
+               [class-fields (merge-field-envs super-fields class-fields)]
+               [class-method (merge-method-envs (class->method-env super-class)
+                                                (method-decls->method-env m-decls c-name))])
+          (add-to-class-env! c-name (a-class s-name class-fields class-method)))])))
 
 (define find-method
   (lambda (c-name name)
@@ -142,13 +153,30 @@
           (cadr maybe-pair)
           (report-method-not-found name))))))
 
+(define field-decls->field-env
+  (lambda (f-decls class-name)
+    (map (lambda (f-decl)
+           (cases field-decl f-decl
+             [a-field-decl [field-permission field-name]
+               (list field-name (a-field field-name field-permission class-name))]))
+         f-decls)))
+
 (define method-decls->method-env
-  (lambda (m-decls class-name field-names)
+  (lambda (m-decls class-name)
     (map (lambda (m-decl)
            (cases method-decl m-decl
              [a-method-decl [method-permission method-name vars body]
                (list method-name (a-method vars body method-permission class-name))])) 
          m-decls)))
+
+(define merge-field-envs
+  (lambda (super-fields new-fields)
+    (cond [(null? super-fields) new-fields]
+          [else
+           (cons (if (memq (car super-fields) new-fields)
+                   (fresh-field-name (car super-fields))
+                   (car super-fields))
+                 (merge-field-envs (cdr super-fields) new-fields))])))
 
 (define merge-method-envs
   (lambda (super-m-env new-m-env)
@@ -159,9 +187,9 @@
     [a-class [super-name field-names method-env] super-name]
     [else (report-invalid-extract 'class c)]))
 
-(define (class->field-names c)
+(define (class->field-env c)
   (cases class c
-    [a-class [super-name field-names method-env] field-names]
+    [a-class [super-name field-env method-env] field-env]
     [else (report-invalid-extract 'class c)]))
 
 (define (class->method-env c)
@@ -178,6 +206,10 @@
 (define (fresh-identifier id)
   (set! g-seed (+ g-seed 1))
   (string->symbol (string-append (symbol->string id) (number->string g-seed))))
+(define (fresh-field-name f)
+  (cases field f
+    [a-field [name permission class-name]
+      (a-field (fresh-identifier name) permission class-name)]))
 
 (define (object->fields o)
   (cases object o
@@ -188,6 +220,11 @@
   (cases object o
     [an-object [class-name fields] class-name]
     [else (report-invalid-extract 'object o)]))
+
+(define (field->name f)
+  (cases field f
+    [a-field [name permission class-name] name]
+    [else (report-invalid-extract 'field f)]))
 
 (define is-subclass-of-class
   (lambda (class-name target-class-name)
@@ -208,10 +245,18 @@
       [extend-env-class-scope [class-name saved-env]
         class-name])))
 
+(define (class->field-names c)
+  (let ([field-env (class->field-env c)])
+    (let loop ([field-env field-env] [field-names '()])
+      (if (null? field-env)
+        (reverse field-names)
+        (cases field (cadar field-env)
+          [a-field [name permission class-name]
+            (loop (cdr field-env) (cons name field-names))])))))
+
 (define new-object
   (lambda (class-name)
     (an-object
       class-name
       (map (lambda (field-name) (newref (list 'uninit-field field-name))) 
            (class->field-names (lookup-class class-name))))))
-

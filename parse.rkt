@@ -11,7 +11,11 @@
 (define grammar-spec
   '([program ((arbno class-decl) expression) a-program]
     [class-decl ("class" identifier "extends" identifier
-                 (arbno "field" identifier) (arbno method-decl)) a-class-decl]
+                 (arbno field-decl) (arbno method-decl)) a-class-decl]
+    [field-decl (field-permission "field" identifier) a-field-decl]
+    [field-permission ("pri") private-field-permission]
+    [field-permission ("pro") protected-field-permission]
+    [field-permission ("pub") public-field-permission]
     [method-decl (method-permission "method" identifier "(" (separated-list identifier ",") ")" 
                   expression) a-method-decl]
     [method-permission ("private") private-method-permission]

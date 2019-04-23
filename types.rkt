@@ -2,6 +2,7 @@
 (define (reference? v) (integer? v))
 (define (store? s) (list? s))
 (define (method-env? e) (list? e))
+(define (field-env? e) (list? e))
 (define (any? x) #t)
 
 (define-datatype env env?
@@ -44,8 +45,18 @@
   [a-class-decl
     [class-name identifier?]
     [super-name identifier?]
-    [field-names (list-of identifier?)]
+    [field-names (list-of field-decl?)]
     [method-decls (list-of method-decl?)]])
+
+(define-datatype field-decl field-decl?
+  [a-field-decl
+    [field-permission field-permission?]
+    [field-name identifier?]])
+
+(define-datatype field-permission field-permission?
+  [private-field-permission]
+  [protected-field-permission]
+  [public-field-permission])
 
 (define-datatype method-decl method-decl?
   [a-method-decl
@@ -71,10 +82,16 @@
     [permission method-permission?]
     [class-name identifier?]])
 
+(define-datatype field field?
+  [a-field
+    [name identifier?]
+    [permission field-permission?]
+    [class-name identifier?]])
+
 (define-datatype class class?
   [a-class
     [super-name (maybe identifier?)]
-    [field-names (list-of identifier?)]
+    [field-env (list-of field-env?)]
     [method-env method-env?]])
 
 (define-datatype expression expression?

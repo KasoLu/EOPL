@@ -2,7 +2,6 @@
 (define (reference? v) (integer? v))
 (define (store? s) (list? s))
 (define (method-env? e) (list? e))
-(define (field-env? e) (list? e))
 (define (any? x) #t)
 
 (define-datatype env env?
@@ -16,9 +15,6 @@
     [varss  (list-of (list-of identifier?))]
     [bodies (list-of expression?)]
     [env    env?]]
-  [extend-env-class-scope
-    [class-name (maybe identifier?)]
-    [env env?]]
   )
 
 (define-datatype proc proc?
@@ -45,30 +41,19 @@
   [a-class-decl
     [class-name identifier?]
     [super-name identifier?]
-    [field-names (list-of field-decl?)]
+    [field-names (list-of identifier?)]
     [method-decls (list-of method-decl?)]])
-
-(define-datatype field-decl field-decl?
-  [a-field-decl
-    [field-permission field-permission?]
-    [field-name identifier?]])
-
-(define-datatype field-permission field-permission?
-  [private-field-permission]
-  [protected-field-permission]
-  [public-field-permission])
 
 (define-datatype method-decl method-decl?
   [a-method-decl
-    [method-permission method-permission?]
+    [modifier modifier?]
     [method-name identifier?]
     [vars (list-of identifier?)]
     [body expression?]])
 
-(define-datatype method-permission method-permission?
-  [private-method-permission]
-  [protected-method-permission]
-  [public-method-permission])
+(define-datatype modifier modifier?
+  [a-final-modifier]
+  [a-default-modifier])
 
 (define-datatype object object?
   [an-object
@@ -79,19 +64,14 @@
   [a-method
     [vars (list-of identifier?)]
     [body expression?]
-    [permission method-permission?]
-    [class-name identifier?]])
-
-(define-datatype field field?
-  [a-field
-    [name identifier?]
-    [permission field-permission?]
-    [class-name identifier?]])
+    [modifier modifier?]
+    [super-name identifier?]
+    [field-names (list-of identifier?)]])
 
 (define-datatype class class?
   [a-class
     [super-name (maybe identifier?)]
-    [field-env (list-of field-env?)]
+    [field-names (list-of identifier?)]
     [method-env method-env?]])
 
 (define-datatype expression expression?

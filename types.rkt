@@ -15,9 +15,6 @@
     [varss  (list-of (list-of identifier?))]
     [bodies (list-of expression?)]
     [env    env?]]
-  [extend-env-current-scope
-    [class-name (maybe identifier?)]
-    [env env?]]
   )
 
 (define-datatype proc proc?
@@ -44,8 +41,14 @@
   [a-class-decl
     [class-name identifier?]
     [super-name identifier?]
+    [static-field-decls (list-of static-field-decl?)]
     [field-names (list-of identifier?)]
     [method-decls (list-of method-decl?)]])
+
+(define-datatype static-field-decl static-field-decl?
+  [a-static-field-decl
+    [name identifier?]
+    [val-exp expression?]])
 
 (define-datatype method-decl method-decl?
   [a-method-decl
@@ -68,6 +71,8 @@
 (define-datatype class class?
   [a-class
     [super-name (maybe identifier?)]
+    [static-field-names (list-of identifier?)]
+    [static-field-refs (list-of reference?)]
     [field-names (list-of identifier?)]
     [method-env method-env?]])
 

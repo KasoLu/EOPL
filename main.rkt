@@ -69,10 +69,9 @@
       (apply-env env '%self)]
     [method-call-expr [obj-exp method-name rands]
       (let ([args (map (lambda (e) (value-of e env)) rands)]
-            [obj (value-of obj-exp env)]
-            [is-self (is-self-exp obj-exp)])
+            [obj (value-of obj-exp env)])
         (apply-method
-          (find-method (if is-self (get-current-scope env) (object->class-name obj)) method-name)
+          (find-method (object->class-name obj) method-name)
           obj
           args))]
     [super-call-expr [method-name rands]
@@ -93,12 +92,6 @@
     [else
       (report-invalid-expression expr)]
     ))
-
-(define is-self-exp
-  (lambda (obj-exp)
-    (cases expression obj-exp
-      [self-expr [] #t]
-      [else #f])))
 
 ;(trace init-class-env!)
 ;(trace init-class-decl!)

@@ -62,11 +62,13 @@
 
 (define p2
   "class c1 extends object
-     method init() print(10)
-     method m1(x) begin print(101); if zero?(x) then print(11) else send self m2(-(x, 1)) end
-     method m2(x) begin print(102); if zero?(x) then print(12) else send self m1(-(x, 1)) end
-   class s1 extends c1
-     method init() print(20)
-     method m1(x) begin print(202); send self m2(-(x, 1)) end
-   let oc1 = new c1(), os1 = new s1()
-   in begin send os1 m1(5) end")
+     static next-serial-number = 1
+     field my-serial-number
+     method get-serial-number() my-serial-number
+     method init()
+       begin 
+         set my-serial-number = next-serial-number;
+         set next-serial-number = +(next-serial-number, 1)
+       end
+   let o1 = new c1(), o2 = new c1()
+   in list(send o1 get-serial-number(), send o2 get-serial-number())")

@@ -8,7 +8,7 @@
   (eopl:error 'report-expval-extractor-error "invalid expval - ~a: ~a" type val))
 
 (define (init-env)
-  (extend-env-current-scope #f (empty-env)))
+  (empty-env))
 (define (apply-env env1 var)
   (cases env env1
     [empty-env []
@@ -28,8 +28,6 @@
               [else 
                (found (cdr names) (cdr varss) (cdr bodies))]))
       (found names varss bodies)]
-    [extend-env-current-scope [class-name saved-env]
-      (apply-env saved-env var)]
     ))
 
 (define (expval->num val)
@@ -73,12 +71,13 @@
   (lambda (m self args)
     (cases method m
       [a-method [vars body class-name field-names]
-        (value-of body
-          (extend-env-current-scope class-name
+        (let ([cls (lookup-class class-name)])
+          (value-of body
             (extend-env vars (map newref args)
-              (extend-env-with-self-and-super self (class->super-name (lookup-class class-name))
+              (extend-env-with-self-and-super self (class->super-name cls)
                 (extend-env field-names (object->fields self)
-                  (empty-env))))))])))
+                  (extend-env (class->statis-field-names cls) (class->statis-field-refs cls)
+                    (empty-env)))))))])))
 
 (define extend-env-with-self-and-super
   (lambda (self super-name env)
@@ -100,17 +99,21 @@
   (lambda (c-decls)
     (set! the-class-env
       (list
-        (list 'object (a-class #f '() '()))))
+        (list 'object (a-class #f '() '() '() '()))))
     (for-each init-class-decl! c-decls)))
 
 (define init-class-decl!
   (lambda (c-decl)
     (cases class-decl c-decl
-      [a-class-decl [c-name s-name f-names m-decls]
-        (let ([f-names (append-field-names (class->field-names (lookup-class s-name)) f-names)])
+      [a-class-decl [c-name s-name static-field-decls f-names m-decls]
+        (let ([f-names (append-field-names (class->field-names (lookup-class s-name)) f-names)]
+              [static-field-names (map static-field-decl->name static-field-decls)]
+              [static-field-refs 
+                (map (lambda (e) (newref (value-of (static-field-decl->val-exp e) (init-env)))) 
+                     static-field-decls)])
           (add-to-class-env!
             c-name
-            (a-class s-name f-names
+            (a-class s-name static-field-names static-field-refs f-names
               (merge-method-envs
                 (class->method-env (lookup-class s-name))
                 (method-decls->method-env m-decls c-name f-names)))))])))
@@ -151,17 +154,29 @@
 
 (define (class->field-names c)
   (cases class c
-    [a-class [super-name field-names method-env] field-names]
+    [a-class [super-name static-field-names static-field-refs field-names method-env] field-names]
     [else (report-invalid-extract 'class c)]))
 
 (define (class->method-env c)
   (cases class c
-    [a-class [super-name field-names method-env] method-env]
+    [a-class [super-name static-field-names static-field-refs field-names method-env] method-env]
+    [else (report-invalid-extract 'class c)]))
+
+(define (class->statis-field-names c)
+  (cases class c
+    [a-class [super-name static-field-names static-field-refs field-names method-env]
+      static-field-names]
+    [else (report-invalid-extract 'class c)]))
+
+(define (class->statis-field-refs c)
+  (cases class c
+    [a-class [super-name static-field-names static-field-refs field-names method-env]
+      static-field-refs]
     [else (report-invalid-extract 'class c)]))
 
 (define (class->super-name c)
   (cases class c
-    [a-class [super-name field-names method-env] super-name]
+    [a-class [super-name static-field-names static-field-refs field-names method-env] super-name]
     [else (report-invalid-extract 'class c)]))
 
 (define g-seed 0)
@@ -179,16 +194,15 @@
     [an-object [class-name fields] class-name]
     [else (report-invalid-extract 'object o)]))
 
-(define (get-current-scope e)
-  (cases env e
-    [empty-env []
-      (report-invalid-get-current-scope)]
-    [extend-env [vars vals saved-env]
-      (get-current-scope saved-env)]
-    [extend-env-rec [names varss procs saved-env]
-      (get-current-scope saved-env)]
-    [extend-env-current-scope [class-name saved-env]
-      class-name]))
+(define (static-field-decl->name d)
+  (cases static-field-decl d
+    [a-static-field-decl [name val-exp] name]
+    [else (report-invalid-extract 'static d)]))
+
+(define (static-field-decl->val-exp d)
+  (cases static-field-decl d
+    [a-static-field-decl [name val-exp] val-exp]
+    [else (report-invalid-extract 'static d)]))
 
 (define new-object
   (lambda (class-name)

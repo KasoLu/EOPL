@@ -63,14 +63,17 @@
 (define p2
   "class c1 extends object
      method init() print(10)
-     method m1(x) print(111)
-     method m1(x, y) print(112)
-   class s1 extends c1
-     method init() print(20)
-   let oc1 = new c1(), os1 = new s1()
+     method m1() print(11)
+   let o1 = new c1()
    in begin
-        send oc1 m1(10)
-        send oc1 m1(10, 20)
-        send os1 m1(20)
-        send os1 m1(20, 40)
-      end")
+        letclass c2 = 
+          class c2 extends object
+            method init() print(20)
+            method m1() print(21)
+        in let o2 = new c2()
+           in begin send o1 m1(); send o2 m1() end;
+        let o3 = new c1()
+        in send o3 m1()
+      end
+   ")
+

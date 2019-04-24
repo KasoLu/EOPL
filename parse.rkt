@@ -24,7 +24,7 @@
     [expression ("(" expression (arbno expression) ")") call-exp]
     [expression ("letrec" (arbno identifier "(" (separated-list identifier ",") ")" 
                  "=" expression) "in" expression) letrec-exp]
-    [expression ("begin" expression (arbno expression) "end") begin-exp]
+    [expression ("begin" expression (arbno ";" expression) "end") begin-exp]
     [expression ("set" identifier "=" expression) assign-exp]
     [expression ("+" "(" expression "," expression ")") plus-exp]
     [expression ("list" "(" (separated-list expression ",") ")") list-exp]
@@ -34,6 +34,7 @@
                  "(" (separated-list expression ",") ")") method-call-expr]
     [expression ("super" identifier "(" (separated-list expression ",") ")") super-call-expr]
     [expression ("self") self-expr]
+    [expression ("letclass" identifier "=" class-decl "in" expression) letclass-expr]
     ))
 
 (define scan&parse

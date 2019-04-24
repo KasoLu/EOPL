@@ -60,20 +60,3 @@
    let o3 = new c3()
    in begin print(100); send o3 m1(7, 8) end")
 
-(define p2
-  "class c1 extends object
-     method init() print(10)
-     method m1() print(11)
-   let o1 = new c1()
-   in begin
-        letclass c2 = 
-          class c2 extends object
-            method init() print(20)
-            method m1() print(21)
-        in let o2 = new c2()
-           in begin send o1 m1(); send o2 m1() end;
-        let o3 = new c1()
-        in send o3 m1()
-      end
-   ")
-

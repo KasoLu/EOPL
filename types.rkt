@@ -121,9 +121,5 @@
     [method-name identifier?]
     [rands (list-of expression?)]]
   [self-expr]
-  [letclass-expr
-    [class-name identifier?]
-    [class-decl class-decl?]
-    [body expression?]]
   )
 

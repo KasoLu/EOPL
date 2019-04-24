@@ -68,61 +68,49 @@
   (set! the-store (setref-inner the-store ref)))
 
 (define apply-method
-  (lambda (m self args class-env)
+  (lambda (m self args)
     (cases method m
       [a-method [vars body super-name field-names]
-        (value-of
-          body
+        (value-of body
           (extend-env vars (map newref args)
             (extend-env-with-self-and-super self super-name
               (extend-env field-names (object->fields self)
-                (empty-env))))
-          class-env)])))
+                (empty-env)))))])))
 
 (define extend-env-with-self-and-super
   (lambda (self super-name env)
     (extend-env (list '%self '%super) (list self super-name) env)))
 
-(define empty-class-env
-  (lambda () '()))
-(define extend-class-env
-  (lambda (name class env)
-    (cons (list name class) env)))
-(define (apply-class-env env name)
-  (let ([maybe-pair (assq name env)])
-    (if maybe-pair
-      (cadr maybe-pair)
-      (report-unknown-class name))))
+(define the-class-env '())
+(define add-to-class-env!
+  (lambda (class-name cls)
+    (set! the-class-env
+      (cons (list class-name cls) the-class-env))))
+(define lookup-class
+  (lambda (name)
+    (let ([maybe-pair (assq name the-class-env)])
+      (if maybe-pair
+        (cadr maybe-pair)
+        (report-unknown-class name)))))
 
-(define init-class-env
-  (lambda (class-decls)
-    (let ([class-env (extend-class-env 'object (a-class #f '() '()) (empty-class-env))])
-      (let loop ([class-decls class-decls] [class-env class-env])
-        (if (null? class-decls)
-          class-env
-          (let ([class-decl (car class-decls)])
-            (let ([class (class-decl->class class-decl class-env)])
-              (loop 
-                (cdr class-decls)
-                (extend-class-env (class-decl->class-name class-decl) class class-env)))))))))
+(define init-class-env!
+  (lambda (c-decls)
+    (set! the-class-env
+      (list
+        (list 'object (a-class #f '() '()))))
+    (for-each init-class-decl! c-decls)))
 
-(define class-decl->class
-  (lambda (c-decl class-env)
-    (cases class-decl c-decl 
-      [a-class-decl [class-name super-name field-names method-decls]
-        (let* ([super-class (apply-class-env class-env super-name)]
-               [super-fields (class->field-names super-class)]
-               [super-methods (class->method-env super-class)]
-               [class-fields (append-field-names super-fields field-names)]
-               [class-methods (method-decls->method-env method-decls super-name field-names)]
-               [merge-methods (merge-method-envs class-methods super-methods)])
-          (a-class super-name class-fields merge-methods))])))
-
-(define class-decl->class-name
+(define init-class-decl!
   (lambda (c-decl)
     (cases class-decl c-decl
-      [a-class-decl [class-name super-name field-names method-decls] class-name]
-      [else (report-class-decl-extract-error)])))
+      [a-class-decl [c-name s-name f-names m-decls]
+        (let ([f-names (append-field-names (class->field-names (lookup-class s-name)) f-names)])
+          (add-to-class-env!
+            c-name
+            (a-class s-name f-names
+              (merge-method-envs
+                (class->method-env (lookup-class s-name))
+                (method-decls->method-env m-decls s-name f-names)))))])))
 
 (define append-field-names
   (lambda (super-fields new-fields)
@@ -134,8 +122,8 @@
                  (append-field-names (cdr super-fields) new-fields))])))
 
 (define find-method
-  (lambda (c-name name class-env)
-    (let ([m-env (class->method-env (apply-class-env class-env c-name))])
+  (lambda (c-name name)
+    (let ([m-env (class->method-env (lookup-class c-name))])
       (let ([maybe-pair (assq name m-env)])
         (if (pair? maybe-pair)
           (cadr maybe-pair)
@@ -151,7 +139,12 @@
 
 (define merge-method-envs
   (lambda (super-m-env new-m-env)
-    (append new-m-env super-m-env)))
+    (if (null? super-m-env)
+      new-m-env
+      (cons (if (assq (caar super-m-env) new-m-env)
+              (cons (fresh-identifier (caar super-m-env)) (cdar super-m-env))
+              (car super-m-env))
+            (merge-method-envs (cdr super-m-env) new-m-env)))))
 
 (define (class->super-name c)
   (cases class c

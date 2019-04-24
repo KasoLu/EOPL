@@ -50,6 +50,12 @@
     [vars (list-of identifier?)]
     [body expression?]])
 
+(define-datatype class class?
+  [a-class
+    [super-name (maybe identifier?)]
+    [field-names (list-of identifier?)]
+    [method-env hash?]])
+
 (define-datatype object object?
   [an-object
     [class-name identifier?]
@@ -59,14 +65,8 @@
   [a-method
     [vars (list-of identifier?)]
     [body expression?]
-    [super-name identifier?]
+    [class-name identifier?]
     [field-names (list-of identifier?)]])
-
-(define-datatype class class?
-  [a-class
-    [super-name (maybe identifier?)]
-    [field-names (list-of identifier?)]
-    [method-env method-env?]])
 
 (define-datatype expression expression?
   [const-exp

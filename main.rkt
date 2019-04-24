@@ -102,4 +102,3 @@
 ;(trace new-object)
 ;(trace find-method)
 ;(trace value-of)
-;(trace merge-method-envs)

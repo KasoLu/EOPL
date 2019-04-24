@@ -70,14 +70,12 @@
 (define apply-method
   (lambda (m self args)
     (cases method m
-      [a-method [vars body class-name field-names]
-        (let ([cls (lookup-class class-name)])
-          (value-of body
-            (extend-env vars (map newref args)
-              (extend-env-with-self-and-super self (class->super-name cls)
-                (extend-env field-names (object->fields self)
-                  (extend-env (class->statis-field-names cls) (class->statis-field-refs cls)
-                    (empty-env)))))))])))
+      [a-method [vars body super-name field-names]
+        (value-of body
+          (extend-env vars (map newref args)
+            (extend-env-with-self-and-super self super-name
+              (extend-env field-names (object->fields self)
+                (empty-env)))))])))
 
 (define extend-env-with-self-and-super
   (lambda (self super-name env)
@@ -99,24 +97,20 @@
   (lambda (c-decls)
     (set! the-class-env
       (list
-        (list 'object (a-class #f '() '() '() '()))))
+        (list 'object (a-class #f '() '()))))
     (for-each init-class-decl! c-decls)))
 
 (define init-class-decl!
   (lambda (c-decl)
     (cases class-decl c-decl
-      [a-class-decl [c-name s-name static-field-decls f-names m-decls]
-        (let ([f-names (append-field-names (class->field-names (lookup-class s-name)) f-names)]
-              [static-field-names (map static-field-decl->name static-field-decls)]
-              [static-field-refs 
-                (map (lambda (e) (newref (value-of (static-field-decl->val-exp e) (init-env)))) 
-                     static-field-decls)])
+      [a-class-decl [c-name s-name f-names m-decls]
+        (let ([f-names (append-field-names (class->field-names (lookup-class s-name)) f-names)])
           (add-to-class-env!
             c-name
-            (a-class s-name static-field-names static-field-refs f-names
+            (a-class s-name f-names
               (merge-method-envs
                 (class->method-env (lookup-class s-name))
-                (method-decls->method-env m-decls c-name f-names)))))])))
+                (method-decls->method-env m-decls s-name f-names)))))])))
 
 (define append-field-names
   (lambda (super-fields new-fields)
@@ -136,11 +130,12 @@
           (report-method-not-found name))))))
 
 (define method-decls->method-env
-  (lambda (m-decls class-name field-names)
+  (lambda (m-decls super-name field-names)
     (map (lambda (m-decl)
            (cases method-decl m-decl
              [a-method-decl [method-name vars body]
-               (list method-name (a-method vars body class-name field-names))])) 
+               (let ([method-signature (generate-method-signature method-name vars)])
+                 (list method-signature (a-method vars body super-name field-names)))])) 
          m-decls)))
 
 (define merge-method-envs
@@ -154,29 +149,12 @@
 
 (define (class->field-names c)
   (cases class c
-    [a-class [super-name static-field-names static-field-refs field-names method-env] field-names]
+    [a-class [super-name field-names method-env] field-names]
     [else (report-invalid-extract 'class c)]))
 
 (define (class->method-env c)
   (cases class c
-    [a-class [super-name static-field-names static-field-refs field-names method-env] method-env]
-    [else (report-invalid-extract 'class c)]))
-
-(define (class->statis-field-names c)
-  (cases class c
-    [a-class [super-name static-field-names static-field-refs field-names method-env]
-      static-field-names]
-    [else (report-invalid-extract 'class c)]))
-
-(define (class->statis-field-refs c)
-  (cases class c
-    [a-class [super-name static-field-names static-field-refs field-names method-env]
-      static-field-refs]
-    [else (report-invalid-extract 'class c)]))
-
-(define (class->super-name c)
-  (cases class c
-    [a-class [super-name static-field-names static-field-refs field-names method-env] super-name]
+    [a-class [super-name field-names method-env] method-env]
     [else (report-invalid-extract 'class c)]))
 
 (define g-seed 0)
@@ -194,15 +172,11 @@
     [an-object [class-name fields] class-name]
     [else (report-invalid-extract 'object o)]))
 
-(define (static-field-decl->name d)
-  (cases static-field-decl d
-    [a-static-field-decl [name val-exp] name]
-    [else (report-invalid-extract 'static d)]))
-
-(define (static-field-decl->val-exp d)
-  (cases static-field-decl d
-    [a-static-field-decl [name val-exp] val-exp]
-    [else (report-invalid-extract 'static d)]))
+(define generate-method-signature
+  (lambda (method-name method-rands)
+    (let ([rand-count (length method-rands)])
+      (let ([name-str (string-append (symbol->string method-name) "_" (number->string rand-count))])
+        (string->symbol name-str)))))
 
 (define new-object
   (lambda (class-name)

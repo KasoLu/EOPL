@@ -62,13 +62,15 @@
 
 (define p2
   "class c1 extends object
-     static next-serial-number = 1
-     field my-serial-number
-     method get-serial-number() my-serial-number
-     method init()
-       begin 
-         set my-serial-number = next-serial-number;
-         set next-serial-number = +(next-serial-number, 1)
-       end
-   let o1 = new c1(), o2 = new c1()
-   in list(send o1 get-serial-number(), send o2 get-serial-number())")
+     method init() print(10)
+     method m1(x) print(111)
+     method m1(x, y) print(112)
+   class s1 extends c1
+     method init() print(20)
+   let oc1 = new c1(), os1 = new s1()
+   in begin
+        send oc1 m1(10)
+        send oc1 m1(10, 20)
+        send os1 m1(20)
+        send os1 m1(20, 40)
+      end")

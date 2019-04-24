@@ -10,9 +10,8 @@
 ;arbno | separated-list 
 (define grammar-spec
   '([program ((arbno class-decl) expression) a-program]
-    [class-decl ("class" identifier "extends" identifier (arbno static-field-decl)
+    [class-decl ("class" identifier "extends" identifier
                  (arbno "field" identifier) (arbno method-decl)) a-class-decl]
-    [static-field-decl ("static" identifier "=" expression) a-static-field-decl]
     [method-decl ("method" identifier "(" (separated-list identifier ",") ")" 
                   expression) a-method-decl]
     [expression (number) const-exp]
@@ -25,7 +24,7 @@
     [expression ("(" expression (arbno expression) ")") call-exp]
     [expression ("letrec" (arbno identifier "(" (separated-list identifier ",") ")" 
                  "=" expression) "in" expression) letrec-exp]
-    [expression ("begin" expression (arbno ";" expression) "end") begin-exp]
+    [expression ("begin" expression (arbno expression) "end") begin-exp]
     [expression ("set" identifier "=" expression) assign-exp]
     [expression ("+" "(" expression "," expression ")") plus-exp]
     [expression ("list" "(" (separated-list expression ",") ")") list-exp]

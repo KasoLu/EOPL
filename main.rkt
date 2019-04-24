@@ -70,22 +70,25 @@
     [method-call-expr [obj-exp method-name rands]
       (let ([args (map (lambda (e) (value-of e env)) rands)]
             [obj (value-of obj-exp env)])
-        (apply-method
-          (find-method (object->class-name obj) method-name)
-          obj
-          args))]
+        (let ([method-signature (generate-method-signature method-name rands)])
+          (apply-method
+            (find-method (object->class-name obj) method-signature)
+            obj
+            args)))]
     [super-call-expr [method-name rands]
       (let ([args (map (lambda (e) (value-of e env)) rands)]
             [obj (apply-env env '%self)])
-        (apply-method
-          (find-method (apply-env env '%super) method-name)
-          obj
-          args))]
+        (let ([method-signature (generate-method-signature method-name rands)])
+          (apply-method
+            (find-method (apply-env env '%super) method-name)
+            obj
+            args)))]
     [new-object-expr [class-name rands]
       (let ([args (map (lambda (e) (value-of e env)) rands)]
-            [obj (new-object class-name)])
+            [obj (new-object class-name)]
+            [method-signature (generate-method-signature 'init rands)])
         (apply-method
-          (find-method class-name 'init)
+          (find-method class-name method-signature)
           obj
           args)
         obj)]
@@ -102,3 +105,4 @@
 ;(trace new-object)
 ;(trace find-method)
 ;(trace value-of)
+;(trace generate-method-signature)

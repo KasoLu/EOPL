@@ -97,7 +97,7 @@
   (lambda (c-decls)
     (set! the-class-env
       (list
-        (list 'object (a-class #f '() '()))))
+        (list 'object (a-class #f '() (vector)))))
     (for-each init-class-decl! c-decls)))
 
 (define init-class-decl!
@@ -124,23 +124,26 @@
 (define find-method
   (lambda (c-name name)
     (let ([m-env (class->method-env (lookup-class c-name))])
-      (let ([maybe-pair (assq name m-env)])
-        (if (pair? maybe-pair)
-          (cadr maybe-pair)
+      (let loop ([idx 0] [len (vector-length m-env)])
+        (if (< idx len)
+          (let ([pair (vector-ref m-env idx)])
+            (if (eqv? (car pair) name)
+              (cadr pair)
+              (loop (+ idx 1) len)))
           (report-method-not-found name))))))
 
 (define method-decls->method-env
   (lambda (m-decls super-name field-names)
-    (map (lambda (m-decl)
-           (cases method-decl m-decl
-             [a-method-decl [method-name vars body]
-               (let ([optimize-body (optimize-super-call body super-name)])
-                 (list method-name (a-method vars optimize-body super-name field-names)))]))
-         m-decls)))
+    (list->vector
+      (map (lambda (m-decl)
+             (cases method-decl m-decl
+               [a-method-decl [method-name vars body]
+                 (list method-name (a-method vars body super-name field-names))])) 
+           m-decls))))
 
 (define merge-method-envs
   (lambda (super-m-env new-m-env)
-    (append new-m-env super-m-env)))
+    (vector-append new-m-env super-m-env)))
 
 (define (class->super-name c)
   (cases class c
@@ -179,59 +182,107 @@
       (map (lambda (field-name) (newref (list 'uninit-field field-name))) 
            (class->field-names (lookup-class class-name))))))
 
-(define optimize-super-call
-  (lambda (body super-name)
+(define translator-class-env!
+  (lambda ()
+    (let loop ([class-env the-class-env] [trans-class-env '()])
+      (if (null? class-env)
+        (set! the-class-env (reverse trans-class-env))
+        (let ([class-pair (car class-env)])
+          (cases class (cadr class-pair) 
+            [a-class [super-name field-names method-env]
+              (let* ([trans-method-env (translator-method-env method-env)]
+                     [trans-class (a-class super-name field-names trans-method-env)]
+                     [trans-pair (list (car class-pair) trans-class)])
+                (loop (cdr class-env) (cons trans-pair trans-class-env)))]))))))
+
+(define translator-method-env
+  (lambda (method-env)
+    (vector-map 
+      (lambda (method-pair)
+        (cases method (cadr method-pair)
+          [a-method [vars body super-name field-names]
+            (list 
+              (car method-pair) 
+              (a-method vars (translator-of-expression body) super-name field-names))])) 
+      method-env)))
+
+(define translator-of-expression
+  (lambda (body)
     (cases expression body
       [const-exp [num] 
         (const-exp num)]
       [var-exp [var]
         (var-exp var)]
       [diff-exp [exp1 exp2]
-        (let ([optimized-exps (optimize-super-call-exps super-name (list exp1 exp2))])
-          (apply diff-exp optimized-exps))]
+        (let ([trans-exps (translator-exps (list exp1 exp2))])
+          (apply diff-exp trans-exps))]
       [zero?-exp [exp1]
-        (zero?-exp (optimize-super-call exp1 super-name))]
+        (zero?-exp (translator-of-expression exp1))]
       [if-exp [exp1 exp2 exp3]
-        (let ([optimized-exps (optimize-super-call-exps super-name (list exp1 exp2))])
-          (apply if-exp optimized-exps))]
+        (let ([trans-exps (translator-exps (list exp1 exp2 exp3))])
+          (apply if-exp trans-exps))]
       [let-exp [vars exps body]
-        (let ([optimized-exps (optimize-super-call-exps super-name (cons body exps))])
-          (let-exp vars (cdr optimized-exps) (car optimized-exps)))]
+        (let ([trans-exps (translator-exps exps)]
+              [trans-body (translator-of-expression body)])
+          (let-exp vars trans-exps trans-body))]
       [proc-exp [vars body]
-        (proc-exp vars (optimize-super-call body super-name))]
+        (proc-exp vars (translator-of-expression body))]
       [call-exp [rator rands]
-        (let ([optimized-exps (optimize-super-call-exps super-name (cons rator rands))])
-          (call-exp (car optimized-exps) (cdr optimized-exps)))]
-      [letrec-exp [names varss bodies letrec-body]
-        (let ([optimized-exps (optimize-super-call-exps super-name (cons letrec-body bodies))])
-          (letrec-exp names varss (cdr optimized-exps) (car optimized-exps)))]
+        (let ([trans-rator (translator-of-expression rator)]
+              [trans-rands (translator-exps rands)])
+          (call-exp trans-rator trans-rands))]
+      [letrec-exp [names varss procs rbody]
+        (let ([trans-procs (translator-exps procs)]
+              [trans-rbody (translator-of-expression rbody)])
+          (letrec-exp names varss trans-procs trans-rbody))]
       [assign-exp [var exp1]
-        (assign-exp var (optimize-super-call exp1 super-name))]
+        (assign-exp var (translator-of-expression exp1))]
       [begin-exp [exp1 exps]
-        (let ([optimized-exps (optimize-super-call-exps super-name (cons exp1 exps))])
-          (begin-exp (car optimized-exps) (cdr optimized-exps)))]
+        (let ([trans-exps (translator-exps (cons exp1 exps))])
+          (begin-exp (car trans-exps) (cdr trans-exps)))]
       [plus-exp [exp1 exp2]
-        (let ([optimized-exps (optimize-super-call-exps super-name (list exp1 exp2))])
-          (apply plus-exp optimized-exps))]
+        (let ([trans-exps (translator-exps (list exp1 exp2))])
+          (apply plus-exp trans-exps))]
       [list-exp [exps]
-        (let ([optimized-exps (optimize-super-call-exps super-name exps)])
-          (list-exp optimized-exps))]
+        (let ([trans-exps (translator-exps exps)])
+          (list-exp trans-exps))]
       [print-exp [exp1]
-        (print-exp (optimize-super-call exp1 super-name))]
+        (print-exp (translator-of-expression exp1))]
       [self-expr []
         (self-expr)]
       [method-call-expr [obj-exp method-name rands]
-        (let ([optimized-exps (optimize-super-call-exps super-name (cons obj-exp rands))])
-          (method-call-expr (car optimized-exps) method-name (cdr optimized-exps)))]
+        (let ([trans-exps (translator-exps (cons obj-exp rands))])
+          (method-call-expr (car trans-exps) method-name (cdr trans-exps)))]
       [super-call-expr [method-name rands]
-        (static-super-call (find-method super-name method-name) rands)]
+        (let ([trans-exps (translator-exps rands)])
+          (super-call-expr method-name trans-exps))]
       [new-object-expr [class-name rands]
-        (let ([optimized-exps (optimize-super-call-exps super-name rands)])
-          (new-object-expr class-name optimized-exps))]
+        (let ([trans-exps (translator-exps rands)])
+          (new-object-expr class-name trans-exps))]
+      [named-send-expr [class-name obj-exp method-name rands]
+        (let ([trans-exps (translator-exps (cons obj-exp rands))]
+              [method-offset (find-method-offset class-name method-name)])
+          (static-method-call-expr class-name method-offset (car trans-exps) (cdr trans-exps)))]
       [else
         (report-invalid-expression expr)]
       )))
 
-(define optimize-super-call-exps
-  (lambda (super-name exps)
-    (map (lambda (e) (optimize-super-call e super-name)) exps)))
+(define translator-exps
+  (lambda (exps)
+    (map translator-of-expression exps)))
+
+(define find-method-offset
+  (lambda (class-name method-name)
+    (let ([method-env (class->method-env (lookup-class class-name))])
+      (let loop ([idx 0] [len (vector-length method-env)])
+        (if (< idx len)
+          (let ([method-pair (vector-ref method-env idx)])
+            (if (eqv? (car method-pair) method-name)
+              idx
+              (loop (+ idx 1) len)))
+          (report-method-not-found class-name method-name))))))
+
+(define find-method-with-offset
+  (lambda (class-name method-offset)
+    (let ([method-env (class->method-env (lookup-class class-name))])
+      (cadr (vector-ref method-env method-offset)))))

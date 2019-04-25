@@ -1,7 +1,7 @@
 (define (identifier? x) (symbol? x))
 (define (reference? v) (integer? v))
 (define (store? s) (list? s))
-(define (method-env? e) (list? e))
+(define (method-env? e) (vector? e))
 (define (any? x) #t)
 
 (define-datatype env env?
@@ -121,8 +121,15 @@
     [method-name identifier?]
     [rands (list-of expression?)]]
   [self-expr]
-  [static-super-call
-    [method method?]
+  [named-send-expr
+    [class-name identifier?]
+    [obj-exp expression?]
+    [method-name identifier?]
+    [rands (list-of expression?)]]
+  [static-method-call-expr
+    [class-name identifier?]
+    [method-offset integer?]
+    [obj-exp expression?]
     [rands (list-of expression?)]]
   )
 

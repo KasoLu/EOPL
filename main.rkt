@@ -12,7 +12,8 @@
     (cases program pgm
       [a-program [class-decls body]
         (init-class-env! class-decls)
-        (value-of body (init-env))])))
+        (translator-class-env!)
+        (value-of (translator-of-expression body) (init-env))])))
 
 (define (value-of expr env)
   (cases expression expr
@@ -74,6 +75,13 @@
           (find-method (object->class-name obj) method-name)
           obj
           args))]
+    [super-call-expr [method-name rands]
+      (let ([args (map (lambda (e) (value-of e env)) rands)]
+            [obj (apply-env env '%self)])
+        (apply-method
+          (find-method (apply-env env '%super) method-name)
+          obj
+          args))]
     [new-object-expr [class-name rands]
       (let ([args (map (lambda (e) (value-of e env)) rands)]
             [obj (new-object class-name)])
@@ -82,9 +90,10 @@
           obj
           args)
         obj)]
-    [static-super-call [method rands]
-      (let ([args (map (lambda (e) (value-of e env)) rands)]
-            [obj (apply-env env '%self)])
+    [static-method-call-expr [class-name method-offset obj-exp rands]
+      (let ([method (find-method-with-offset class-name method-offset)]
+            [obj (value-of obj-exp env)]
+            [args (map (lambda (e) (value-of e env)) rands)])
         (apply-method method obj args))]
     [else
       (report-invalid-expression expr)]

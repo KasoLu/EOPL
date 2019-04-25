@@ -12,8 +12,7 @@
     (cases program pgm
       [a-program [class-decls body]
         (init-class-env! class-decls)
-        (translator-class-env!)
-        (value-of (translator-of-expression body) (init-env))])))
+        (value-of body (init-env))])))
 
 (define (value-of expr env)
   (cases expression expr
@@ -90,11 +89,12 @@
           obj
           args)
         obj)]
-    [static-method-call-expr [class-name method-offset obj-exp rands]
-      (let ([method (find-method-with-offset class-name method-offset)]
-            [obj (value-of obj-exp env)]
-            [args (map (lambda (e) (value-of e env)) rands)])
-        (apply-method method obj args))]
+    [equal?-expr [exp1 exp2]
+      (let ([val1 (value-of exp1 env)] [val2 (value-of exp2 env)])
+        (bool-val (equal? val1 val2)))]
+    [instance-of-expr [obj-exp class-name]
+      (let ([obj-class-name (object->class-name (value-of obj-exp env))])
+        (bool-val (is-subclass-of-class obj-class-name class-name)))]
     [else
       (report-invalid-expression expr)]
     ))

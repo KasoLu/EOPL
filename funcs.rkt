@@ -97,7 +97,7 @@
   (lambda (c-decls)
     (set! the-class-env
       (list
-        (list 'object (a-class #f '() (vector)))))
+        (list 'object (a-class #f '() '()))))
     (for-each init-class-decl! c-decls)))
 
 (define init-class-decl!
@@ -124,26 +124,22 @@
 (define find-method
   (lambda (c-name name)
     (let ([m-env (class->method-env (lookup-class c-name))])
-      (let loop ([idx 0] [len (vector-length m-env)])
-        (if (< idx len)
-          (let ([pair (vector-ref m-env idx)])
-            (if (eqv? (car pair) name)
-              (cadr pair)
-              (loop (+ idx 1) len)))
+      (let ([maybe-pair (assq name m-env)])
+        (if (pair? maybe-pair)
+          (cadr maybe-pair)
           (report-method-not-found name))))))
 
 (define method-decls->method-env
   (lambda (m-decls super-name field-names)
-    (list->vector
-      (map (lambda (m-decl)
-             (cases method-decl m-decl
-               [a-method-decl [method-name vars body]
-                 (list method-name (a-method vars body super-name field-names))])) 
-           m-decls))))
+    (map (lambda (m-decl)
+           (cases method-decl m-decl
+             [a-method-decl [method-name vars body]
+               (list method-name (a-method vars body super-name field-names))])) 
+         m-decls)))
 
 (define merge-method-envs
   (lambda (super-m-env new-m-env)
-    (vector-append new-m-env super-m-env)))
+    (append new-m-env super-m-env)))
 
 (define (class->super-name c)
   (cases class c
@@ -182,107 +178,11 @@
       (map (lambda (field-name) (newref (list 'uninit-field field-name))) 
            (class->field-names (lookup-class class-name))))))
 
-(define translator-class-env!
-  (lambda ()
-    (let loop ([class-env the-class-env] [trans-class-env '()])
-      (if (null? class-env)
-        (set! the-class-env (reverse trans-class-env))
-        (let ([class-pair (car class-env)])
-          (cases class (cadr class-pair) 
-            [a-class [super-name field-names method-env]
-              (let* ([trans-method-env (translator-method-env method-env)]
-                     [trans-class (a-class super-name field-names trans-method-env)]
-                     [trans-pair (list (car class-pair) trans-class)])
-                (loop (cdr class-env) (cons trans-pair trans-class-env)))]))))))
-
-(define translator-method-env
-  (lambda (method-env)
-    (vector-map 
-      (lambda (method-pair)
-        (cases method (cadr method-pair)
-          [a-method [vars body super-name field-names]
-            (list 
-              (car method-pair) 
-              (a-method vars (translator-of-expression body) super-name field-names))])) 
-      method-env)))
-
-(define translator-of-expression
-  (lambda (body)
-    (cases expression body
-      [const-exp [num] 
-        (const-exp num)]
-      [var-exp [var]
-        (var-exp var)]
-      [diff-exp [exp1 exp2]
-        (let ([trans-exps (translator-exps (list exp1 exp2))])
-          (apply diff-exp trans-exps))]
-      [zero?-exp [exp1]
-        (zero?-exp (translator-of-expression exp1))]
-      [if-exp [exp1 exp2 exp3]
-        (let ([trans-exps (translator-exps (list exp1 exp2 exp3))])
-          (apply if-exp trans-exps))]
-      [let-exp [vars exps body]
-        (let ([trans-exps (translator-exps exps)]
-              [trans-body (translator-of-expression body)])
-          (let-exp vars trans-exps trans-body))]
-      [proc-exp [vars body]
-        (proc-exp vars (translator-of-expression body))]
-      [call-exp [rator rands]
-        (let ([trans-rator (translator-of-expression rator)]
-              [trans-rands (translator-exps rands)])
-          (call-exp trans-rator trans-rands))]
-      [letrec-exp [names varss procs rbody]
-        (let ([trans-procs (translator-exps procs)]
-              [trans-rbody (translator-of-expression rbody)])
-          (letrec-exp names varss trans-procs trans-rbody))]
-      [assign-exp [var exp1]
-        (assign-exp var (translator-of-expression exp1))]
-      [begin-exp [exp1 exps]
-        (let ([trans-exps (translator-exps (cons exp1 exps))])
-          (begin-exp (car trans-exps) (cdr trans-exps)))]
-      [plus-exp [exp1 exp2]
-        (let ([trans-exps (translator-exps (list exp1 exp2))])
-          (apply plus-exp trans-exps))]
-      [list-exp [exps]
-        (let ([trans-exps (translator-exps exps)])
-          (list-exp trans-exps))]
-      [print-exp [exp1]
-        (print-exp (translator-of-expression exp1))]
-      [self-expr []
-        (self-expr)]
-      [method-call-expr [obj-exp method-name rands]
-        (let ([trans-exps (translator-exps (cons obj-exp rands))])
-          (method-call-expr (car trans-exps) method-name (cdr trans-exps)))]
-      [super-call-expr [method-name rands]
-        (let ([trans-exps (translator-exps rands)])
-          (super-call-expr method-name trans-exps))]
-      [new-object-expr [class-name rands]
-        (let ([trans-exps (translator-exps rands)])
-          (new-object-expr class-name trans-exps))]
-      [named-send-expr [class-name obj-exp method-name rands]
-        (let ([trans-exps (translator-exps (cons obj-exp rands))]
-              [method-offset (find-method-offset class-name method-name)])
-          (static-method-call-expr class-name method-offset (car trans-exps) (cdr trans-exps)))]
-      [else
-        (report-invalid-expression expr)]
-      )))
-
-(define translator-exps
-  (lambda (exps)
-    (map translator-of-expression exps)))
-
-(define find-method-offset
-  (lambda (class-name method-name)
-    (let ([method-env (class->method-env (lookup-class class-name))])
-      (let loop ([idx 0] [len (vector-length method-env)])
-        (if (< idx len)
-          (let ([method-pair (vector-ref method-env idx)])
-            (if (eqv? (car method-pair) method-name)
-              idx
-              (loop (+ idx 1) len)))
-          (report-method-not-found class-name method-name))))))
-
-(define find-method-with-offset
-  (lambda (class-name method-offset)
-    (let ([method-env (class->method-env (lookup-class class-name))])
-      (cadr (vector-ref method-env method-offset)))))
+(define is-subclass-of-class
+  (lambda (class-name target-class-name)
+    (let loop ([class-name class-name])
+      (if class-name
+        (if (eqv? class-name target-class-name)
+          #t
+          (loop (class->super-name (lookup-class class-name))))
+        #f))))

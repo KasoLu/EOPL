@@ -134,7 +134,8 @@
     (map (lambda (m-decl)
            (cases method-decl m-decl
              [a-method-decl [method-name vars body]
-               (list method-name (a-method vars body super-name field-names))])) 
+               (let ([optimize-body (optimize-super-call body super-name)])
+                 (list method-name (a-method vars optimize-body super-name field-names)))]))
          m-decls)))
 
 (define merge-method-envs
@@ -177,3 +178,60 @@
       class-name
       (map (lambda (field-name) (newref (list 'uninit-field field-name))) 
            (class->field-names (lookup-class class-name))))))
+
+(define optimize-super-call
+  (lambda (body super-name)
+    (cases expression body
+      [const-exp [num] 
+        (const-exp num)]
+      [var-exp [var]
+        (var-exp var)]
+      [diff-exp [exp1 exp2]
+        (let ([optimized-exps (optimize-super-call-exps super-name (list exp1 exp2))])
+          (apply diff-exp optimized-exps))]
+      [zero?-exp [exp1]
+        (zero?-exp (optimize-super-call exp1 super-name))]
+      [if-exp [exp1 exp2 exp3]
+        (let ([optimized-exps (optimize-super-call-exps super-name (list exp1 exp2))])
+          (apply if-exp optimized-exps))]
+      [let-exp [vars exps body]
+        (let ([optimized-exps (optimize-super-call-exps super-name (cons body exps))])
+          (let-exp vars (cdr optimized-exps) (car optimized-exps)))]
+      [proc-exp [vars body]
+        (proc-exp vars (optimize-super-call body super-name))]
+      [call-exp [rator rands]
+        (let ([optimized-exps (optimize-super-call-exps super-name (cons rator rands))])
+          (call-exp (car optimized-exps) (cdr optimized-exps)))]
+      [letrec-exp [names varss bodies letrec-body]
+        (let ([optimized-exps (optimize-super-call-exps super-name (cons letrec-body bodies))])
+          (letrec-exp names varss (cdr optimized-exps) (car optimized-exps)))]
+      [assign-exp [var exp1]
+        (assign-exp var (optimize-super-call exp1 super-name))]
+      [begin-exp [exp1 exps]
+        (let ([optimized-exps (optimize-super-call-exps super-name (cons exp1 exps))])
+          (begin-exp (car optimized-exps) (cdr optimized-exps)))]
+      [plus-exp [exp1 exp2]
+        (let ([optimized-exps (optimize-super-call-exps super-name (list exp1 exp2))])
+          (apply plus-exp optimized-exps))]
+      [list-exp [exps]
+        (let ([optimized-exps (optimize-super-call-exps super-name exps)])
+          (list-exp optimized-exps))]
+      [print-exp [exp1]
+        (print-exp (optimize-super-call exp1 super-name))]
+      [self-expr []
+        (self-expr)]
+      [method-call-expr [obj-exp method-name rands]
+        (let ([optimized-exps (optimize-super-call-exps super-name (cons obj-exp rands))])
+          (method-call-expr (car optimized-exps) method-name (cdr optimized-exps)))]
+      [super-call-expr [method-name rands]
+        (static-super-call (find-method super-name method-name) rands)]
+      [new-object-expr [class-name rands]
+        (let ([optimized-exps (optimize-super-call-exps super-name rands)])
+          (new-object-expr class-name optimized-exps))]
+      [else
+        (report-invalid-expression expr)]
+      )))
+
+(define optimize-super-call-exps
+  (lambda (super-name exps)
+    (map (lambda (e) (optimize-super-call e super-name)) exps)))

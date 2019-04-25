@@ -63,14 +63,12 @@
 (define p2
   "class c1 extends object
      method init() print(10)
-     method m1(x) print(101)
-     method m1(x, y) print(102)
    class s1 extends c1
-     method init() print(20)
-   let oc1 = new c1(), os1 = new s1()
-   in begin
-        send oc1 m1(10);
-        send oc1 m1(20, 30);
-        send os1 m1(40);
-        send os1 m1(50, 60)
-      end")
+     method init() 
+       begin
+         super init();
+         print(20)
+       end
+   let os1 = new s1()
+   in 100")
+

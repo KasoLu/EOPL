@@ -121,5 +121,8 @@
     [method-name identifier?]
     [rands (list-of expression?)]]
   [self-expr]
+  [static-super-call
+    [method method?]
+    [rands (list-of expression?)]]
   )
 

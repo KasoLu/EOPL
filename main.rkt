@@ -4,7 +4,8 @@
 
 (define (run str)
   (value-of-program
-    (scan&parse str)))
+    (translator-of-program
+      (scan&parse str))))
 
 (define value-of-program
   (lambda (pgm)
@@ -85,13 +86,113 @@
       (let ([args (map (lambda (e) (value-of e env)) rands)]
             [obj (new-object class-name)])
         (apply-method
-          (find-method class-name 'init)
+          (find-method class-name (generate-method-signature 'init rands))
           obj
           args)
         obj)]
     [else
       (report-invalid-expression expr)]
     ))
+
+(define translator-of-program
+  (lambda (pgm)
+    (cases program pgm
+      [a-program [class-decls body]
+        (a-program
+          (translator-of-class-decls class-decls)
+          (translator-of-expression body))])))
+
+(define translator-of-class-decls
+  (lambda (class-decls)
+    (let loop ([class-decls class-decls] [trans-class-decls '()])
+      (if (null? class-decls)
+        (reverse trans-class-decls)
+        (cases class-decl (car class-decls)
+          [a-class-decl [class-name super-name field-names method-decls]
+            (let ([trans-method-decls (translator-of-method-decls method-decls)])
+              (loop 
+                (cdr class-decls)
+                (cons
+                  (a-class-decl class-name super-name field-names trans-method-decls)
+                  trans-class-decls)))])))))
+
+(define translator-of-method-decls
+  (lambda (method-decls)
+    (let loop ([method-decls method-decls] [trans-method-decls '()])
+      (if (null? method-decls)
+        (reverse trans-method-decls)
+        (cases method-decl (car method-decls)
+          [a-method-decl [method-name vars body]
+            (let ([trans-method-name (generate-method-signature method-name vars)])
+              (loop 
+                (cdr method-decls)
+                (cons (a-method-decl trans-method-name vars body) trans-method-decls)))])))))
+
+(define translator-of-expression
+  (lambda (expr)
+    (cases expression expr
+      [const-exp [num] 
+        (const-exp num)]
+      [var-exp [var]
+        (var-exp var)]
+      [diff-exp [exp1 exp2]
+        (let ([trans-exps (map translator-of-expression (list exp1 exp2))])
+          (apply diff-exp trans-exps))]
+      [zero?-exp [exp1]
+        (zero?-exp (translator-of-expression exp1))]
+      [if-exp [exp1 exp2 exp3]
+        (let ([trans-exps (map translator-of-expression (list exp1 exp2 exp3))])
+          (apply if-exp trans-exps))]
+      [let-exp [vars exps body]
+        (let ([trans-exps (map translator-of-expression exps)]
+              [trans-body (translator-of-expression body)])
+          (let-exp vars trans-exps trans-body))]
+      [proc-exp [vars body]
+        (proc-exp vars (translator-of-expression body))]
+      [call-exp [rator rands]
+        (let ([trans-rator (translator-of-expression rator)]
+              [trans-rands (map translator-of-expression rands)])
+          (call-exp trans-rator trans-rands))]
+      [letrec-exp [names varss procs rbody]
+        (let ([trans-procs (map translator-of-expression procs)]
+              [trans-rbody (translator-of-expression rbody)])
+          (letrec-exp names varss trans-procs trans-rbody))]
+      [assign-exp [var exp1]
+        (assign-exp var (translator-of-expression exp1))]
+      [begin-exp [exp1 exps]
+        (let ([trans-exp1 (translator-of-expression exp1)]
+              [trans-exps (map translator-of-expression exps)])
+          (begin-exp trans-exp1 trans-exps))]
+      [plus-exp [exp1 exp2]
+        (let ([trans-exps (map translator-of-expression (list exp1 exp2))])
+          (apply plus-exp trans-exps))]
+      [list-exp [exps]
+        (list-exp (map translator-of-expression exps))]
+      [print-exp [exp1]
+        (print-exp (translator-of-expression exp1))]
+      [self-expr []
+        (self-expr)]
+      [method-call-expr [obj-exp method-name rands]
+        (let ([trans-method-name (generate-method-signature method-name rands)]
+              [trans-obj-exp (translator-of-expression obj-exp)]
+              [trans-rands (map translator-of-expression rands)])
+          (method-call-expr trans-obj-exp trans-method-name trans-rands))]
+      [super-call-expr [method-name rands]
+        (let ([trans-method-name (generate-method-signature method-name rands)]
+              [trans-rands (map translator-of-expression rands)])
+          (super-call-expr trans-method-name trans-rands))]
+      [new-object-expr [class-name rands]
+        (let ([trans-rands (map translator-of-expression rands)])
+          (new-object-expr class-name trans-rands))]
+      [else
+        (report-invalid-expression expr)]
+    )))
+
+(define generate-method-signature
+  (lambda (method-name method-vars)
+    (let* ([vars-count (number->string (length method-vars))]
+           [name-string (symbol->string method-name)])
+      (string->symbol (string-append name-string ":@" vars-count)))))
 
 ;(trace init-class-env!)
 ;(trace init-class-decl!)

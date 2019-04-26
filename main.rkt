@@ -10,8 +10,7 @@
   (lambda (pgm)
     (init-store!)
     (cases program pgm
-      [a-program [class-decls body]
-        (init-class-env! class-decls)
+      [a-program [body]
         (value-of body (init-env))])))
 
 (define (value-of expr env)
@@ -67,28 +66,27 @@
         (begin (printf "~a~n" val1) val1))]
     [self-expr []
       (apply-env env '%self)]
-    [method-call-expr [obj-exp method-name rands]
-      (let ([args (map (lambda (e) (value-of e env)) rands)]
-            [obj (value-of obj-exp env)])
-        (apply-method
-          (find-method (object->class-name obj) method-name)
-          obj
-          args))]
-    [super-call-expr [method-name rands]
-      (let ([args (map (lambda (e) (value-of e env)) rands)]
-            [obj (apply-env env '%self)])
-        (apply-method
-          (find-method (apply-env env '%super) method-name)
-          obj
-          args))]
-    [new-object-expr [class-name rands]
-      (let ([args (map (lambda (e) (value-of e env)) rands)]
-            [obj (new-object class-name)])
-        (apply-method
-          (find-method class-name 'init)
-          obj
-          args)
-        obj)]
+    [method-call-expr [prop-expr method-name rands]
+      (let ([prop (expval->property (value-of prop-expr env))]
+            [arg-vals (map (lambda (e) (value-of e env)) rands)])
+        (let ([m (find-method prop method-name)])
+          (apply-method m prop arg-vals)))]
+    [property-expr [super-prop-expr field-names method-names method-varss method-procs]
+      (let ([super-prop-val (value-of super-prop-expr env)]
+            [methods (map (lambda (n vs p) (list n (a-method vs p))) method-names method-varss method-procs)]
+            [field-refs (map newref field-names)])
+        (cases property (expval->property super-prop-val)
+          [a-property [super-field-names super-field-refs super-methods]
+            (let ([merge-field-names (append field-names super-field-names)]
+                  [merge-field-refs (append field-refs super-field-refs)]
+                  [merge-methods (append methods super-methods)])
+              (prop-val (a-property merge-field-names merge-field-refs merge-methods)))]))]
+    [clone-expr [prop-expr]
+      (let ([prop (expval->property (value-of prop-expr env))])
+        (cases property prop 
+          [a-property [field-names field-refs methods]
+            (let ([new-field-refs (map (lambda (r) (newref (deref r))) field-refs)])
+              (prop-val (a-property field-names new-field-refs methods)))]))]
     [else
       (report-invalid-expression expr)]
     ))
@@ -102,3 +100,4 @@
 ;(trace new-object)
 ;(trace find-method)
 ;(trace value-of)
+;(trace expval->property)

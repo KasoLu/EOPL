@@ -60,3 +60,18 @@
    let o3 = new c3()
    in begin print(100); send o3 m1(7, 8) end")
 
+(define p2
+  "let c1 = 
+     extend object
+       field a
+       method m1() begin set a = 11; print(a) end
+       method m2() begin set a = 12; print(a) end
+       method get-a() print(a)
+     endextend
+   in let c2 = clone c1
+      in begin 
+           send c1 m1(); 
+           send c2 m2();
+           send c1 get-a();
+           send c2 get-a()
+         end")

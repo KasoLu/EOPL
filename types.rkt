@@ -26,6 +26,7 @@
 
 (define-datatype object object?
   [an-object
+    [super-object (maybe object?)]
     [method-names (list-of identifier?)]
     [method-procs (list-of expval?)]
     [object-env env?]])
@@ -86,6 +87,7 @@
     [exp1 expression?]]
   [self-expr]
   [newobject-expr
+    [super-object expression?]
     [method-names (list-of identifier?)]
     [method-procs (list-of expression?)]]
   [getmethod-expr

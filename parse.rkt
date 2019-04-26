@@ -26,7 +26,8 @@
     [expression ("list" "(" (separated-list expression ",") ")") list-exp]
     [expression ("print" "(" expression ")") print-exp]
     [expression ("self") self-expr]
-    [expression ("newobject" (arbno identifier "=" expression) "endnewobject") newobject-expr]
+    [expression ("newobject" "extends" expression
+                 (arbno identifier "=" expression) "endnewobject") newobject-expr]
     [expression ("getmethod" "(" expression "," identifier ")") getmethod-expr]
     ))
 

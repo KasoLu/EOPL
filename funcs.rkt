@@ -8,7 +8,8 @@
   (eopl:error 'report-expval-extractor-error "invalid expval - ~a: ~a" type val))
 
 (define (init-env)
-  (empty-env))
+  (extend-env (list 'make-object) (list (newref (obj-val (an-object #f '() '() (empty-env)))))
+    (empty-env)))
 (define (apply-env env1 var)
   (cases env env1
     [empty-env []
@@ -71,3 +72,18 @@
   (cases expval v
     [obj-val [val] val]
     [else (report-expval-extractor-error 'object v)]))
+
+(define find-method
+  (lambda (obj-val method-name)
+    (let loop1 ([obj (expval->object obj-val)])
+      (if (not obj)
+        (report-method-not-found)
+        (cases object obj
+          [an-object [super-object method-names method-procs object-env]
+            (let loop2 ([method-names method-names] [method-procs method-procs])
+              (cond [(null? method-names) (loop1 super-object)]
+                    [(eqv? (car method-names) method-name)
+                     (cases proc (expval->proc (car method-procs)) 
+                       [procedure [vars body env]
+                         (proc-val (procedure vars body (extend-env (list '%self) (list (newref obj-val)) object-env)))])]
+                    [else (loop2 (cdr method-names) (cdr method-procs))]))])))))

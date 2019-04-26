@@ -61,11 +61,17 @@
    in begin print(100); send o3 m1(7, 8) end")
 
 (define p2
-  "let make-oddeven =
+  "let make-c1 = 
      proc()
-       newobject
-         even = proc(n) if zero?(n) then 1 else (getmethod(self, odd) -(n, 1))
-         odd = proc(n) if zero?(n) then 0 else (getmethod(self, even) -(n, 1))
-       endnewobject
-   in let o1 = (make-oddeven)
-      in (getmethod(o1, odd) 13)")
+       let a = 11 in
+         newobject extends make-object
+           m1 = proc() begin print(a); (getmethod(self, m2)) end
+         endnewobject
+   in let make-s1 = 
+        proc()
+          let a = 22 in
+            newobject extends (make-c1)
+              m2 = proc() print(a)
+            endnewobject
+       in let s1 = (make-s1)
+          in (getmethod(s1, m1))")

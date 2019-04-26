@@ -65,14 +65,28 @@
       (let ([val1 (value-of exp1 env)])
         (begin (printf "~a~n" val1) val1))]
     [self-expr []
-      (deref (apply-env env '%self))]
-    [newobject-expr [super-exp method-names method-procs]
-      (let ([super-val (value-of super-exp env)]
-            [method-procs-vals (map (lambda (m) (value-of m env)) method-procs)])
-        (obj-val (an-object (expval->object super-val) method-names method-procs-vals env)))]
-    [getmethod-expr [obj-exp method-name]
-      (let ([obj-val (value-of obj-exp env)])
-        (find-method obj-val method-name))]
+      (apply-env env '%self)]
+    [method-call-expr [prop-expr method-name rands]
+      (let ([prop (expval->property (value-of prop-expr env))]
+            [arg-vals (map (lambda (e) (value-of e env)) rands)])
+        (let ([m (find-method prop method-name)])
+          (apply-method m prop arg-vals)))]
+    [property-expr [super-prop-expr field-names method-names method-varss method-procs]
+      (let ([super-prop-val (value-of super-prop-expr env)]
+            [methods (map (lambda (n vs p) (list n (a-method vs p))) method-names method-varss method-procs)]
+            [field-refs (map newref field-names)])
+        (cases property (expval->property super-prop-val)
+          [a-property [super-field-names super-field-refs super-methods]
+            (let ([merge-field-names (append field-names super-field-names)]
+                  [merge-field-refs (append field-refs super-field-refs)]
+                  [merge-methods (append methods super-methods)])
+              (prop-val (a-property merge-field-names merge-field-refs merge-methods)))]))]
+    [clone-expr [prop-expr]
+      (let ([prop (expval->property (value-of prop-expr env))])
+        (cases property prop 
+          [a-property [field-names field-refs methods]
+            (let ([new-field-refs (map (lambda (r) (newref (deref r))) field-refs)])
+              (prop-val (a-property field-names new-field-refs methods)))]))]
     [else
       (report-invalid-expression expr)]
     ))
@@ -86,3 +100,4 @@
 ;(trace new-object)
 ;(trace find-method)
 ;(trace value-of)
+;(trace expval->property)

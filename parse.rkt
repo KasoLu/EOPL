@@ -25,10 +25,14 @@
     [expression ("+" "(" expression "," expression ")") plus-exp]
     [expression ("list" "(" (separated-list expression ",") ")") list-exp]
     [expression ("print" "(" expression ")") print-exp]
+    [expression ("send" expression identifier 
+                 "(" (separated-list expression ",") ")") method-call-expr]
     [expression ("self") self-expr]
-    [expression ("newobject" "extends" expression
-                 (arbno identifier "=" expression) "endnewobject") newobject-expr]
-    [expression ("getmethod" "(" expression "," identifier ")") getmethod-expr]
+    [expression ("extend" expression
+                 (arbno "field" identifier)
+                 (arbno "method" identifier "(" (separated-list identifier ",") ")" expression)
+                 "endextend") property-expr]
+    [expression ("clone" expression) clone-expr]
     ))
 
 (define scan&parse

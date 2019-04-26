@@ -8,7 +8,7 @@
   (eopl:error 'report-expval-extractor-error "invalid expval - ~a: ~a" type val))
 
 (define (init-env)
-  (extend-env (list 'make-object) (list (newref (obj-val (an-object #f '() '() (empty-env)))))
+  (extend-env (list 'object) (list (newref (prop-val (a-property '() '() '()))))
     (empty-env)))
 (define (apply-env env1 var)
   (cases env env1
@@ -68,22 +68,28 @@
           [else (cons (car store1) (setref-inner (cdr store1) (- ref1 1)))]))
   (set! the-store (setref-inner the-store ref)))
 
-(define (expval->object v)
+(define (expval->property v)
   (cases expval v
-    [obj-val [val] val]
-    [else (report-expval-extractor-error 'object v)]))
+    [prop-val [val] val]
+    [else (report-expval-extractor-error 'property v)]))
 
 (define find-method
-  (lambda (obj-val method-name)
-    (let loop1 ([obj (expval->object obj-val)])
-      (if (not obj)
-        (report-method-not-found)
-        (cases object obj
-          [an-object [super-object method-names method-procs object-env]
-            (let loop2 ([method-names method-names] [method-procs method-procs])
-              (cond [(null? method-names) (loop1 super-object)]
-                    [(eqv? (car method-names) method-name)
-                     (cases proc (expval->proc (car method-procs)) 
-                       [procedure [vars body env]
-                         (proc-val (procedure vars body (extend-env (list '%self) (list (newref obj-val)) object-env)))])]
-                    [else (loop2 (cdr method-names) (cdr method-procs))]))])))))
+  (lambda (prop method-name)
+    (cases property prop
+      [a-property [field-names field-refs methods]
+        (let ([method-pair (assq method-name methods)])
+          (if method-pair
+            (cadr method-pair)
+            (report-method-not-found)))])))
+
+(define apply-method
+  (lambda (m prop args)
+    (cases property prop
+      [a-property [field-names field-refs methods]
+        (cases method m
+          [a-method [vars body]
+            (value-of body
+              (extend-env vars (map newref args)
+                (extend-env (list '%self) (list (prop-val prop))
+                  (extend-env field-names field-refs
+                    (empty-env)))))])])))

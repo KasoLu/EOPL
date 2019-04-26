@@ -24,24 +24,28 @@
     [env  env?]]
   )
 
-(define-datatype object object?
-  [an-object
-    [super-object (maybe object?)]
-    [method-names (list-of identifier?)]
-    [method-procs (list-of expval?)]
-    [object-env env?]])
-
 (define-datatype expval expval?
   [num-val  [val number?]]
   [bool-val [val boolean?]]
   [proc-val [val proc?]]
   [list-val [val list?]]
-  [obj-val  [val object?]]
+  [prop-val [val property?]]
   )
 
 (define-datatype program program?
   [a-program 
     [exp1 expression?]])
+
+(define-datatype property property?
+  [a-property
+    [field-names (list-of identifier?)]
+    [field-refs  (list-of reference?)]
+    [method-list (list-of pair?)]])
+
+(define-datatype method method?
+  [a-method
+    [vars (list-of identifier?)]
+    [body expression?]])
 
 (define-datatype expression expression?
   [const-exp
@@ -85,13 +89,18 @@
     [exps (list-of expression?)]]
   [print-exp
     [exp1 expression?]]
+  [method-call-expr
+    [prop-expr expression?]
+    [method-name identifier?]
+    [rands (list-of expression?)]]
   [self-expr]
-  [newobject-expr
-    [super-object expression?]
+  [property-expr
+    [super-prop-expr expression?]
+    [field-names (list-of identifier?)]
     [method-names (list-of identifier?)]
+    [method-varss (list-of (list-of identifier?))]
     [method-procs (list-of expression?)]]
-  [getmethod-expr
-    [obj-exp expression?]
-    [method-name identifier?]]
+  [clone-expr
+    [prop-expr expression?]]
   )
 

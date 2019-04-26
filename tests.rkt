@@ -61,17 +61,17 @@
    in begin print(100); send o3 m1(7, 8) end")
 
 (define p2
-  "let make-c1 = 
-     proc()
-       let a = 11 in
-         newobject extends make-object
-           m1 = proc() begin print(a); (getmethod(self, m2)) end
-         endnewobject
-   in let make-s1 = 
-        proc()
-          let a = 22 in
-            newobject extends (make-c1)
-              m2 = proc() print(a)
-            endnewobject
-       in let s1 = (make-s1)
-          in (getmethod(s1, m1))")
+  "let c1 = 
+     extend object
+       field a
+       method m1() begin set a = 11; print(a) end
+       method m2() begin set a = 12; print(a) end
+       method get-a() print(a)
+     endextend
+   in let c2 = clone c1
+      in begin 
+           send c1 m1(); 
+           send c2 m2();
+           send c1 get-a();
+           send c2 get-a()
+         end")

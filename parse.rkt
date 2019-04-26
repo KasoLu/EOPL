@@ -9,11 +9,7 @@
 
 ;arbno | separated-list 
 (define grammar-spec
-  '([program ((arbno class-decl) expression) a-program]
-    [class-decl ("class" identifier "extends" identifier (arbno "," identifier)
-                 (arbno "field" identifier) (arbno method-decl)) a-class-decl]
-    [method-decl ("method" identifier "(" (separated-list identifier ",") ")" 
-                  expression) a-method-decl]
+  '([program (expression) a-program]
     [expression (number) const-exp]
     [expression ("-" "(" expression "," expression ")") diff-exp]
     [expression ("zero?" "(" expression ")") zero?-exp]
@@ -29,13 +25,9 @@
     [expression ("+" "(" expression "," expression ")") plus-exp]
     [expression ("list" "(" (separated-list expression ",") ")") list-exp]
     [expression ("print" "(" expression ")") print-exp]
-    [expression ("new" identifier "(" (separated-list expression ",") ")") new-object-expr]
-    [expression ("send" expression identifier 
-                 "(" (separated-list expression ",") ")") method-call-expr]
-    [expression ("super" identifier "(" (separated-list expression ",") ")") super-call-expr]
     [expression ("self") self-expr]
-    [expression ("named-send" identifier expression identifier 
-                 "(" (separated-list expression ",") ")") named-method-call-expr]
+    [expression ("newobject" (arbno identifier "=" expression) "endnewobject") newobject-expr]
+    [expression ("getmethod" "(" expression "," identifier ")") getmethod-expr]
     ))
 
 (define scan&parse

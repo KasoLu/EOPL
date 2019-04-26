@@ -10,8 +10,7 @@
   (lambda (pgm)
     (init-store!)
     (cases program pgm
-      [a-program [class-decls body]
-        (init-class-env! class-decls)
+      [a-program [body]
         (value-of body (init-env))])))
 
 (define (value-of expr env)
@@ -66,30 +65,37 @@
       (let ([val1 (value-of exp1 env)])
         (begin (printf "~a~n" val1) val1))]
     [self-expr []
-      (apply-env env '%self)]
-    [method-call-expr [obj-exp method-name rands]
-      (let* ([args (map (lambda (e) (value-of e env)) rands)]
-             [obj (value-of obj-exp env)]
-             [method (find-method (object->class-name obj) method-name)])
-        (apply-method method obj args))]
-    [super-call-expr [method-name rands]
-      (let ([args (map (lambda (e) (value-of e env)) rands)]
-            [obj (apply-env env '%self)]
-            [method (find-method (apply-env env '%super) method-name)])
-        (apply-method method obj args))]
-    [new-object-expr [class-name rands]
-      (let ([args (map (lambda (e) (value-of e env)) rands)]
-            [obj (new-object class-name)]
-            [method (find-method class-name 'init)])
-        (begin (apply-method method obj args) obj))]
-    [named-method-call-expr [class-name obj-exp method-name rands]
-      (let ([args (map (lambda (e) (value-of e env)) rands)]
-            [obj (value-of obj-exp env)]
-            [method (find-method class-name method-name)])
-        (apply-method method obj args))]
+      (deref (apply-env env '%self))]
+    [newobject-expr [method-names method-procs]
+      (let* ([obj-ref (newref '%self)]
+             [ext-env (extend-env (list '%self) (list obj-ref) env)]
+             [method-procs-vals (value-of-object-method method-procs ext-env)]
+             [obj-val (obj-val (an-object method-names method-procs-vals ext-env))])
+        (begin (setref! obj-ref obj-val) obj-val))]
+    [getmethod-expr [obj-exp method-name]
+      (let ([obj-val (value-of obj-exp env)])
+        (cases object (expval->object obj-val)
+          [an-object [method-names method-procs object-env]
+            (let loop ([method-names method-names] [method-procs method-procs])
+              (cond [(null? method-names) (report-method-not-found)]
+                    [(eqv? (car method-names) method-name) (car method-procs)]
+                    [else (loop (cdr method-names) (cdr method-procs))]))]))]
     [else
       (report-invalid-expression expr)]
     ))
+
+(define value-of-object-method
+  (lambda (method-procs-exps object-env)
+    (let loop ([method-procs-exps method-procs-exps] [method-procs-vals '()])
+      (if (null? method-procs-exps)
+        (reverse method-procs-vals)
+        (cases expression (car method-procs-exps)
+          [proc-exp [vars body]
+            (loop 
+              (cdr method-procs-exps)
+              (cons (proc-val (procedure vars body object-env)) method-procs-vals))]
+          [else
+            (report-invalid-method-body)])))))
 
 ;(trace init-class-env!)
 ;(trace init-class-decl!)
@@ -100,4 +106,3 @@
 ;(trace new-object)
 ;(trace find-method)
 ;(trace value-of)
-;(trace class->super-name)

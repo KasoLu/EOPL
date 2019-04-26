@@ -24,52 +24,23 @@
     [env  env?]]
   )
 
+(define-datatype object object?
+  [an-object
+    [method-names (list-of identifier?)]
+    [method-procs (list-of expval?)]
+    [object-env env?]])
+
 (define-datatype expval expval?
   [num-val  [val number?]]
   [bool-val [val boolean?]]
   [proc-val [val proc?]]
   [list-val [val list?]]
-  [obj-val  [val obj?]]
+  [obj-val  [val object?]]
   )
 
 (define-datatype program program?
   [a-program 
-    [class-decls (list-of class-decl?)]
     [exp1 expression?]])
-
-(define-datatype class-decl class-decl?
-  [a-class-decl
-    [class-name identifier?]
-    [super-name identifier?]
-    [mixins-name (list-of identifier?)]
-    [field-names (list-of identifier?)]
-    [method-decls (list-of method-decl?)]])
-
-(define-datatype method-decl method-decl?
-  [a-method-decl
-    [method-name identifier?]
-    [vars (list-of identifier?)]
-    [body expression?]])
-
-(define-datatype object object?
-  [an-object
-    [class-name identifier?]
-    [fields (list-of reference?)]
-    [mixins-objs (list-of object?)]])
-
-(define-datatype method method?
-  [a-method
-    [vars (list-of identifier?)]
-    [body expression?]
-    [class-name identifier?]
-    [field-names (list-of identifier?)]])
-
-(define-datatype class class?
-  [a-class
-    [super-name (maybe identifier?)]
-    [mixins-name (list-of identifier?)]
-    [field-names (list-of identifier?)]
-    [method-env method-env?]])
 
 (define-datatype expression expression?
   [const-exp
@@ -113,21 +84,12 @@
     [exps (list-of expression?)]]
   [print-exp
     [exp1 expression?]]
-  [new-object-expr
-    [class-name identifier?]
-    [rands (list-of expression?)]]
-  [method-call-expr
-    [obj-exp expression?]
-    [method-name identifier?]
-    [rands (list-of expression?)]]
-  [super-call-expr
-    [method-name identifier?]
-    [rands (list-of expression?)]]
   [self-expr]
-  [named-method-call-expr
-    [class-name identifier?]
+  [newobject-expr
+    [method-names (list-of identifier?)]
+    [method-procs (list-of expression?)]]
+  [getmethod-expr
     [obj-exp expression?]
-    [method-name identifier?]
-    [rands (list-of expression?)]]
+    [method-name identifier?]]
   )
 

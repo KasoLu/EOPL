@@ -61,30 +61,11 @@
    in begin print(100); send o3 m1(7, 8) end")
 
 (define p2
-  "class c1 extends object
-     field a
-     method init() begin set a = 100; print(10) end
-     method m1() print(a)
-   class c2 extends object
-     field a
-     method init() begin set a = 200; print(20) end
-     method m1() print(a)
-   class s1 extends c1, c2
-     field a
-     method init()
-       begin
-         super init();
-         named-send c2 self init();
-         set a = 300;
-         print(30)
-       end
-   class ss1 extends s1
-     field a
-     method init()
-       begin
-         super init();
-         set a = 400;
-         print(40)
-       end
-   let oss1 = new ss1()
-   in send oss1 m1()")
+  "let make-oddeven =
+     proc()
+       newobject
+         even = proc(n) if zero?(n) then 1 else (getmethod(self, odd) -(n, 1))
+         odd = proc(n) if zero?(n) then 0 else (getmethod(self, even) -(n, 1))
+       endnewobject
+   in let o1 = (make-oddeven)
+      in (getmethod(o1, odd) 13)")

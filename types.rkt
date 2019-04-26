@@ -41,6 +41,7 @@
   [a-class-decl
     [class-name identifier?]
     [super-name identifier?]
+    [mixins-name (list-of identifier?)]
     [field-names (list-of identifier?)]
     [method-decls (list-of method-decl?)]])
 
@@ -53,18 +54,20 @@
 (define-datatype object object?
   [an-object
     [class-name identifier?]
-    [fields (list-of reference?)]])
+    [fields (list-of reference?)]
+    [mixins-objs (list-of object?)]])
 
 (define-datatype method method?
   [a-method
     [vars (list-of identifier?)]
     [body expression?]
-    [super-name identifier?]
+    [class-name identifier?]
     [field-names (list-of identifier?)]])
 
 (define-datatype class class?
   [a-class
     [super-name (maybe identifier?)]
+    [mixins-name (list-of identifier?)]
     [field-names (list-of identifier?)]
     [method-env method-env?]])
 
@@ -121,11 +124,10 @@
     [method-name identifier?]
     [rands (list-of expression?)]]
   [self-expr]
-  [equal?-expr
-    [exp1 expression?]
-    [exp2 expression?]]
-  [instance-of-expr
+  [named-method-call-expr
+    [class-name identifier?]
     [obj-exp expression?]
-    [class-name identifier?]]
+    [method-name identifier?]
+    [rands (list-of expression?)]]
   )
 

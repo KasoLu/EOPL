@@ -69,13 +69,19 @@
 
 (define apply-method
   (lambda (m self args)
-    (cases method m
-      [a-method [vars body super-name field-names]
-        (value-of body
-          (extend-env vars (map newref args)
-            (extend-env-with-self-and-super self super-name
-              (extend-env field-names (object->fields self)
-                (empty-env)))))])))
+    (if (not m)
+      (report-method-not-found)
+      (let ([object (find-object-with-class self (method->class-name m))])
+        (if (not object)
+          (report-invalid-object-to-method)
+          (cases method m
+            [a-method [vars body class-name field-names]
+              (let ([class (lookup-class class-name)])
+                (value-of body
+                  (extend-env vars (map newref args)
+                    (extend-env-with-self-and-super object (class->super-name class)
+                      (extend-env field-names (object->fields object)
+                        (empty-env))))))]))))))
 
 (define extend-env-with-self-and-super
   (lambda (self super-name env)
@@ -97,20 +103,18 @@
   (lambda (c-decls)
     (set! the-class-env
       (list
-        (list 'object (a-class #f '() '()))))
+        (list 'object (a-class #f '() '() '()))))
     (for-each init-class-decl! c-decls)))
 
 (define init-class-decl!
   (lambda (c-decl)
     (cases class-decl c-decl
-      [a-class-decl [c-name s-name f-names m-decls]
+      [a-class-decl [c-name s-name mixins-names f-names m-decls]
         (let ([f-names (append-field-names (class->field-names (lookup-class s-name)) f-names)])
           (add-to-class-env!
             c-name
-            (a-class s-name f-names
-              (merge-method-envs
-                (class->method-env (lookup-class s-name))
-                (method-decls->method-env m-decls s-name f-names)))))])))
+            (a-class s-name mixins-names f-names
+              (method-decls->method-env m-decls c-name f-names))))])))
 
 (define append-field-names
   (lambda (super-fields new-fields)
@@ -122,12 +126,42 @@
                  (append-field-names (cdr super-fields) new-fields))])))
 
 (define find-method
-  (lambda (c-name name)
-    (let ([m-env (class->method-env (lookup-class c-name))])
-      (let ([maybe-pair (assq name m-env)])
-        (if (pair? maybe-pair)
-          (cadr maybe-pair)
-          (report-method-not-found name))))))
+  (lambda (class-name method-name)
+    (let loop ([class-name class-name])
+      (if (not class-name)
+        #f
+        (let* ([class (lookup-class class-name)]
+               [m-env (class->method-env class)]
+               [mixins-names (class->mixins-names class)])
+          (let ([maybe-pair (assq method-name m-env)])
+            (if (pair? maybe-pair)
+              (cadr maybe-pair)
+              (let ([method (find-method-in-mixins mixins-names method-name)])
+                (if method
+                  method
+                  (loop (class->super-name class)))))))))))
+
+(define find-method-in-mixins
+  (lambda (mixins-names method-name)
+    (let loop ([mixins-names mixins-names])
+      (if (null? mixins-names)
+        #f
+        (let ([found-method (find-method (car mixins-names) method-name)])
+          (if found-method
+            found-method
+            (loop (cdr mixins-names))))))))
+
+(define find-object-with-class
+  (lambda (obj class-name)
+    (if (is-subclass-of-class (object->class-name obj) class-name)
+      obj
+      (let loop ([mixins-objs (object->mixins-objs obj)])
+        (if (null? mixins-objs)
+          #f
+          (let ([found-obj (find-object-with-class (car mixins-objs) class-name)])
+            (if found-obj
+              found-obj
+              (loop (cdr mixins-objs)))))))))
 
 (define method-decls->method-env
   (lambda (m-decls super-name field-names)
@@ -143,17 +177,22 @@
 
 (define (class->super-name c)
   (cases class c
-    [a-class [super-name field-names method-env] super-name]
+    [a-class [super-name mixins-names field-names method-env] super-name]
+    [else (report-invalid-extract 'class c)]))
+
+(define (class->mixins-names c)
+  (cases class c
+    [a-class [super-name mixins-names field-names method-env] mixins-names]
     [else (report-invalid-extract 'class c)]))
 
 (define (class->field-names c)
   (cases class c
-    [a-class [super-name field-names method-env] field-names]
+    [a-class [super-name mixins-names field-names method-env] field-names]
     [else (report-invalid-extract 'class c)]))
 
 (define (class->method-env c)
   (cases class c
-    [a-class [super-name field-names method-env] method-env]
+    [a-class [super-name mixins-names field-names method-env] method-env]
     [else (report-invalid-extract 'class c)]))
 
 (define g-seed 0)
@@ -163,26 +202,49 @@
 
 (define (object->fields o)
   (cases object o
-    [an-object [class-name fields] fields]
+    [an-object [class-name fields mixins-objs] fields]
     [else (report-invalid-extract 'object o)]))
 
 (define (object->class-name o)
   (cases object o
-    [an-object [class-name fields] class-name]
+    [an-object [class-name fields mixins-objs] class-name]
     [else (report-invalid-extract 'object o)]))
 
-(define new-object
-  (lambda (class-name)
-    (an-object
-      class-name
-      (map (lambda (field-name) (newref (list 'uninit-field field-name))) 
-           (class->field-names (lookup-class class-name))))))
+(define (object->mixins-objs o)
+  (cases object o
+    [an-object [class-name fields mixins-objs] mixins-objs]
+    [else (report-invalid-extract 'object o)]))
+
+(define (method->class-name m)
+  (cases method m
+    [a-method [vars body class-name field-names] class-name]
+    [else (report-invalid-extract 'method m)]))
 
 (define is-subclass-of-class
   (lambda (class-name target-class-name)
     (let loop ([class-name class-name])
-      (if class-name
-        (if (eqv? class-name target-class-name)
-          #t
-          (loop (class->super-name (lookup-class class-name))))
-        #f))))
+      (cond [(not class-name) #f]
+            [(eqv? class-name target-class-name) #t]
+            [else (loop (class->super-name (lookup-class class-name)))]))))
+
+(define new-object
+  (lambda (class-name)
+    (let ([class (lookup-class class-name)])
+      (an-object
+        class-name
+        (map (lambda (field-name) (newref (list 'uninit-field field-name))) 
+             (class->field-names class))
+        (mixins-new-object class-name)))))
+
+(define mixins-new-object
+  (lambda (class-name)
+    (let loop1 ([class-name class-name] [obj-pairs '()])
+      (if (not class-name)
+        (reverse obj-pairs)
+        (let ([class (lookup-class class-name)])
+          (let loop2 ([mixins-names (class->mixins-names class)] [obj-pairs obj-pairs])
+            (if (null? mixins-names)
+              (loop1 (class->super-name class) obj-pairs)
+              (loop2
+                (cdr mixins-names) 
+                (cons (new-object (car mixins-names)) obj-pairs)))))))))

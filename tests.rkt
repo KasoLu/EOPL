@@ -61,44 +61,30 @@
    in begin print(100); send o3 m1(7, 8) end")
 
 (define p2
-  "class point extends object
-     field x
-     field y
-     method init(init-x, init-y)
+  "class c1 extends object
+     field a
+     method init() begin set a = 100; print(10) end
+     method m1() print(a)
+   class c2 extends object
+     field a
+     method init() begin set a = 200; print(20) end
+     method m1() print(a)
+   class s1 extends c1, c2
+     field a
+     method init()
        begin
-         set x = init-x;
-         set y = init-y
+         super init();
+         named-send c2 self init();
+         set a = 300;
+         print(30)
        end
-     method getx() x
-     method gety() y
-     method similarpoints(pt)
-       if equal?(send pt getx(), x)
-       then equal?(send pt gety(), y)
-       else zero?(1)
-   class colorpoint extends point
-     field color
-     method init(init-x, init-y, init-color)
+   class ss1 extends s1
+     field a
+     method init()
        begin
-         set x = init-x;
-         set y = init-y;
-         set color = init-color
+         super init();
+         set a = 400;
+         print(40)
        end
-     method set-color(c)
-       set color = c
-     method get-color()
-       color
-     method similarpoints(pt)
-       if super similarpoints(pt)
-       then 
-         if instance-of pt colorpoint
-         then equal?(send pt get-color(), color)
-         else zero?(1)
-       else zero?(1)
-   let p1 = new point(10, 20), p2 = new point(30, 40),
-       p3 = new colorpoint(10, 20, 123), p4 = new colorpoint(10, 20, 234)
-   in begin
-        print(send p1 similarpoints(p2));
-        print(send p1 similarpoints(p3));
-        print(send p3 similarpoints(p3));
-        print(send p3 similarpoints(p4))
-      end")
+   let oss1 = new ss1()
+   in send oss1 m1()")

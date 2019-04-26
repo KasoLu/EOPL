@@ -68,33 +68,25 @@
     [self-expr []
       (apply-env env '%self)]
     [method-call-expr [obj-exp method-name rands]
-      (let ([args (map (lambda (e) (value-of e env)) rands)]
-            [obj (value-of obj-exp env)])
-        (apply-method
-          (find-method (object->class-name obj) method-name)
-          obj
-          args))]
+      (let* ([args (map (lambda (e) (value-of e env)) rands)]
+             [obj (value-of obj-exp env)]
+             [method (find-method (object->class-name obj) method-name)])
+        (apply-method method obj args))]
     [super-call-expr [method-name rands]
       (let ([args (map (lambda (e) (value-of e env)) rands)]
-            [obj (apply-env env '%self)])
-        (apply-method
-          (find-method (apply-env env '%super) method-name)
-          obj
-          args))]
+            [obj (apply-env env '%self)]
+            [method (find-method (apply-env env '%super) method-name)])
+        (apply-method method obj args))]
     [new-object-expr [class-name rands]
       (let ([args (map (lambda (e) (value-of e env)) rands)]
-            [obj (new-object class-name)])
-        (apply-method
-          (find-method class-name 'init)
-          obj
-          args)
-        obj)]
-    [equal?-expr [exp1 exp2]
-      (let ([val1 (value-of exp1 env)] [val2 (value-of exp2 env)])
-        (bool-val (equal? val1 val2)))]
-    [instance-of-expr [obj-exp class-name]
-      (let ([obj-class-name (object->class-name (value-of obj-exp env))])
-        (bool-val (is-subclass-of-class obj-class-name class-name)))]
+            [obj (new-object class-name)]
+            [method (find-method class-name 'init)])
+        (begin (apply-method method obj args) obj))]
+    [named-method-call-expr [class-name obj-exp method-name rands]
+      (let ([args (map (lambda (e) (value-of e env)) rands)]
+            [obj (value-of obj-exp env)]
+            [method (find-method class-name method-name)])
+        (apply-method method obj args))]
     [else
       (report-invalid-expression expr)]
     ))
@@ -108,3 +100,4 @@
 ;(trace new-object)
 ;(trace find-method)
 ;(trace value-of)
+;(trace class->super-name)

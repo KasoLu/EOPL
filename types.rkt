@@ -3,6 +3,7 @@
 (define (store? s) (list? s))
 (define (method-env? e) (list? e))
 (define (any? x) #t)
+(define (method-tenv? e) (list? e))
 
 (define-datatype env env?
   [empty-env]
@@ -29,78 +30,143 @@
   [bool-val [val boolean?]]
   [proc-val [val proc?]]
   [list-val [val list?]]
-  [prop-val [val property?]]
   )
 
-(define-datatype program program?
-  [a-program 
-    [exp1 expression?]])
+(define-datatype type type?
+  [int-type]
+  [bool-type]
+  [proc-type
+    [vars-types (list-of type?)]
+    [return-type type?]]
+  [list-type
+    [elem-type type?]]
+  [void-type]
+  [class-type
+    [class-name identifier?]]
+  )
 
-(define-datatype property property?
-  [a-property
+(define-datatype class-decl class-decl?
+  [a-class-decl
+    [class-name identifier?]
+    [super-name identifier?]
+    [interface-names (list-of identifier?)]
+    [field-types (list-of type?)]
     [field-names (list-of identifier?)]
-    [field-refs  (list-of reference?)]
-    [method-list (list-of pair?)]])
+    [method-decls (list-of method-decl?)]]
+  [an-interface-decl
+    [interface-name identifier?]
+    [abs-method-decls (list-of abs-method-decl?)]])
+
+(define-datatype method-decl method-decl?
+  [a-method-decl
+    [result-type type?]
+    [method-name identifier?]
+    [vars (list-of identifier?)]
+    [vars-types (list-of type?)]
+    [body expression?]])
+
+(define-datatype abs-method-decl abs-method-decl?
+  [an-abs-method-decl
+    [result-type type?]
+    [method-name identifier?]
+    [method-vars (list-of identifier?)]
+    [method-vars-types (list-of type?)]])
+
+(define-datatype static-class static-class?
+  [a-static-class
+    [super-name (maybe identifier?)]
+    [interface-names (list-of identifier?)]
+    [field-names (list-of identifier?)]
+    [field-types (list-of type?)]
+    [method-tenv method-tenv?]]
+  [an-interface
+    [method-tenv method-tenv?]])
+
+(define-datatype object object?
+  [an-object
+    [class-name identifier?]
+    [fields (list-of reference?)]])
 
 (define-datatype method method?
   [a-method
     [vars (list-of identifier?)]
-    [body expression?]])
+    [body expression?]
+    [super-name identifier?]
+    [field-names (list-of identifier?)]])
+
+(define-datatype class class?
+  [a-class
+    [super-name (maybe identifier?)]
+    [field-names (list-of identifier?)]
+    [method-env method-env?]])
+
+(define-datatype program program?
+  [a-program 
+    [class-decls (list-of class-decl?)]
+    [exp1 expression?]])
 
 (define-datatype expression expression?
-  [const-exp
+  [num-expr
     [num number?]]
-  [diff-exp
+  [diff-expr
     [exp1 expression?]
     [exp2 expression?]]
-  [zero?-exp
+  [zero?-expr
     [exp1 expression?]]
-  [if-exp
+  [if-expr
     [exp1 expression?]
     [exp2 expression?]
     [exp3 expression?]]
-  [var-exp
+  [var-expr
     [var identifier?]]
-  [let-exp
+  [let-expr
     [vars (list-of identifier?)]
     [exps (list-of expression?)]
     [body expression?]]
-  [proc-exp
+  [proc-expr
     [vars (list-of identifier?)]
+    [vars-types (list-of type?)]
+    [result-type type?]
     [body expression?]]
-  [call-exp
+  [call-expr
     [rator expression?]
     [rands (list-of expression?)]]
-  [letrec-exp
+  [letrec-expr
+    [result-types (list-of type?)]
     [names  (list-of identifier?)]
     [varss  (list-of (list-of identifier?))]
+    [varss-types (list-of (list-of type?))]
     [bodies (list-of expression?)]
     [exp1   expression?]]
-  [assign-exp
+  [assign-expr
     [var  identifier?]
     [exp1 expression?]]
-  [begin-exp
+  [begin-expr
     [exp1 expression?]
     [exps (list-of expression?)]]
-  [plus-exp
+  [plus-expr
     [exp1 expression?]
     [exp2 expression?]]
-  [list-exp
+  [list-expr
+    [exp1 expression?]
     [exps (list-of expression?)]]
-  [print-exp
+  [print-expr
     [exp1 expression?]]
+  [new-object-expr
+    [class-name identifier?]
+    [rands (list-of expression?)]]
   [method-call-expr
-    [prop-expr expression?]
+    [obj-exp expression?]
+    [method-name identifier?]
+    [rands (list-of expression?)]]
+  [super-call-expr
     [method-name identifier?]
     [rands (list-of expression?)]]
   [self-expr]
-  [property-expr
-    [super-prop-expr expression?]
-    [field-names (list-of identifier?)]
-    [method-names (list-of identifier?)]
-    [method-varss (list-of (list-of identifier?))]
-    [method-procs (list-of expression?)]]
-  [clone-expr
-    [prop-expr expression?]]
+  [cast-expr
+    [exp1 expression?]
+    [class-name identifier?]]
+  [instanceof-expr
+    [exp1 expression?]
+    [class-name identifier?]]
   )
-

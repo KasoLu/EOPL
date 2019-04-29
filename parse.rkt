@@ -9,30 +9,46 @@
 
 ;arbno | separated-list 
 (define grammar-spec
-  '([program (expression) a-program]
-    [expression (number) const-exp]
-    [expression ("-" "(" expression "," expression ")") diff-exp]
-    [expression ("zero?" "(" expression ")") zero?-exp]
-    [expression ("if" expression "then" expression "else" expression) if-exp]
-    [expression (identifier) var-exp]
-    [expression ("let" (separated-list identifier "=" expression ",") "in" expression) let-exp]
-    [expression ("proc" "(" (separated-list identifier ",") ")" expression) proc-exp]
-    [expression ("(" expression (arbno expression) ")") call-exp]
-    [expression ("letrec" (arbno identifier "(" (separated-list identifier ",") ")" 
-                 "=" expression) "in" expression) letrec-exp]
-    [expression ("begin" expression (arbno ";" expression) "end") begin-exp]
-    [expression ("set" identifier "=" expression) assign-exp]
-    [expression ("+" "(" expression "," expression ")") plus-exp]
-    [expression ("list" "(" (separated-list expression ",") ")") list-exp]
-    [expression ("print" "(" expression ")") print-exp]
+  '([program ((arbno class-decl) expression) a-program]
+    [class-decl ("class" identifier "extends" identifier
+                 (arbno "implements" identifier)
+                 (arbno "field" type identifier)
+                 (arbno method-decl)) a-class-decl]
+    [class-decl ("interface" identifier 
+                 (arbno abs-method-decl)) an-interface-decl]
+    [method-decl ("method" type identifier 
+                  "(" (separated-list identifier ":" type ",") ")" expression) a-method-decl]
+    [abs-method-decl ("method" type identifier 
+                      "(" (separated-list identifier ":" type ",") ")") an-abs-method-decl]
+    [expression (number) num-expr]
+    [expression ("-" "(" expression "," expression ")") diff-expr]
+    [expression ("zero?" "(" expression ")") zero?-expr]
+    [expression ("if" expression "then" expression "else" expression) if-expr]
+    [expression (identifier) var-expr]
+    [expression ("let" (separated-list identifier "=" expression ",") "in" expression) let-expr]
+    [expression ("proc" "(" (separated-list identifier ":" type ",") ")" "->" type 
+                 expression) proc-expr]
+    [expression ("(" expression (arbno expression) ")") call-expr]
+    [expression ("letrec" (arbno type identifier "(" (separated-list identifier ":" type ",") ")" 
+                 "=" expression) "in" expression) letrec-expr]
+    [expression ("begin" expression (arbno ";" expression) "end") begin-expr]
+    [expression ("set" identifier "=" expression) assign-expr]
+    [expression ("+" "(" expression "," expression ")") plus-expr]
+    [expression ("list" "(" expression (arbno "," expression) ")") list-expr]
+    [expression ("print" "(" expression ")") print-expr]
+    [expression ("new" identifier "(" (separated-list expression ",") ")") new-object-expr]
     [expression ("send" expression identifier 
                  "(" (separated-list expression ",") ")") method-call-expr]
+    [expression ("super" identifier "(" (separated-list expression ",") ")") super-call-expr]
     [expression ("self") self-expr]
-    [expression ("extend" expression
-                 (arbno "field" identifier)
-                 (arbno "method" identifier "(" (separated-list identifier ",") ")" expression)
-                 "endextend") property-expr]
-    [expression ("clone" expression) clone-expr]
+    [expression ("cast" expression identifier) cast-expr]
+    [expression ("instanceof" expression identifier) instanceof-expr]
+    [type ("Int") int-type]
+    [type ("Bool") bool-type]
+    [type ("(" (separated-list type "*") "->" type ")") proc-type]
+    [type ("Void") void-type]
+    [type (identifier) class-type]
+    [type ("Listof" type) list-type]
     ))
 
 (define scan&parse

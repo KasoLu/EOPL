@@ -3,101 +3,138 @@
 (load "funcs.rkt")
 
 (define (run str)
-  (value-of-program
+  (type-of-program
     (scan&parse str)))
 
-(define value-of-program
+(define type-of-program
   (lambda (pgm)
-    (init-store!)
     (cases program pgm
-      [a-program [body]
-        (value-of body (init-env))])))
+      [a-program [class-decls expr]
+        (init-static-class-env! class-decls)
+        (for-each check-class-decl! class-decls)
+        (type-of-expr expr (init-tenv))])))
 
-(define (value-of expr env)
-  (cases expression expr
-    [const-exp [num] 
-      (num-val num)]
-    [var-exp [var]
-      (deref (apply-env env var))]
-    [diff-exp [exp1 exp2]
-      (let ([val1 (value-of exp1 env)] [val2 (value-of exp2 env)])
-        (let ([num1 (expval->num val1)] [num2 (expval->num val2)])
-          (num-val (- num1 num2))))]
-    [zero?-exp [exp1]
-      (let ([val1 (value-of exp1 env)])
-        (let ([num1 (expval->num val1)])
-          (if (zero? num1)
-            (bool-val #t)
-            (bool-val #f))))]
-    [if-exp [exp1 exp2 exp3]
-      (let ([val1 (value-of exp1 env)])
-        (if (expval->bool val1)
-          (value-of exp2 env)
-          (value-of exp3 env)))]
-    [let-exp [vars exps body]
-      (let ([vals (map (lambda (e) (value-of e env)) exps)])
-        (let ([refs (map (lambda (v) (newref v)) vals)])
-          (value-of body (extend-env vars refs env))))]
-    [proc-exp [vars body]
-      (proc-val (procedure vars body env))]
-    [call-exp [rator rands]
-      (let ([proc1 (expval->proc (value-of rator env))]
-            [args (map (lambda (x) (value-of x env)) rands)])
-        (cases proc proc1
-          [procedure [vars body saved-env]
-            (let ([refs (map (lambda (a) (newref a)) args)])
-              (value-of body (extend-env vars refs saved-env)))]))]
-    [letrec-exp [names varss bodies letrec-body]
-      (value-of letrec-body (extend-env-rec names varss bodies env))]
-    [assign-exp [var exp1]
-      (begin (setref! (apply-env env var) (value-of exp1 env))
-             (num-val 27))]
-    [begin-exp [exp1 exps]
-      (let ([val1 (value-of exp1 env)])
-        (foldl (lambda (e v) (value-of e env)) val1 exps))]
-    [plus-exp [exp1 exp2]
-      (let ([val1 (value-of exp1 env)] [val2 (value-of exp2 env)])
-        (num-val (+ (expval->num val1) (expval->num val2))))]
-    [list-exp [exps]
-      (let ([vals (map (lambda (e) (value-of e env)) exps)])
-        (list-val vals))]
-    [print-exp [exp1]
-      (let ([val1 (value-of exp1 env)])
-        (begin (printf "~a~n" val1) val1))]
-    [self-expr []
-      (apply-env env '%self)]
-    [method-call-expr [prop-expr method-name rands]
-      (let ([prop (expval->property (value-of prop-expr env))]
-            [arg-vals (map (lambda (e) (value-of e env)) rands)])
-        (let ([m (find-method prop method-name)])
-          (apply-method m prop arg-vals)))]
-    [property-expr [super-prop-expr field-names method-names method-varss method-procs]
-      (let ([super-prop-val (value-of super-prop-expr env)]
-            [methods (map (lambda (n vs p) (list n (a-method vs p))) method-names method-varss method-procs)]
-            [field-refs (map newref field-names)])
-        (cases property (expval->property super-prop-val)
-          [a-property [super-field-names super-field-refs super-methods]
-            (let ([merge-field-names (append field-names super-field-names)]
-                  [merge-field-refs (append field-refs super-field-refs)]
-                  [merge-methods (append methods super-methods)])
-              (prop-val (a-property merge-field-names merge-field-refs merge-methods)))]))]
-    [clone-expr [prop-expr]
-      (let ([prop (expval->property (value-of prop-expr env))])
-        (cases property prop 
-          [a-property [field-names field-refs methods]
-            (let ([new-field-refs (map (lambda (r) (newref (deref r))) field-refs)])
-              (prop-val (a-property field-names new-field-refs methods)))]))]
-    [else
-      (report-invalid-expression expr)]
-    ))
+(define type-of-expr
+  (lambda (expr tenv)
+    (cases expression expr
+      [num-expr [num]
+        (int-type)]
+      [var-expr [var]
+        (apply-tenv tenv var)]
+      [diff-expr [exp1 exp2]
+        (let ([ty1 (type-of-expr exp1 tenv)] [ty2 (type-of-expr exp2 tenv)])
+          (check-equal-type! ty1 (int-type) exp1)
+          (check-equal-type! ty2 (int-type) exp2)
+          (int-type))]
+      [zero?-expr [exp1]
+        (let ([ty1 (type-of-expr exp1 tenv)])
+          (check-equal-type! ty1 (int-type) exp1)
+          (bool-type))]
+      [if-expr [exp1 exp2 exp3]
+        (let ([ty1 (type-of-expr exp1 tenv)]
+              [ty2 (type-of-expr exp2 tenv)]
+              [ty3 (type-of-expr exp3 tenv)])
+          (check-equal-type! ty1 (bool-type) exp1)
+          (check-equal-type! ty2 ty3 expr)
+          ty2)]
+      [let-expr [vars exps body]
+        (let ([exps-type (map (lambda (x) (type-of-expr x tenv)) exps)])
+          (type-of-expr body (extend-tenv vars exps-type tenv)))]
+      [proc-expr [vars vars-type result-type body]
+        (let ([ret-type (type-of-expr body (extend-tenv vars vars-type tenv))])
+          (proc-type vars-type ret-type))]
+      [call-expr [rator rands]
+        (let ([rator-type (type-of-expr rator tenv)]
+              [rands-type (map (lambda (x) (type-of-expr x tenv)) rands)])
+          (cases type rator-type
+            [proc-type [args-type ret-type]
+              (let loop ([args-type args-type] [rands-type rands-type] [rands rands])
+                (if (null? args-type)
+                  (void)
+                  (begin (check-equal-type! (car args-type) (car rands-type) (car rands))
+                         (loop (cdr args-type) (cdr rands-type) (cdr rands))))
+                ret-type)]
+            [else
+              (report-rator-not-a-proc-type rator-type rator)]))]
+      [letrec-expr [names varss varss-type pbody-type procs rbody]
+        (let ([proc-types (map (lambda (vst pbt) (proc-type vst pbt)) varss-type pbody-type)])
+          (let ([rbody-tenv (extend-tenv names proc-types tenv)])
+            (let ([procs-type 
+                    (map (lambda (vs vst p) (type-of-expr p (extend-tenv vs vst rbody-tenv)))
+                         varss varss-type procs)])
+              (map (lambda (pt opt p) (check-equal-type! pt opt p)) 
+                   procs-type pbody-type procs)
+              (type-of-expr rbody rbody-tenv))))]
+      [assign-expr [var exp1]
+        (let ([var-type (apply-tenv tenv var)] 
+              [exp1-type (type-of-expr exp1 tenv)])
+          (begin (check-equal-type! exp1-type var-type exp1)
+                 (void-type)))]
+      [begin-expr [exp1 exps]
+        (let ([exp1-type (type-of-expr exp1 tenv)])
+          (foldl (lambda (e t) (type-of-expr e tenv)) exp1-type exps))]
+      [plus-expr [exp1 exp2]
+        (let ([exp1-type (type-of-expr exp1 tenv)]
+              [exp2-type (type-of-expr exp2 tenv)])
+          (begin (check-equal-type! exp1-type (int-type) exp1)
+                 (check-equal-type! exp2-type (int-type) exp2)
+                 (int-type)))]
+      [list-expr [exp1 exps]
+        (let ([exp1-type (type-of-expr exp1 tenv)]
+              [exps-type (map (lambda (e) (type-of-expr e tenv)) exps)])
+          (begin (for-each (lambda (e t) (check-equal-type! t exp1-type e)) exps exps-type)
+                 (list-type exp1-type)))]
+      [print-expr [exp1]
+        (let ([exp1-type (type-of-expr exp1 tenv)])
+          (begin (check-equal-type! exp1-type (int-type) exp1)
+                 (int-type)))]
+      [new-object-expr [class-name rands]
+        (let ([args-types (map (lambda (e) (type-of-expr e tenv)) rands)]
+              [class (lookup-static-class class-name)])
+          (cases static-class class
+            [an-interface [method-tenv]
+              (report-cant-instantiate-interface class-name)]
+            [a-static-class [s-name i-names f-names f-types m-tenv]
+              (let ([method-type (find-method-type class-name 'init)])
+                (begin (type-of-call method-type args-types rands expr)
+                       (class-type class-name)))]))]
+      [method-call-expr [obj-expr method-name rands]
+        (let* ([args-types (map (lambda (e) (type-of-expr e tenv)) rands)]
+               [obj-type (type-of-expr obj-expr tenv)]
+               [method-type (find-method-type (type->class-name obj-type) method-name)])
+          (type-of-call method-type args-types rands expr))]
+      [super-call-expr [method-name rands]
+        (let* ([args-types (map (lambda (e) (type-of-expr e tenv)) rands)]
+               [obj-type (apply-tenv '%self)]
+               [super-type (apply-tenv tenv '%super)]
+               [method-type (find-method-type super-type method-name)])
+          (type-of-call method-type args-types rands expr))]
+      [self-expr []
+        (apply-tenv tenv '%self)]
+      [instanceof-expr [obj-expr class-name]
+        (let ([obj-type (type-of-expr obj-expr tenv)])
+          (if (class-type? obj-type)
+            (bool-type)
+            (report-bad-type-to-instanceof obj-type obj-expr)))]
+      [cast-expr [obj-expr class-name]
+        (let ([obj-type (type-of-expr obj-expr tenv)])
+          (if (class-type? obj-type)
+            (class-type class-name)
+            (report-bad-type-to-cast obj-type obj-expr)))]
+      )))
 
-;(trace init-class-env!)
-;(trace init-class-decl!)
-;(trace lookup-class)
-;(trace append-field-names)
-;(trace method-decls->method-env)
-;(trace apply-method)
-;(trace new-object)
-;(trace find-method)
-;(trace value-of)
-;(trace expval->property)
+(define type-of-call
+  (lambda (rator-type rands-types rands expr)
+    (cases type rator-type
+      [proc-type [args-types result-type]
+        (if (not (= (length args-types) (length rands-types)))
+          (report-wrong-number-of-arguments
+            (map type-to-external-form args-types)
+            (map type-to-external-form rands-types)
+            expr)
+          (void))
+        (begin (for-each check-is-subtype! rands-types args-types rands) result-type)]
+      [else
+        (report-rator-not-a-proc-type
+          (type-to-external-form rator-type) expr)])))
+

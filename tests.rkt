@@ -1,77 +1,39 @@
 (load "main.rkt")
 
 (define p1
-  "class c1 extends object
-     field x
-     field y
-     method init()
+  "interface Tree
+     method Int sum()
+     method Bool equal(t : Tree)
+   class Interior-node extends object implements Tree
+     field Tree left
+     field Tree right
+     method Void init(l : Tree, r : Tree)
        begin
-         print(10);
-         set x = 11;
-         set y = 12
+         set left = l; set right = r
        end
-     method m1()
-       begin
-         print(11);
-         +(x, 10)
-       end
-     method m2()
-       begin
-         print(12);
-         send self m3()
-       end
+     method Tree getleft() left
+     method Tree getright() right
+     method Int sum() +(send left sum(), send right sum())
+     method Bool equal(t : Tree)
+       if instanceof t Interior-node
+       then if send left equal(send cast t Interior-node getleft())
+            then send right equal(send cast t Interior-node getright())
+            else zero?(1)
+       else zero?(1)
+   class Leaf-node extends object implements Tree
+     field Int value
+     method Void init(v : Int) set value = v
+     method Int sum() value
+     method Int getvalue() value
+     method Bool equal(t : Tree)
+       if instanceof t Leaf-node
+       then zero?(-(value, send cast t Leaf-node getvalue()))
+       else zero?(1)
+   let o1 = new Interior-node(
+              new Interior-node(
+                new Leaf-node(3),
+                new Leaf-node(4)),
+              new Leaf-node(5))
+   in list(send o1 sum(), if send o1 equal(o1) then 100 else 200)")
 
-   class c2 extends c1
-     field y
-     method init()
-       begin
-         super init();
-         print(20);
-         set y = 22
-       end  
-     method m1(u, v)
-       begin
-         print(21);
-         +(x, u);
-         +(y, v)
-       end
-     method m3()
-       begin
-         print(23);
-         +(x, 20)
-       end
-    
-   class c3 extends c2
-     field x
-     field z
-     method init()
-       begin
-         super init();
-         print(30);
-         set x = 31;
-         set z = 32
-       end
-     method m3()
-       begin
-         print(33);
-         +(x, 30)
-       end
 
-   let o3 = new c3()
-   in begin print(100); send o3 m1(7, 8) end")
-
-(define p2
-  "let c1 = 
-     extend object
-       field a
-       method m1() begin set a = 11; print(a) end
-       method m2() begin set a = 12; print(a) end
-       method get-a() print(a)
-     endextend
-   in let c2 = clone c1
-      in begin 
-           send c1 m1(); 
-           send c2 m2();
-           send c1 get-a();
-           send c2 get-a()
-         end")

@@ -51,7 +51,7 @@
               (let loop ([args-type args-type] [rands-type rands-type] [rands rands])
                 (if (null? args-type)
                   (void)
-                  (begin (check-equal-type! (car args-type) (car rands-type) (car rands))
+                  (begin (check-equal-type! (car rands-type) (car args-type) (car rands))
                          (loop (cdr args-type) (cdr rands-type) (cdr rands))))
                 ret-type)]
             [else
@@ -92,7 +92,7 @@
         (let ([args-types (map (lambda (e) (type-of-expr e tenv)) rands)]
               [class (lookup-static-class class-name)])
           (cases static-class class
-            [an-interface [s-name method-tenv]
+            [an-interface [method-tenv]
               (report-cant-instantiate-interface class-name)]
             [a-static-class [s-name i-names f-names f-types m-tenv]
               (let ([method-type (find-method-type class-name 'init)])

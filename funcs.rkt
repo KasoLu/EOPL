@@ -156,9 +156,23 @@
 
 ;check-equal-type! : Type x Type x Expr -> Void
 (define (check-equal-type! ty1 ty2 expr)
-  (if (not (equal? ty1 ty2))
-    (report-unequal-types ty1 ty2 expr)
-    (void)))
+  (cases type ty1
+    [class-type [class-name1]
+      (cases type ty2
+        [class-type [class-name2]
+          (if (is-subtype? ty1 ty2)
+            (void)
+            (report-unsubtype ty1 ty2 expr))]
+        [else 
+          (report-unequal-types ty1 ty2 expr)])]
+    [else
+      (cases type ty2
+        [class-type [class-name2]
+          (report-unequal-types ty1 ty2 expr)]
+        [else
+          (if (equal? ty1 ty2)
+            (void)
+            (report-unequal-types ty1 ty2 expr))])]))
 
 ;report-unequal-types : Type x Type x Expr -> Void
 (define (report-unequal-types ty1 ty2 expr)
@@ -234,18 +248,15 @@
   (lambda (class-decls)
     (empty-the-static-class-env!)
     (add-static-class-binding! 'object (a-static-class #f '() '() '() '()))
-    (add-static-class-binding! 'ifaces (an-interface #f '()))
     (for-each add-class-decl-to-static-class-env! class-decls)))
 
 (define add-class-decl-to-static-class-env!
   (lambda (c-decl)
     (cases class-decl c-decl
-      [an-interface-decl [i-name super-name abs-method-decls]
-        (let ([super-class (lookup-static-class super-name)]
-              [m-tenv (abs-method-decls->method-tenv abs-method-decls)])
+      [an-interface-decl [i-name abs-method-decls]
+        (let ([m-tenv (abs-method-decls->method-tenv abs-method-decls)])
           (begin (check-no-dups! (map car m-tenv) i-name)
-                 (let ([m-tenv (merge-method-tenvs (static-class->method-tenv super-class) m-tenv)])
-                   (add-static-class-binding! i-name (an-interface super-name m-tenv)))))]
+                 (add-static-class-binding! i-name (an-interface m-tenv))))]
       [a-class-decl [c-name s-name i-names f-types f-names m-decls]
         (let* ([super-class (lookup-static-class s-name)]
                [i-names (append (static-class->interface-names super-class) i-names)]
@@ -267,7 +278,7 @@
 (define check-class-decl!
   (lambda (c-decl)
     (cases class-decl c-decl
-      [an-interface-decl [i-name s-name abs-method-decls] #t]
+      [an-interface-decl [i-name abs-method-decls] #t]
       [a-class-decl [c-name s-name i-names f-types f-names m-decls]
         (let ([sc (lookup-static-class c-name)])
           (for-each
@@ -309,7 +320,7 @@
     (cases static-class (lookup-static-class i-name)
       [a-static-class [s-name i-names f-names f-types m-tenv]
         (report-cant-implement-non-interface c-name i-name)]
-      [an-interface [s-name method-tenv]
+      [an-interface [method-tenv]
         (let ([class-method-tenv (static-class->method-tenv (lookup-static-class c-name))])
           (for-each 
             (lambda (method-binding)
@@ -337,7 +348,7 @@
   (lambda (sc)
     (cases static-class sc
       [a-static-class [s-name i-names f-names f-types m-tenv] m-tenv]
-      [an-interface [s-name m-tenv] m-tenv]
+      [an-interface [m-tenv] m-tenv]
       [else (report-extractor-error)])))
 
 (define static-class->field-names

@@ -55,7 +55,6 @@
     [method-decls (list-of method-decl?)]]
   [an-interface-decl
     [interface-name identifier?]
-    [super-name identifier?]
     [abs-method-decls (list-of abs-method-decl?)]])
 
 (define-datatype method-decl method-decl?
@@ -81,7 +80,6 @@
     [field-types (list-of type?)]
     [method-tenv method-tenv?]]
   [an-interface
-    [super-name (maybe identifier?)]
     [method-tenv method-tenv?]])
 
 (define-datatype object object?

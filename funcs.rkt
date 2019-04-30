@@ -156,23 +156,9 @@
 
 ;check-equal-type! : Type x Type x Expr -> Void
 (define (check-equal-type! ty1 ty2 expr)
-  (cases type ty1
-    [class-type [class-name1]
-      (cases type ty2
-        [class-type [class-name2]
-          (if (is-subtype? ty1 ty2)
-            (void)
-            (report-unsubtype ty1 ty2 expr))]
-        [else 
-          (report-unequal-types ty1 ty2 expr)])]
-    [else
-      (cases type ty2
-        [class-type [class-name2]
-          (report-unequal-types ty1 ty2 expr)]
-        [else
-          (if (equal? ty1 ty2)
-            (void)
-            (report-unequal-types ty1 ty2 expr))])]))
+  (if (not (equal? ty1 ty2))
+    (report-unequal-types ty1 ty2 expr)
+    (void)))
 
 ;report-unequal-types : Type x Type x Expr -> Void
 (define (report-unequal-types ty1 ty2 expr)

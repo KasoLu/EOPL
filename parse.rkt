@@ -43,6 +43,8 @@
     [expression ("self") self-expr]
     [expression ("cast" expression identifier) cast-expr]
     [expression ("instanceof" expression identifier) instanceof-expr]
+    [expression ("fieldref" expression identifier) fieldref-expr]
+    [expression ("fieldset" expression identifier "=" expression) fieldset-expr]
     [type ("Int") int-type]
     [type ("Bool") bool-type]
     [type ("(" (separated-list type "*") "->" type ")") proc-type]

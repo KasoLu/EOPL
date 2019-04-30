@@ -121,6 +121,23 @@
           (if (class-type? obj-type)
             (class-type class-name)
             (report-bad-type-to-cast obj-type obj-expr)))]
+      [fieldref-expr [obj-expr field-name]
+        (let ([obj-type (type-of-expr obj-expr tenv)])
+          (cases type obj-type
+            [class-type [class-name]
+              (find-field-type class-name field-name)]
+            [else 
+              (report-invalid-object-type)]))]
+      [fieldset-expr [obj-expr field-name field-val]
+        (let ([obj-type (type-of-expr obj-expr tenv)]
+              [val-type (type-of-expr field-val tenv)])
+          (cases type obj-type
+            [class-type [class-name]
+              (let ([field-type (find-field-type class-name field-name)])
+                (begin (check-equal-type! val-type field-type expr)
+                       (void-type)))]
+            [else 
+              (report-invalid-field-name)]))]
       )))
 
 (define type-of-call
@@ -138,3 +155,14 @@
         (report-rator-not-a-proc-type
           (type-to-external-form rator-type) expr)])))
 
+(define find-field-type
+  (lambda (class-name field-name)
+    (let ([sc (lookup-static-class class-name)])
+      (cases static-class sc
+        [a-static-class [s-name i-names f-names f-types m-tenv]
+          (let loop ([f-names f-names] [f-types f-types])
+            (cond [(null? f-names) (report-invalid-field-name)]
+                  [(eqv? (car f-names) field-name) (car f-types)]
+                  [else (loop (cdr f-names) (cdr f-types))]))]
+        [else
+          (report-cant-instantiate-interface)]))))

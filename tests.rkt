@@ -38,14 +38,11 @@
 
 (define p2
   "class C1 extends object
+     field Int f1
      method Int init() print(10)
-     method Int m1() print(11)
-     method C1 m2() new C1()
-   class C2 extends C1
-     method Int init() print(20)
-     method Int m1() print(21)
-     method C2 m2() new C2()
-   let f = proc(x : C1) -> Int send x m1(),
-       g = proc(x : C1) -> C2  send x m2(),
-       o = new C2()
-   in begin (f o); (g o) end")
+   let oc1 = new C1()
+   in begin 
+        fieldref oc1 f1;
+        fieldset oc1 f1 = 20;
+        fieldref oc1 f1
+      end")

@@ -169,4 +169,11 @@
   [instanceof-expr
     [exp1 expression?]
     [class-name identifier?]]
+  [fieldref-expr
+    [exp1 expression?]
+    [name identifier?]]
+  [fieldset-expr
+    [exp1 expression?]
+    [name identifier?]
+    [val1 expression?]]
   )

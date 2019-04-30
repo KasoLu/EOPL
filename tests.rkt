@@ -37,39 +37,11 @@
    in list(send o1 sum(), if send o1 equal(o1) then 100 else 200)")
 
 (define p2
-  "interface Summable
-     method Int sum()
-   interface Tree
-   class List extends object implements Summable
-     field list-val : Listof Int
-     method Void init() set list-val = empty-list Int
-     method Int sum()
-       letrec Int loop(list : Listof Int, sum : Int) =
-         if null?(list)
-         then sum
-         else (loop cdr(list) +(sum, car(list)))
-   class BinTree extends object implements Tree, Summable
-     field l : Tree
-     field r : Tree
-     method Void init(left : Tree, right : Tree)
-       begin set l = left; set r = right end
-     method Int sum()
-       if instanceof l Summable
-       then 
-         if instanceof r Summable
-         then +(send l sum(), send r sum())
-         else 0
-       else 0
-   class BinTreeLeaf extends object implements Tree, Summable
-     field v : Int
-     method Void init(x : Int) set v = x
-     method Int sum() v
-   class GeneralTree extends object implements Tree, Summable
-     field list : Listof Tree
-     method Void init(list : Listof Tree) set list = list
-     method Int sum()
-       letrec loop(l : Listof Summable, sum : Int)
-       if null?(list)
-         sum
-         (loop cdr(l) +(sum, send car(l) sum()))")
-
+  "class C1 extends object
+     method Int init() print(10)
+     method Int m1() print(11)
+   class S1 extends C1
+     method Int init() print(20)
+     method Int m1() print(21)
+   let s1 = new S1()
+   in send cast s1 S1 m1()")

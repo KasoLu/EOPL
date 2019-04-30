@@ -14,7 +14,7 @@
                  (arbno "implements" identifier)
                  (arbno "field" type identifier)
                  (arbno method-decl)) a-class-decl]
-    [class-decl ("interface" identifier 
+    [class-decl ("interface" identifier "extends" identifier
                  (arbno abs-method-decl)) an-interface-decl]
     [method-decl ("method" type identifier 
                   "(" (separated-list identifier ":" type ",") ")" expression) a-method-decl]

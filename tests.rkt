@@ -37,8 +37,16 @@
    in list(send o1 sum(), if send o1 equal(o1) then 100 else 200)")
 
 (define p2
-  "class C1 extends object
+  "interface I1 extends ifaces
+     method Int m1()
+   interface I2 extends I1
+     method Int m2()
+   class C1 extends object implements I2
      method Int init() print(10)
      method Int m1() print(11)
-   let o1 = new C1()
-   in send o1 m1()")
+     method Int m2() print(12)
+   let oc1 = new C1()
+   in begin
+        send oc1 m1();
+        send oc1 m2()
+      end")

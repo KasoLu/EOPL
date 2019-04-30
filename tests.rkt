@@ -36,4 +36,14 @@
               new Leaf-node(5))
    in list(send o1 sum(), if send o1 equal(o1) then 100 else 200)")
 
-
+(define p2
+  "class C1 extends object
+     method Int init() print(10)
+     static-method Int m1() print(11)
+   class S1 extends C1
+     method Int init() print(20)
+     static-method Int m1() print(21)
+   let o1 = new C1()
+   in begin
+        send o1 m1()
+      end")

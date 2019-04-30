@@ -94,7 +94,7 @@
           (cases static-class class
             [an-interface [method-tenv]
               (report-cant-instantiate-interface class-name)]
-            [a-static-class [s-name i-names f-names f-types m-tenv]
+            [a-static-class [s-name i-names f-names f-types m-tenv sm-tenv]
               (let ([method-type (find-method-type class-name 'init)])
                 (begin (type-of-call method-type args-types rands expr)
                        (class-type class-name)))]))]

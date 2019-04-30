@@ -18,6 +18,8 @@
                  (arbno abs-method-decl)) an-interface-decl]
     [method-decl ("method" type identifier 
                   "(" (separated-list identifier ":" type ",") ")" expression) a-method-decl]
+    [method-decl ("static-method" type identifier
+                  "(" (separated-list identifier ":" type ",") ")" expression) a-static-method-decl]
     [abs-method-decl ("method" type identifier 
                       "(" (separated-list identifier ":" type ",") ")") an-abs-method-decl]
     [expression (number) num-expr]

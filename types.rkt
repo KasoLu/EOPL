@@ -63,7 +63,14 @@
     [method-name identifier?]
     [vars (list-of identifier?)]
     [vars-types (list-of type?)]
-    [body expression?]])
+    [body expression?]]
+  [a-static-method-decl
+    [result-type type?]
+    [method-name identifier?]
+    [vars (list-of identifier?)]
+    [vars-types (list-of type?)]
+    [body expression?]]
+  )
 
 (define-datatype abs-method-decl abs-method-decl?
   [an-abs-method-decl
@@ -78,7 +85,8 @@
     [interface-names (list-of identifier?)]
     [field-names (list-of identifier?)]
     [field-types (list-of type?)]
-    [method-tenv method-tenv?]]
+    [method-tenv method-tenv?]
+    [static-method-tenv method-tenv?]]
   [an-interface
     [method-tenv method-tenv?]])
 

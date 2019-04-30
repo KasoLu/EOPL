@@ -96,19 +96,19 @@
               (report-cant-instantiate-interface class-name)]
             [a-static-class [s-name i-names f-names f-types m-tenv]
               (let ([method-type (find-method-type class-name 'init)])
-                (begin (type-of-call method-type args-types rands expr)
+                (begin (type-of-call 'init method-type args-types rands expr #t)
                        (class-type class-name)))]))]
       [method-call-expr [obj-expr method-name rands]
         (let* ([args-types (map (lambda (e) (type-of-expr e tenv)) rands)]
                [obj-type (type-of-expr obj-expr tenv)]
                [method-type (find-method-type (type->class-name obj-type) method-name)])
-          (type-of-call method-type args-types rands expr))]
+          (type-of-call method-name method-type args-types rands expr #f))]
       [super-call-expr [method-name rands]
         (let* ([args-types (map (lambda (e) (type-of-expr e tenv)) rands)]
                [obj-type (apply-tenv '%self)]
                [super-type (apply-tenv tenv '%super)]
                [method-type (find-method-type super-type method-name)])
-          (type-of-call method-type args-types rands expr))]
+          (type-of-call method-name method-type args-types rands expr #f))]
       [self-expr []
         (apply-tenv tenv '%self)]
       [instanceof-expr [obj-expr class-name]
@@ -118,24 +118,25 @@
             (report-bad-type-to-instanceof obj-type obj-expr)))]
       [cast-expr [obj-expr class-name]
         (let ([obj-type (type-of-expr obj-expr tenv)])
-          (if (or (is-descendant? obj-type class-name)
-                  (is-ancestor? obj-type class-name))
+          (if (class-type? obj-type)
             (class-type class-name)
             (report-bad-type-to-cast obj-type obj-expr)))]
       )))
 
 (define type-of-call
-  (lambda (rator-type rands-types rands expr)
-    (cases type rator-type
-      [proc-type [args-types result-type]
-        (if (not (= (length args-types) (length rands-types)))
-          (report-wrong-number-of-arguments
-            (map type-to-external-form args-types)
-            (map type-to-external-form rands-types)
-            expr)
-          (void))
-        (begin (for-each check-is-subtype! rands-types args-types rands) result-type)]
-      [else
-        (report-rator-not-a-proc-type
-          (type-to-external-form rator-type) expr)])))
+  (lambda (rator-name rator-type rands-types rands expr is-obj-create)
+    (if (and (eqv? rator-name 'init) (eqv? is-obj-create #f))
+      (report-init-method-only-be-called-in-object-create)
+      (cases type rator-type
+        [proc-type [args-types result-type]
+          (if (not (= (length args-types) (length rands-types)))
+            (report-wrong-number-of-arguments
+              (map type-to-external-form args-types)
+              (map type-to-external-form rands-types)
+              expr)
+            (void))
+          (begin (for-each check-is-subtype! rands-types args-types rands) result-type)]
+        [else
+          (report-rator-not-a-proc-type
+            (type-to-external-form rator-type) expr)]))))
 

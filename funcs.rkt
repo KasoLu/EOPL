@@ -113,11 +113,25 @@
 
 (define method-decls->method-tenv
   (lambda (method-decls)
-    (map (lambda (m-decl)
-           (cases method-decl m-decl
-             [a-method-decl [result-type method-name vars vars-types body]
-               (list method-name (proc-type vars-types result-type))]))
-         method-decls)))
+    (let loop ([method-decls method-decls] [method-tenv '()])
+      (if (null? method-decls)
+        (reverse method-tenv)
+        (cases method-decl (car method-decls)
+          [a-method-decl [result-type method-name vars vars-types body]
+            (loop (cdr method-decls) (cons (list method-name (proc-type vars-types result-type)) method-tenv))]
+          [else
+            (loop (cdr method-decls) method-tenv)])))))
+
+(define method-decls->static-method-tenv
+  (lambda (method-decls)
+    (let loop ([method-decls method-decls] [method-tenv '()])
+      (if (null? method-decls)
+        (reverse method-tenv)
+        (cases method-decl (car method-decls)
+          [a-static-method-decl [result-type method-name vars vars-types body]
+            (loop (cdr method-decls) (cons (list method-name (proc-type vars-types result-type)) method-tenv))]
+          [else
+            (loop (cdr method-decls) method-tenv)])))))
 
 (define merge-method-tenvs
   (lambda (super-method-tenv new-method-tenv)
@@ -233,7 +247,7 @@
 (define init-static-class-env!
   (lambda (class-decls)
     (empty-the-static-class-env!)
-    (add-static-class-binding! 'object (a-static-class #f '() '() '() '()))
+    (add-static-class-binding! 'object (a-static-class #f '() '() '() '() '()))
     (for-each add-class-decl-to-static-class-env! class-decls)))
 
 (define add-class-decl-to-static-class-env!
@@ -253,13 +267,21 @@
                   (begin (check-no-dups! (map car local-method-tenv) c-name)
                          (merge-method-tenvs 
                            (static-class->method-tenv super-class)
-                           local-method-tenv)))])
+                           local-method-tenv)))]
+               [static-method-tenv
+                (let ([local-static-method-tenv (method-decls->static-method-tenv m-decls)])
+                  (begin (check-no-dups! (map car local-static-method-tenv) c-name)
+                         (merge-method-tenvs
+                           (static-class->static-method-tenv super-class)
+                           local-static-method-tenv)))])
           (begin (check-no-dups! i-names c-name)
                  (check-no-dups! f-names c-name)
                  (check-for-init! method-tenv c-name)
+                 (check-method-no-dup! method-tenv static-method-tenv)
+                 (check-method-no-dup! static-method-tenv method-tenv)
                  (add-static-class-binding! 
                    c-name 
-                   (a-static-class s-name i-names f-names f-types method-tenv))))])))
+                   (a-static-class s-name i-names f-names f-types method-tenv static-method-tenv))))])))
 
 (define check-class-decl!
   (lambda (c-decl)
@@ -299,12 +321,33 @@
                     (proc-type var-types res-type)
                     maybe-super-type
                     body)
+                  #t)))))]
+      [a-static-method-decl [res-type m-name vars var-types body]
+        (let ([tenv 
+               (extend-tenv vars var-types
+                 (extend-tenv-with-self-and-super (class-type self-name) s-name
+                   (extend-tenv f-names f-types
+                     (init-tenv))))])
+          (let ([body-type (type-of-expr body tenv)])
+            (check-is-subtype! body-type res-type m-decl)
+            (if (eqv? m-name 'init)
+              #f
+              (let ([maybe-super-type 
+                     (maybe-find-method-type
+                       (static-class->static-method-tenv
+                         (lookup-static-class s-name))
+                       m-name)])
+                (if maybe-super-type
+                  (check-is-subtype!
+                    (proc-type var-types res-type)
+                    maybe-super-type
+                    body)
                   #t)))))])))
 
 (define check-if-implements!
   (lambda (c-name i-name)
     (cases static-class (lookup-static-class i-name)
-      [a-static-class [s-name i-names f-names f-types m-tenv]
+      [a-static-class [s-name i-names f-names f-types m-tenv sm-tenv]
         (report-cant-implement-non-interface c-name i-name)]
       [an-interface [method-tenv]
         (let ([class-method-tenv (static-class->method-tenv (lookup-static-class c-name))])
@@ -321,26 +364,32 @@
 (define static-class->interface-names
   (lambda (sc)
     (cases static-class sc
-      [a-static-class [s-name i-names f-names f-types m-tenv] i-names]
+      [a-static-class [s-name i-names f-names f-types m-tenv sm-tenv] i-names]
       [else (report-extractor-error)])))
 
 (define static-class->field-types
   (lambda (sc)
     (cases static-class sc
-      [a-static-class [s-name i-names f-names f-types m-tenv] f-types]
+      [a-static-class [s-name i-names f-names f-types m-tenv sm-tenv] f-types]
       [else (report-extractor-error)])))
 
 (define static-class->method-tenv
   (lambda (sc)
     (cases static-class sc
-      [a-static-class [s-name i-names f-names f-types m-tenv] m-tenv]
+      [a-static-class [s-name i-names f-names f-types m-tenv sm-tenv] m-tenv]
       [an-interface [m-tenv] m-tenv]
       [else (report-extractor-error)])))
 
 (define static-class->field-names
   (lambda (sc)
     (cases static-class sc
-      [a-static-class [s-name i-names f-names f-types m-tenv] f-names]
+      [a-static-class [s-name i-names f-names f-types m-tenv sm-tenv] f-names]
+      [else (report-extractor-error)])))
+
+(define static-class->static-method-tenv
+  (lambda (sc)
+    (cases static-class sc
+      [a-static-class [s-name i-names f-names f-types m-tenv sm-tenv] sm-tenv]
       [else (report-extractor-error)])))
 
 (define maybe-find-method-type
@@ -354,10 +403,14 @@
   (lambda (class-name method-name)
     (let* ([class (lookup-static-class class-name)]
            [method-tenv (static-class->method-tenv class)]
-           [maybe-pair (assq method-name method-tenv)])
-      (if maybe-pair
-        (cadr maybe-pair)
-        (report-method-type-not-found)))))
+           [static-method-tenv (static-class->static-method-tenv class)])
+      (let ([maybe-pair (assq method-name method-tenv)])
+        (if maybe-pair
+          (cadr maybe-pair)
+          (let ([maybe-pair (assq method-name static-method-tenv)])
+            (if maybe-pair
+              (cadr maybe-pair)
+              (report-method-type-not-found))))))))
 
 (define type->class-name
   (lambda (t)
@@ -374,5 +427,14 @@
 (define static-class->super-name
   (lambda (sc)
     (cases static-class sc
-      [a-static-class [s-name i-names f-names f-types m-tenv] s-name]
+      [a-static-class [s-name i-names f-names f-types m-tenv sm-tenv] s-name]
       [else (report-extractor-error)])))
+
+(define check-method-no-dup!
+  (lambda (method-tenv target-method-tenv)
+    (let loop ([method-tenv method-tenv])
+      (if (null? method-tenv)
+        (void)
+        (if (assv (caar method-tenv) target-method-tenv)
+          (report-override-method)
+          (loop (cdr method-tenv)))))))

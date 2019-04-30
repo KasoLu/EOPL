@@ -38,11 +38,12 @@
 
 (define p2
   "class C1 extends object
-     field Int f1
      method Int init() print(10)
-   let oc1 = new C1()
-   in begin 
-        fieldref oc1 f1;
-        fieldset oc1 f1 = 20;
-        fieldref oc1 f1
+     static-method Int m1() print(11)
+   class S1 extends C1
+     method Int init() print(20)
+     static-method Int m1() print(21)
+   let o1 = new C1()
+   in begin
+        send o1 m1()
       end")

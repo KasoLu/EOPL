@@ -18,6 +18,8 @@
                  (arbno abs-method-decl)) an-interface-decl]
     [method-decl ("method" type identifier 
                   "(" (separated-list identifier ":" type ",") ")" expression) a-method-decl]
+    [method-decl ("static-method" type identifier
+                  "(" (separated-list identifier ":" type ",") ")" expression) a-static-method-decl]
     [abs-method-decl ("method" type identifier 
                       "(" (separated-list identifier ":" type ",") ")") an-abs-method-decl]
     [expression (number) num-expr]
@@ -43,8 +45,6 @@
     [expression ("self") self-expr]
     [expression ("cast" expression identifier) cast-expr]
     [expression ("instanceof" expression identifier) instanceof-expr]
-    [expression ("fieldref" expression identifier) fieldref-expr]
-    [expression ("fieldset" expression identifier "=" expression) fieldset-expr]
     [type ("Int") int-type]
     [type ("Bool") bool-type]
     [type ("(" (separated-list type "*") "->" type ")") proc-type]

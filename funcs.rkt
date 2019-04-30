@@ -98,7 +98,7 @@
 
 (define lookup-static-class
   (lambda (class-name)
-    (let ([maybe-pair (assq class-name the-static-class-env)])
+    (let ([maybe-pair (assv class-name the-static-class-env)])
       (if maybe-pair
         (cadr maybe-pair)
         (report-static-class-not-found)))))
@@ -376,3 +376,35 @@
     (cases static-class sc
       [a-static-class [s-name i-names f-names f-types m-tenv] s-name]
       [else (report-extractor-error)])))
+
+(define is-descendant?
+  (lambda (cls-type target-class-name)
+    (cases type cls-type
+      [class-type [class-name]
+        (let loop ([class-name class-name])
+          (cond [(not class-name) #f]
+                [(eqv? class-name target-class-name) #t]
+                [else
+                 (let ([sc (lookup-static-class class-name)])
+                   (cases static-class sc
+                     [a-static-class [s-name i-names f-names f-types m-tenv]
+                       (if (memv target-class-name i-names)
+                         #t
+                         (loop s-name))]
+                     [else #f]))]))]
+      [else #f])))
+
+(define is-ancestor?
+  (lambda (cls-type target-class-name)
+    (cases type cls-type
+      [class-type [class-name]
+        (let loop ([target-class-name target-class-name])
+          (cond [(not target-class-name) #f]
+                [(eqv? class-name target-class-name) #t]
+                [else
+                 (let ([sc (lookup-static-class target-class-name)])
+                   (cases static-class sc
+                     [a-static-class [s-name i-names f-names f-types m-tenv]
+                       (loop s-name)]
+                     [else #f]))]))]
+      [else #f])))

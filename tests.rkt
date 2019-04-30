@@ -39,9 +39,17 @@
 (define p2
   "class C1 extends object
      method Int init() print(10)
-     method Int m1() print(11)
-   class S1 extends C1
+   class C2 extends object
      method Int init() print(20)
-     method Int m1() print(21)
-   let s1 = new S1()
-   in send cast s1 S1 m1()")
+   class S1 extends C1
+     method Int init() print(11)
+   class S2 extends C2
+     method Int init() print(21)
+   let oc1 = new C1(), oc2 = new C2(), os1 = new S1(), os2 = new S2()
+   in begin
+        cast oc1 object;
+        cast oc1 C1;
+        cast oc1 S1;
+        cast oc2 C2;
+        cast oc2 S2
+      end")

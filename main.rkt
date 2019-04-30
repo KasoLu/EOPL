@@ -112,15 +112,14 @@
       [self-expr []
         (apply-tenv tenv '%self)]
       [instanceof-expr [obj-expr class-name]
-        (let ([obj-type (type-of-expr obj-expr tenv)]
-              [class (lookup-static-class class-name)])
+        (let ([obj-type (type-of-expr obj-expr tenv)])
           (if (class-type? obj-type)
             (bool-type)
             (report-bad-type-to-instanceof obj-type obj-expr)))]
       [cast-expr [obj-expr class-name]
-        (let ([obj-type (type-of-expr obj-expr tenv)]
-              [class (lookup-static-class class-name)])
-          (if (class-type? obj-type)
+        (let ([obj-type (type-of-expr obj-expr tenv)])
+          (if (or (is-descendant? obj-type class-name)
+                  (is-ancestor? obj-type class-name))
             (class-type class-name)
             (report-bad-type-to-cast obj-type obj-expr)))]
       )))
